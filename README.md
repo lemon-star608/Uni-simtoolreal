@@ -99,7 +99,7 @@ The task needs a few behaviors upstream UniLab does not ship yet (multi-rigid-ro
 - `unilab` — official `main` at the exact commit this task was developed against;
 - `unisim-core` — fork branch `feat/isaacsim-urdf-multi-entity` carrying the IsaacSim scene-composition contract (upstream PR [unilabsim/unisim#79](https://github.com/unilabsim/unisim/pull/79)); switch to the PyPI release when it merges.
 
-The vendored RL-Games runtime under `third_party/simtoolreal_rl_games` is SHA-gated; never edit its files. Its pristine source blobs are carried on the `vendor-pristine` branch so the audit works from any clone — fetch all branches when cloning. Run `make check` / `make test` (428 tests) before pushing.
+The vendored RL-Games runtime under `third_party/simtoolreal_rl_games` is SHA-gated; never edit its files. Provenance is anchored by the per-file SHA256 manifest plus the recorded upstream source commit — no local Git objects are required. Run `make check` / `make test` (428 tests) before pushing.
 
 ## Credits and support
 

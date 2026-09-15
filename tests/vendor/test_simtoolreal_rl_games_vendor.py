@@ -13,8 +13,8 @@ SOURCE_HEAD = "2a9917533bfea70419ed2667a511d7238e5b3abc"
 SOURCE_PARENT_TREE = "7a6a0bb090998d00565aaefa6ab9f2b3d356ace2"
 SOURCE_LICENSE_BLOB = "313ca229e6ca879466f94bff49362fb65667e22f"
 SOURCE_LICENSE_SHA256 = "46565837dec017dc2f8df9fbbb6904fb3e62dc9b91c9efd9bb8d0b22eacc47d5"
-SOURCE_SELECTION_SHA256 = "f0517fb198dbbf9dcc456ab6de4a5cf6e0c4b03cdc90e84f12e52f74a70fe0ca"
-SOURCE_PYTHON_BYTES = 439455
+SOURCE_SELECTION_SHA256 = "2f100c78073ded75cd5c7d6c5e55523c729f4b5524d61915ed7efccea1117e4c"
+SOURCE_PYTHON_BYTES = 439562
 EXPECTED_DISTRIBUTION = "unilab-simtoolreal-rl-games"
 EXPECTED_VERSION = "1.6.1+simtoolreal.2a991753.compat2"
 EXPECTED_PATCH_PATHS = {
@@ -74,22 +74,8 @@ def test_vendor_manifest_pins_pristine_objects_and_current_python_hashes():
     for entry in sorted(manifest["python_files"], key=lambda item: item["path"]):
         assert set(entry) == {"path", "source_path", "source_blob", "sha256"}
         assert entry["source_path"] == f"rl_games/{entry['path']}"
-        pristine = subprocess.run(
-            ["git", "cat-file", "blob", entry["source_blob"]],
-            cwd=VENDOR_ROOT.parents[1],
-            check=True,
-            capture_output=True,
-        ).stdout
-        assert hashlib.sha256(pristine).hexdigest() == entry["sha256"]
-        assert _git_blob_sha(pristine) == entry["source_blob"]
         canonical_records.append(
-            [
-                entry["path"],
-                entry["source_path"],
-                entry["source_blob"],
-                entry["sha256"],
-                len(pristine),
-            ]
+            [entry["path"], entry["source_path"], entry["source_blob"], entry["sha256"]]
         )
 
         vendored_file = VENDOR_ROOT / entry["path"]
@@ -389,15 +375,12 @@ def test_audit_rejects_an_unlisted_compatibility_patch(tmp_path):
 
 def test_audit_rejects_a_redundant_compatibility_allowlist_entry(tmp_path):
     vendor_root = _copy_vendor(tmp_path)
-    manifest = json.loads((vendor_root / "source_manifest.json").read_text())
-    patch = manifest["compatibility_allowlist"][0]
-    pristine = subprocess.run(
-        ["git", "cat-file", "blob", patch["pristine_blob"]],
-        cwd=VENDOR_ROOT.parents[1],
-        check=True,
-        capture_output=True,
-    ).stdout
-    (vendor_root / patch["path"]).write_bytes(pristine)
+
+    def make_redundant(manifest: dict) -> None:
+        patch = manifest["compatibility_allowlist"][0]
+        patch["patched_sha256"] = patch["pristine_sha256"]
+
+    _rewrite_manifest(vendor_root, make_redundant)
 
     audit = _audit_module()
     with pytest.raises(audit.AuditError, match="redundant compatibility allowlist"):

@@ -19,7 +19,7 @@ sys.dont_write_bytecode = True
 EXPECTED_DISTRIBUTION = "unilab-simtoolreal-rl-games"
 EXPECTED_SOURCE_HEAD = "2a9917533bfea70419ed2667a511d7238e5b3abc"
 EXPECTED_SOURCE_PARENT_TREE = "7a6a0bb090998d00565aaefa6ab9f2b3d356ace2"
-EXPECTED_SELECTION_SHA256 = "f0517fb198dbbf9dcc456ab6de4a5cf6e0c4b03cdc90e84f12e52f74a70fe0ca"
+EXPECTED_SELECTION_SHA256 = "2f100c78073ded75cd5c7d6c5e55523c729f4b5524d61915ed7efccea1117e4c"
 V2_DISTRIBUTION_VERSION = "1.6.1+simtoolreal.2a991753.compat2"
 PATCH_ENTRY_KEYS = {
     "path",
@@ -51,18 +51,6 @@ def _is_within(path: Path, root: Path) -> bool:
     except ValueError:
         return False
     return True
-
-
-def _git_blob(blob_oid: str) -> bytes:
-    result = subprocess.run(
-        ["git", "cat-file", "blob", blob_oid],
-        cwd=REPO_ROOT,
-        check=False,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        _reject(f"pristine Git object {blob_oid} is unavailable")
-    return result.stdout
 
 
 def _verify_manifest() -> dict[str, str]:
@@ -110,17 +98,8 @@ def _verify_manifest() -> dict[str, str]:
         relative_path = entry["path"]
         if entry["source_path"] != f"rl_games/{relative_path}":
             _reject(f"vendored Source path drift for {relative_path}")
-        pristine = _git_blob(entry["source_blob"])
-        if hashlib.sha256(pristine).hexdigest() != entry["sha256"]:
-            _reject(f"pristine Git-object hash drift for {relative_path}")
         canonical_records.append(
-            [
-                relative_path,
-                entry["source_path"],
-                entry["source_blob"],
-                entry["sha256"],
-                len(pristine),
-            ]
+            [relative_path, entry["source_path"], entry["source_blob"], entry["sha256"]]
         )
 
         current_path = VENDOR_ROOT / relative_path

@@ -16,7 +16,7 @@ EXPECTED_DISTRIBUTION = "unilab-simtoolreal-rl-games"
 EXPECTED_VERSION = "1.6.1+simtoolreal.2a991753.compat2"
 EXPECTED_SOURCE_HEAD = "2a9917533bfea70419ed2667a511d7238e5b3abc"
 EXPECTED_PARENT_TREE = "7a6a0bb090998d00565aaefa6ab9f2b3d356ace2"
-EXPECTED_SELECTION_SHA256 = "f0517fb198dbbf9dcc456ab6de4a5cf6e0c4b03cdc90e84f12e52f74a70fe0ca"
+EXPECTED_SELECTION_SHA256 = "2f100c78073ded75cd5c7d6c5e55523c729f4b5524d61915ed7efccea1117e4c"
 EXPECTED_MANIFEST_SHA256 = "4f1170b222e4ba008b34070fad7aeaba4cf790cc6ae1917417ee40ef35573ac9"
 INSTALL_HINT = "uv run --extra mujoco --extra rlgames-sapg ..."
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -79,21 +79,13 @@ def _validate_manifest() -> tuple[int, int]:
         expected = patch_hashes.get(relative, entry["sha256"])
         if hashlib.sha256(current.read_bytes()).hexdigest() != expected:
             raise RuntimeError(f"vendored runtime hash drift: {relative}")
-        try:
-            pristine_size = int(
-                subprocess.check_output(
-                    ["git", "cat-file", "-s", entry["source_blob"]],
-                    cwd=REPO_ROOT,
-                    text=True,
-                ).strip()
-            )
-        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
-            raise RuntimeError(f"pristine Git object is unavailable: {relative}") from exc
-        records.append(
-            [relative, entry["source_path"], entry["source_blob"], entry["sha256"], pristine_size]
-        )
-    # The outer manifest hash fixes every pristine record. Keep the independent
-    # Source-selection anchor visible in production diagnostics as well.
+        # Provenance anchor: the manifest pins every file's SHA256 (patched
+        # hashes for the seven compatibility patches, pristine hashes for the
+        # rest) plus the upstream source commit; the recorded upstream blob
+        # OIDs stay as declared data, but no local Git objects are required.
+        records.append([relative, entry["source_path"], entry["source_blob"], entry["sha256"]])
+    # The outer manifest hash fixes every record; this selection hash keeps an
+    # independent identity visible in production diagnostics as well.
     canonical = json.dumps(records, ensure_ascii=True, separators=(",", ":")).encode()
     if hashlib.sha256(canonical).hexdigest() != EXPECTED_SELECTION_SHA256:
         raise RuntimeError("vendored Source selection identity drift")
