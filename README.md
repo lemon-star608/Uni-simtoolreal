@@ -25,7 +25,7 @@ This is a downstream task package: install it and use UniLab's shared training t
 Requirements: Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and roughly 20 GB of disk for the worker runtime and caches.
 
 ```bash
-git clone https://github.com/lemon-star608/simtoolreal_unilab.git
+git clone https://github.com/unilabsim/simtoolreal_unilab.git
 cd simtoolreal_unilab
 uv sync
 ```

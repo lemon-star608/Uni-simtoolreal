@@ -27,7 +27,7 @@
 要求：Linux x86_64、一张支持 CUDA 的 NVIDIA GPU（学习器与 IsaacSim worker 共用）、[uv](https://docs.astral.sh/uv/)、约 20 GB 磁盘（worker 运行时与缓存）。
 
 ```bash
-git clone https://github.com/lemon-star608/simtoolreal_unilab.git
+git clone https://github.com/unilabsim/simtoolreal_unilab.git
 cd simtoolreal_unilab
 uv sync
 ```
