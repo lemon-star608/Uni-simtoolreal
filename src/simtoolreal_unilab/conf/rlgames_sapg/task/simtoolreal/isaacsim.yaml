@@ -1,0 +1,24 @@
+# @package _global_
+# SimToolReal IsaacSim backend owner (RL-Games SAPG tree): backend identity,
+# isaacsim_* knobs, and the algo/env sizing.  SAPG hyperparameters are the
+# conf/rlgames_sapg/config.yaml defaults (transcribed from the original repo's
+# SimToolRealSAPG.yaml); this leaf carries only the task-specific deviations.
+defaults:
+  - /task/simtoolreal/base
+  - _self_
+
+training:
+  task_name: SimToolReal
+  sim_backend: isaacsim
+
+algo:
+  num_envs: 24576
+
+env:
+  isaacsim_device_id: 0
+  # Large 1200-tool pools spend most of their cold-start time in IsaacSim
+  # clone/materialization; keep the worker handshake generous for training.
+  isaacsim_worker_timeout_s: 1800.0
+  # D2 Kit acceptance passed: enable the task's world-frame rigid-root wrench
+  # event.  The base owner now supplies the 1200-variant mass table and init
+  # assignment before this worker materializes.

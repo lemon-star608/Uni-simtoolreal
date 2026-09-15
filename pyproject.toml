@@ -1,0 +1,67 @@
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13"]
+build-backend = "uv_build"
+
+[project]
+name = "simtoolreal-unilab"
+version = "0.1.0"
+description = "SimToolReal teacher training on UniLab + UniSim through the IsaacSim URDF-to-USD asset path"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+  # Official UniLab main at the exact commit this task was developed against;
+  # the multi-rigid-root reset routing and entity facades this package needs
+  # are supplied by simtoolreal_unilab._compat on top of the pinned revision.
+  "unilab",
+  # Fork branch carrying the IsaacSim scene-composition contract (PR
+  # unilabsim/unisim#79). Switch back to the PyPI release once merged.
+  "unisim-core",
+  # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
+  "unilab-simtoolreal-rl-games",
+  "torch==2.8.0+cu128 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "tensorboard>=2.8",
+  "tensorboardX>=2.5",
+]
+
+[project.entry-points."unilab.tasks"]
+simtoolreal_unilab = "simtoolreal_unilab.tasks"
+
+[project.scripts]
+simtoolreal-train = "simtoolreal_unilab.cli:train_main"
+simtoolreal-play = "simtoolreal_unilab.cli:play_main"
+simtoolreal-list-envs = "simtoolreal_unilab.cli:list_main"
+
+[dependency-groups]
+dev = ["pytest>=9", "ruff>=0.15"]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "e1fcb824" }
+unisim-core = { git = "https://github.com/lemon-star608/unisim.git", branch = "feat/isaacsim-urdf-multi-entity" }
+unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+exclude-dependencies = ["torchvision"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "isaacsim: requires the IsaacSim worker runtime (skipped without UNISIM_ISAACSIM_PYTHON)",
+]
+addopts = "--tb=short"

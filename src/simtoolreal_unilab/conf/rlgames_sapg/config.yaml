@@ -1,0 +1,160 @@
+defaults:
+  - _self_
+  - task: g1_walk_flat/mujoco
+
+algo:
+  algo: rlgames_sapg
+  algo_log_name: rlgames_sapg
+  seed: ${rl_games.params.seed}
+  num_envs: 24576
+  load_run: "-1"
+  checkpoint: "-1"
+  checkpoint_load_mode: none
+  obs_groups:
+    actor: [obs]
+    critic: [critic]
+  policy:
+    actor_hidden_dims: ${rl_games.params.network.mlp.units}
+    critic_hidden_dims: ${rl_games.params.config.central_value_config.network.mlp.units}
+  empirical_normalization: ${rl_games.params.config.normalize_value}
+  obs_normalization: ${rl_games.params.config.normalize_input}
+
+training:
+  task_name: G1WalkFlat
+  sim_backend: mujoco
+  smoke: false
+  device: cuda:0
+  logger: tensorboard
+  wandb_project: unilab
+  wandb_entity: null
+  wandb_group: null
+  wandb_job_type: null
+  wandb_name: null
+  wandb_tags: []
+  wandb_notes: null
+  wandb_mode: null
+  log_root: null
+  log_dir: null
+  play_only: false
+  no_play: false
+  sim2sim_strict: true
+  play_render_mode: auto
+  play_env_num: 6
+  render_spacing: 1.0
+  play_steps: 600
+  cam_distance: 2.0
+  cam_elevation: -20.0
+  cam_azimuth: 90.0
+  cam_lookat: null
+  cam_tracking: false
+  cam_tracking_env_idx: 0
+  cam_tracking_extra_envs: 2
+
+rl_games:
+  params:
+    seed: 42
+    algo:
+      name: a2c_continuous
+    model:
+      name: continuous_a2c_logstd
+    network:
+      name: actor_critic
+      separate: false
+      space:
+        continuous:
+          mu_activation: None
+          sigma_activation: None
+          mu_init: {name: default}
+          sigma_init: {name: const_initializer, val: 0}
+          fixed_sigma: coef_cond
+      mlp:
+        units: [1024, 1024, 512, 512]
+        activation: elu
+        d2rl: false
+        initializer: {name: default}
+        regularizer: {name: None}
+      rnn:
+        name: lstm
+        units: 1024
+        layers: 1
+        before_mlp: true
+        layer_norm: true
+    load_checkpoint: false
+    load_path: ""
+    config:
+      name: 0_rlgames_sapg
+      full_experiment_name: ${.name}
+      env_name: rlgpu
+      device: ${training.device}
+      device_name: ${training.device}
+      multi_gpu: false
+      ppo: true
+      mixed_precision: true
+      normalize_input: true
+      normalize_value: true
+      normalize_advantage: true
+      value_bootstrap: true
+      num_actors: ${algo.num_envs}
+      horizon_length: 16
+      seq_length: 16
+      minibatch_size: 98304
+      mini_epochs: 2
+      learning_rate: "1e-4"
+      lr_schedule: adaptive
+      schedule_type: standard
+      kl_threshold: 0.016
+      gamma: 0.99
+      tau: 0.95
+      e_clip: 0.1
+      clip_value: true
+      critic_coef: 4.0
+      entropy_coef: 0.0
+      bounds_loss_coef: 0.0001
+      grad_norm: 1.0
+      truncate_grads: true
+      expl_type: mixed_expl_learn_param
+      expl_reward_type: entropy
+      expl_reward_coef_scale: 0.002
+      expl_reward_coef_embd_size: 32
+      expl_coef_block_size: 4096
+      off_policy_ratio: 1.0
+      use_others_experience: lf
+      reward_shaper: {scale_value: 0.01}
+      score_to_win: 1000000
+      max_epochs: 1000000
+      save_best_after: 100
+      save_frequency: 3000
+      print_stats: true
+      player:
+        deterministic: false
+        games_num: 100000
+        print_stats: false
+      central_value_config:
+        minibatch_size: 98304
+        mini_epochs: 2
+        learning_rate: "1e-4"
+        kl_threshold: 0.016
+        clip_value: true
+        normalize_input: true
+        truncate_grads: true
+        network:
+          name: actor_critic
+          central_value: true
+          mlp:
+            units: [1024, 1024, 512, 512]
+            activation: elu
+            d2rl: false
+            initializer: {name: default}
+            regularizer: {name: None}
+    env:
+      clip_observations: 10.0
+      clip_actions: 1.0
+
+hydra:
+  run: {dir: .}
+  output_subdir: null
+  job:
+    chdir: false
+  job_logging:
+    root:
+      handlers: [console]
