@@ -16,7 +16,6 @@ from typing import Any
 
 import pytest
 from omegaconf import DictConfig, OmegaConf
-
 from unilab.base import config_adapter
 from unilab.base import registry as registry_module
 

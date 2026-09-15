@@ -14,12 +14,13 @@ from typing import cast
 
 import numpy as np
 import pytest
-from unisim.backend.base import BackendRootStateLayout, SimBackend
-
 from unilab.base.entity import EntityCfg, EntityScene
 from unilab.base.reset_state import ResetStateTransaction
 from unilab.managers._types import ManagerBasedRlEnv
 from unilab.managers.manager_base import ManagerTermBaseCfg
+from unilab.utils.rotation import np_quat_apply
+from unisim.backend.base import BackendRootStateLayout, SimBackend
+
 from simtoolreal_unilab.tasks.simtoolreal.actions import (
     SimToolRealAction,
     SimToolRealActionCfg,
@@ -46,7 +47,6 @@ from simtoolreal_unilab.tasks.simtoolreal.observations import (
     SimToolRealCriticObservation,
     SimToolRealPolicyObservation,
 )
-from unilab.utils.rotation import np_quat_apply
 
 NUM_ENVS = 8
 STEP_DT = 1.0 / 60.0
@@ -977,8 +977,10 @@ def _stale_env_with_terminal_rows():
     mask = np.zeros(NUM_ENVS, dtype=bool)
     mask[[1, 2]] = True
     env.state = NpEnvState(
-        obs={"obs": np.zeros((NUM_ENVS, POLICY_OBS_DIM), dtype=np.float32),
-             "critic": np.zeros((NUM_ENVS, CRITIC_OBS_DIM), dtype=np.float32)},
+        obs={
+            "obs": np.zeros((NUM_ENVS, POLICY_OBS_DIM), dtype=np.float32),
+            "critic": np.zeros((NUM_ENVS, CRITIC_OBS_DIM), dtype=np.float32),
+        },
         reward=np.zeros(NUM_ENVS, dtype=np.float32),
         terminated=np.zeros(NUM_ENVS, dtype=bool),
         truncated=np.zeros(NUM_ENVS, dtype=bool),
@@ -1040,7 +1042,8 @@ def test_reset_row_critic_obs_replicates_stale_palm_and_vel():
     # not the pre-reset identity frame.
     obj_sl = _field_slice(ObsCfg().state_list, "object_rot")
     np.testing.assert_allclose(
-        rows[0, obj_sl], np.asarray([0.70710678, 0.0, 0.0, 0.70710678], dtype=np.float32),
+        rows[0, obj_sl],
+        np.asarray([0.70710678, 0.0, 0.0, 0.70710678], dtype=np.float32),
         rtol=1e-5,
     )
 

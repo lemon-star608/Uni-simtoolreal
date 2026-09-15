@@ -16,11 +16,12 @@ from typing import cast
 
 import numpy as np
 import pytest
-from unisim.backend.base import BackendRootStateLayout, SimBackend
-
 from unilab.base.entity import EntityCfg, EntityScene
 from unilab.base.reset_state import ResetStateTransaction
 from unilab.managers._types import ManagerBasedRlEnv
+from unilab.utils.rotation import np_quat_error_magnitude_batched
+from unisim.backend.base import BackendRootStateLayout, SimBackend
+
 from simtoolreal_unilab.tasks.simtoolreal.commands import (
     SimToolRealCommandCfg,
     sample_absolute_goal_pose,
@@ -30,7 +31,6 @@ from simtoolreal_unilab.tasks.simtoolreal.config import (
     FINGERTIP_LINK_NAMES,
     PALM_BODY_NAME,
 )
-from unilab.utils.rotation import np_quat_error_magnitude_batched
 
 NUM_ENVS = 8
 STEP_DT = 1.0 / 60.0

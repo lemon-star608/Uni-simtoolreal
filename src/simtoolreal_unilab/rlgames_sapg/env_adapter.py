@@ -8,7 +8,6 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 import torch
-
 from unilab.base.np_env import NpEnv, NpEnvState
 
 

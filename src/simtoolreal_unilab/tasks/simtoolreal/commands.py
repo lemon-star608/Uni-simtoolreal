@@ -74,7 +74,6 @@ from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
-
 from unilab.base.entity import Entity
 from unilab.managers import CommandTerm, CommandTermCfg
 from unilab.utils.rotation import np_quat_from_angle_axis, np_quat_mul

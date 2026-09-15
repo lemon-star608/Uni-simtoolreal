@@ -43,15 +43,27 @@ def apply() -> None:
 
     from simtoolreal_unilab._compat import (
         config_adapter as _config_adapter,
+    )
+    from simtoolreal_unilab._compat import (
         entity as _entity,
+    )
+    from simtoolreal_unilab._compat import (
+        envs as _envs,
+    )
+    from simtoolreal_unilab._compat import (
         managers as _managers,
+    )
+    from simtoolreal_unilab._compat import (
         reset_state as _reset_state,
+    )
+    from simtoolreal_unilab._compat import (
         scene as _scene,
     )
 
     _reset_state.apply()
     _entity.apply()
     _managers.apply()
+    _envs.apply()
     _config_adapter.apply()
     _scene.apply()
     _applied = True

@@ -8,15 +8,14 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-from unisim.backend.base import BackendMocapPoseBinding, BackendRootStateLayout, SimBackend
-from unisim.dr.types import DomainRandomizationCapabilities
-
 import unilab.base.entity as entity_module
 from unilab.assets import ASSETS_ROOT_PATH
 from unilab.base.entity import Entity, EntityCfg, EntityScene
 from unilab.base.reset_state import ResetStateTransaction
 from unilab.base.scene import SceneCfg
 from unilab.managers import RewardManager, RewardTermCfg, SceneEntityCfg
+from unisim.backend.base import BackendMocapPoseBinding, BackendRootStateLayout, SimBackend
+from unisim.dr.types import DomainRandomizationCapabilities
 
 
 class _StrictBackendProfile:

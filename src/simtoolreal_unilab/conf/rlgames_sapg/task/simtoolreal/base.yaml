@@ -314,7 +314,7 @@ env:
         # Actor frame: noisy/delayed object state path (obs_utils.py:329-346;
         # SimToolReal.yaml obs/domain_randomization sections).
         simtoolreal:
-          func: unilab.tasks.manipulation.simtoolreal.observations.SimToolRealPolicyObservation
+          func: simtoolreal_unilab.tasks.simtoolreal.observations.SimToolRealPolicyObservation
           params:
             use_object_state_delay_noise: true
             object_state_delay_max: 10
@@ -328,12 +328,12 @@ env:
       terms:
         # Critic frame: clean state path, no actor-side noise/delay.
         simtoolreal:
-          func: unilab.tasks.manipulation.simtoolreal.observations.SimToolRealCriticObservation
+          func: simtoolreal_unilab.tasks.simtoolreal.observations.SimToolRealCriticObservation
           params:
             clamp_abs_observations: 10.0
   actions:
     joint_pos:
-      _target_: unilab.tasks.manipulation.simtoolreal.actions.SimToolRealActionCfg
+      _target_: simtoolreal_unilab.tasks.simtoolreal.actions.SimToolRealActionCfg
       entity_name: robot
       arm_moving_average: 0.1
       hand_moving_average: 0.1
@@ -342,7 +342,7 @@ env:
       action_delay_max: 3
   commands:
     goal:
-      _target_: unilab.tasks.manipulation.simtoolreal.commands.SimToolRealCommandCfg
+      _target_: simtoolreal_unilab.tasks.simtoolreal.commands.SimToolRealCommandCfg
       # Goal advancement is success-driven, not time-driven; park the timer.
       resampling_time_range: [1000000.0, 1000000.0]
       goal_sampling_type: delta
@@ -363,7 +363,7 @@ env:
       func: unilab.envs.mdp.reset_scene_to_default
       mode: reset
     reset_robot:
-      func: unilab.tasks.manipulation.simtoolreal.events.SimToolRealReset
+      func: simtoolreal_unilab.tasks.simtoolreal.events.SimToolRealReset
       mode: reset
       params:
         dof_pos_noise_arm: 0.1
@@ -374,13 +374,13 @@ env:
     # multi-asset owner scene must declare the ``object`` entity before this
     # path becomes active.
     wrench_dr:
-      func: unilab.tasks.manipulation.simtoolreal.events.SimToolRealWrenchEvent
+      func: simtoolreal_unilab.tasks.simtoolreal.events.SimToolRealWrenchEvent
       mode: interval
       # The original repository applies the wrench sample every policy step
       # (apply_wrench_dr runs from _pre_physics_step, simtoolreal_env.py:64-66),
       # so the interval is one control step.  0.08 s is the original's
       # force_decay_interval — a decay time constant, unused at decay=0 — and
-      # must not set the trigger cadence (pipeline-audit.md F8).
+      # must not set the trigger cadence (the original applies it every policy step).
       interval_range_s: [0.016666666666666666, 0.016666666666666666]
       params:
         force_scale: 20.0
@@ -392,7 +392,7 @@ env:
     # Order matters: the success tracker writes the pending_success snapshot
     # before the reward manager runs (DESIGN.md section 6.5 protocol).
     success_tracker:
-      func: unilab.tasks.manipulation.simtoolreal.terminations.SuccessTracker
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.SuccessTracker
       # Success criterion (obs_utils.py:190-205); fixed-size keypoint branch
       # only (SimToolReal.yaml:89), same geometry as the keypoint reward term.
       params:
@@ -403,22 +403,22 @@ env:
           fixed_size: [0.141, 0.03025, 0.0271],
         }
     fall:
-      func: unilab.tasks.manipulation.simtoolreal.terminations.Fall
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.Fall
       params: { fall_height: 0.1 }
     hand_far:
-      func: unilab.tasks.manipulation.simtoolreal.terminations.HandFar
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.HandFar
       params: { hand_far_distance: 1.5 }
     max_consecutive_successes:
-      func: unilab.tasks.manipulation.simtoolreal.terminations.MaxConsecutiveSuccesses
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.MaxConsecutiveSuccesses
       params: { max_consecutive_successes: 50 }
     time_out:
       # Task variant masking pending_success (termination_utils.py:50-51, 65);
       # SAPG value_bootstrap=True treats it as truncation.
-      func: unilab.tasks.manipulation.simtoolreal.terminations.time_out
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.time_out
       time_out: true
   # The original DirectRLEnv applies no dt scaling (direct_rl_env.py:393
   # assigns the _get_rewards() result directly), so reward_buf keeps the
-  # original magnitudes; fix P2 (training-pipeline-reaudit R6/R5).
+  # original magnitudes; reward terms are unscaled (dt scaling is off).
   scale_rewards_by_dt: false
   policy_observation_group: policy
   critic_observation_group: critic
@@ -435,33 +435,33 @@ env:
 # Seven-term reward set (config.RewardCfg; old-repo reward: section values).
 # Terms return raw values; weights carry the original *_scale factors and
 # scale_rewards_by_dt: false keeps reward_buf at the original DirectRLEnv
-# magnitudes (training-pipeline-reaudit fix P2).
+# magnitudes (reward terms are unscaled; dt scaling is off).
 reward:
   lift_progress:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.LiftProgress
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.LiftProgress
     weight: 20.0
     params: { bonus_threshold: 0.15 }
   lifting_bonus:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.LiftingBonus
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.LiftingBonus
     weight: 300.0
     params: { bonus_threshold: 0.15 }
   fingertip_distance_delta:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.FingertipDistanceDelta
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.FingertipDistanceDelta
     weight: 50.0
     params: { bonus_threshold: 0.15 }
   keypoint_distance_delta:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.KeypointDistanceDelta
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.KeypointDistanceDelta
     weight: 200.0
     # §3.5: reward/success keypoints use the fixed-size branch
     # (reset_utils.py:79-83), not the per-env-scale observation branch.
     params: { bonus_threshold: 0.15, keypoint_scale: 1.5, fixed_size: [0.141, 0.03025, 0.0271] }
   arm_joint_velocity_penalty:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.ArmJointVelocityPenalty
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.ArmJointVelocityPenalty
     weight: -0.03
   hand_joint_velocity_penalty:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.HandJointVelocityPenalty
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.HandJointVelocityPenalty
     weight: -0.003
   reach_bonus:
-    func: unilab.tasks.manipulation.simtoolreal.rewards.ReachBonus
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.ReachBonus
     weight: 1000.0
     params: { success_steps: 10, force_consecutive: false }

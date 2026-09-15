@@ -4,10 +4,10 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
-import tomllib
 
 SOURCE_HEAD = "2a9917533bfea70419ed2667a511d7238e5b3abc"
 SOURCE_PARENT_TREE = "7a6a0bb090998d00565aaefa6ab9f2b3d356ace2"

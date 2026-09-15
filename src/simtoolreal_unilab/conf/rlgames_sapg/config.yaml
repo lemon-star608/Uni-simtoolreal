@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - task: g1_walk_flat/mujoco
+  - task: simtoolreal/isaacsim
 
 algo:
   algo: rlgames_sapg

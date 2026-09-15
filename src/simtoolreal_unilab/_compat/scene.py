@@ -13,12 +13,12 @@ import inspect
 from collections.abc import Mapping
 from typing import Any
 
+from unilab.base import scene as _module
 from unisim.scene import (
     ActuatorGainOverride,
     BodyFrictionOverride,
     SceneEntitySpec,
 )
-from unilab.base import scene as _module
 
 
 def apply() -> None:

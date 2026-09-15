@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import numpy as np
-
 from unilab.base import registry
 from unilab.base.scene import SceneCfg
+
 from simtoolreal_unilab.tasks.simtoolreal import config as simtoolreal_config
 from simtoolreal_unilab.tasks.simtoolreal.scene import resolve_asset
 

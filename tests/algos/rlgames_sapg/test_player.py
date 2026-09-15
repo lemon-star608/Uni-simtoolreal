@@ -132,7 +132,7 @@ def test_bridge_uses_native_deterministic_flag_without_policy_forward(tmp_path):
 
 def test_player_bridge_source_never_calls_base_player_run_or_model_forward():
     source = (
-        Path(__file__).resolve().parents[3] / "src/unilab/contrib/rlgames_sapg/player.py"
+        Path(__file__).resolve().parents[3] / "src/simtoolreal_unilab/rlgames_sapg/player.py"
     ).read_text()
     assert "BasePlayer.run" not in source
     assert ".model(" not in source

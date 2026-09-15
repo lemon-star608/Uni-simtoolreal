@@ -7,7 +7,6 @@ import gymnasium as gym
 import numpy as np
 import pytest
 import torch
-
 from unilab.base.np_env import NpEnvState
 
 
@@ -175,7 +174,9 @@ def test_invalid_observation_or_action_fails_closed(case):
 
 
 def test_adapter_source_has_no_backend_asset_or_concurrency_probe():
-    source = Path(__file__).resolve().parents[3] / "src/unilab/contrib/rlgames_sapg/env_adapter.py"
+    source = (
+        Path(__file__).resolve().parents[3] / "src/simtoolreal_unilab/rlgames_sapg/env_adapter.py"
+    )
     tree = ast.parse(source.read_text())
     text = source.read_text()
     assert "_backend" not in text and "getattr(" not in text and "hasattr(" not in text

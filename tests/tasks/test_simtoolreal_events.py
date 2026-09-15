@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
 from unilab.managers.manager_base import ManagerTermBaseCfg
+
 from simtoolreal_unilab.tasks.simtoolreal.config import (
     ARM_DEFAULT_JOINT_POS,
     ARM_JOINT_NAMES,

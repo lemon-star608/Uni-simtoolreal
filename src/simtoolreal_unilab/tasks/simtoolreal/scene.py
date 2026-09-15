@@ -37,7 +37,7 @@ def resolve_assets_root() -> Path:
     if override:
         candidates.append(Path(override).expanduser())
     # <workspace>/simtoolreal/assets for a UniLab checkout at <workspace>/UniLab.
-    candidates.append(Path(__file__).resolve().parents[5].parent / "simtoolreal" / "assets")
+    candidates.append(Path(__file__).resolve().parents[4].parent / "simtoolreal" / "assets")
     for candidate in candidates:
         if (candidate / AssetsCfg().robot_urdf).is_file():
             return candidate

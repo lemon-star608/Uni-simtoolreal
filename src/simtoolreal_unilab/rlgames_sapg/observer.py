@@ -214,9 +214,7 @@ class ExperimentTrackerObserver:
             if self._new_finished_episodes:
                 for key, values in self._episode_cumulative_avg.items():
                     if values:
-                        self.writer.add_scalar(
-                            f"episode_cumulative/{key}", np.mean(values), frame
-                        )
+                        self.writer.add_scalar(f"episode_cumulative/{key}", np.mean(values), frame)
                         self.writer.add_scalar(
                             f"episode_cumulative_min/{key}_min", np.min(values), frame
                         )

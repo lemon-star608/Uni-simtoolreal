@@ -1,9 +1,8 @@
-"""Registry owner for the SimToolReal Manager-Based task (step-0 skeleton).
+"""Registry owner for the SimToolReal Manager-Based task.
 
 Only the ``isaacsim`` backend is registered: the repository convention is to
-register only verified backends (motion_tracking precedent), so the MuJoCo
-registration line lands in step 2 after that path is verified.  See
-step0discussion.md (work item 0.5) and DESIGN.md for the migration contract.
+register only verified backends (motion_tracking precedent).  See DESIGN.md
+in this task package for the migration contract.
 """
 
 from unilab.base import registry

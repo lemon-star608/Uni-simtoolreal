@@ -20,7 +20,7 @@ dependencies = [
     "omegaconf>=2.3",
     "tensorboard>=2.8",
     "tensorboardX>=2.5",
-    "torch>=2.7, !=2.7.1",
+    "torch==2.7.0",
 ]
 
 [tool.hatch.build.targets.wheel]

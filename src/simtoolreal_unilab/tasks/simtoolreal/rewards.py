@@ -16,7 +16,7 @@ every gate reads the latch through the idempotent view ``(z_lift > threshold)
 
 Registered deviations (DESIGN.md section 3.5 convention):
 
-- Reward dt scaling was reverted (training-pipeline-reaudit fix P2):
+- Reward dt scaling is disabled (parity choice):
   ``scale_rewards_by_dt: false`` (base.yaml) keeps ``reward_buf`` at the
   original DirectRLEnv magnitudes (no per-term ``step_dt`` factor), so the
   critic-observation ``reward`` field — which reads ``env.reward_buf`` —
@@ -51,7 +51,6 @@ from __future__ import annotations
 from typing import cast
 
 import numpy as np
-
 from unilab.base.entity import Entity
 from unilab.managers.manager_base import ManagerTermBase, ManagerTermBaseCfg
 

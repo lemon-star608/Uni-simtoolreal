@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from unilab.base.variants import FixedModelVariantCatalogCfg, FixedModelVariantCfg
 from unilab.envs import ManagerBasedRlEnvCfg
 

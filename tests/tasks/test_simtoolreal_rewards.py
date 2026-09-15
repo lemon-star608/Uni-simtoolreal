@@ -14,12 +14,12 @@ from types import SimpleNamespace
 from typing import cast
 
 import numpy as np
-from unisim.backend.base import SimBackend
-
 from unilab.base.entity import EntityCfg, EntityScene
 from unilab.managers import RewardManager, RewardTermCfg
 from unilab.managers._types import ManagerBasedRlEnv
 from unilab.managers.manager_base import ManagerTermBaseCfg
+from unisim.backend.base import SimBackend
+
 from simtoolreal_unilab.tasks.simtoolreal.commands import SimToolRealCommandCfg
 from simtoolreal_unilab.tasks.simtoolreal.config import (
     FINGERTIP_LINK_NAMES,

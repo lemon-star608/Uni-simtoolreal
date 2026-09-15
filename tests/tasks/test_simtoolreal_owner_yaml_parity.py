@@ -239,9 +239,7 @@ def test_robot_spawn_pose_declaration(base):
     # scene_utils.py:1811-1842 (pos at :1821): the iiwa stands 0.8 m behind
     # the table with identity orientation.  The fixed-base root pose has no
     # other write channel, so this declaration is load-bearing.
-    robot = {
-        spec["name"]: spec for spec in base["env"]["scene"]["entity_assets"]
-    }["robot"]
+    robot = {spec["name"]: spec for spec in base["env"]["scene"]["entity_assets"]}["robot"]
     assert robot["init_state"] == {
         "pos": [0.0, 0.8, 0.0],
         "rot_wxyz": [1.0, 0.0, 0.0, 0.0],
@@ -297,9 +295,9 @@ def test_owner_yaml_materializes_declared_ground_plane(base):
     adapter-side field-by-field wiring to patch.
     """
     from omegaconf import OmegaConf
-
     from unilab.base import registry
     from unilab.base.registry import apply_cfg_overrides
+
     from simtoolreal_unilab.tasks.simtoolreal.scene import register_resolvers
 
     register_resolvers()
@@ -373,9 +371,7 @@ def test_robot_actuator_gain_overrides(base):
     )
 
     robot_assets = [
-        asset
-        for asset in base["env"]["scene"]["entity_assets"]
-        if asset["name"] == "robot"
+        asset for asset in base["env"]["scene"]["entity_assets"] if asset["name"] == "robot"
     ]
     assert len(robot_assets) == 1
     overrides = robot_assets[0]["actuator_gain_overrides"]

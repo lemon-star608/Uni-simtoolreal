@@ -10,7 +10,7 @@ These dataclasses are the typed owner of the task parameters; the Hydra owner
 YAML (``conf/rlgames_sapg/task/simtoolreal/base.yaml``) repeats the values at
 the term level, and ``tests/tasks/test_simtoolreal_owner_yaml_parity.py``
 pins the owner YAML against the original repository's frozen values
-(pipeline-audit.md S01/F3).
+(per-value parity pinning; the values themselves come from the original repository).
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Task bootstrap and package dependency boundary tests."""
+"""Task bootstrap and package dependency boundary tests (sub-repo scope)."""
 
 from __future__ import annotations
 
@@ -6,59 +6,103 @@ import ast
 from pathlib import Path
 
 from unilab.base import registry
-from unilab.tasks import __unilab_registry_modules__
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_ENV_PACKAGE = _REPO_ROOT / "src" / "unilab" / "envs"
-_CONCRETE_TASK_PACKAGES = ("locomotion", "manipulation", "motion_tracking")
+_TASK_PACKAGE = _REPO_ROOT / "src" / "simtoolreal_unilab" / "tasks"
 
-_TASK_REGISTRY_MODULES = (
-    "unilab.tasks.locomotion.go1",
-    "unilab.tasks.locomotion.go2",
-    "unilab.tasks.locomotion.go2w",
-    "unilab.tasks.locomotion.g1",
-    "unilab.tasks.locomotion.a2",
-    "unilab.tasks.manipulation.allegro_inhand",
-    "simtoolreal_unilab.tasks.simtoolreal",
-    "unilab.tasks.manipulation.stewart",
-    "unilab.tasks.manipulation.fr3",
-    "unilab.tasks.motion_tracking.g1",
-    "unilab.tasks.motion_tracking.x2",
+# The task package declares the manager-based env and its terms only: it must
+# stay learner-agnostic (no RL-Games imports) and must not reach into other
+# task packages or unilab's private internals.
+_ALLOWED_TASK_IMPORT_ROOTS = (
+    "simtoolreal_unilab",
+    "unilab.base",
+    "unilab.envs",
+    "unilab.managers",
+    "unilab.utils",
+    "unilab.training",
+    "unisim",
+    "numpy",
+    "omegaconf",
+    "hydra",
 )
+
+_ALLOWED_STDLIB = {
+    "__future__",
+    "dataclasses",
+    "enum",
+    "functools",
+    "hashlib",
+    "math",
+    "os",
+    "pathlib",
+    "re",
+    "typing",
+    "collections",
+    "itertools",
+    "json",
+    "random",
+    "tempfile",
+    "warnings",
+}
 
 
 def _imports(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     modules: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module:
-            modules.add(node.module)
+        if isinstance(node, ast.ImportFrom):
+            if node.level:  # relative import: stays inside the task package
+                continue
+            if node.module:
+                modules.add(node.module)
         elif isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names)
     return modules
 
 
-def test_tasks_is_the_only_default_registry_bootstrap() -> None:
-    assert registry._DEFAULT_REGISTRY_PACKAGES == ("unilab.tasks",)
-    assert __unilab_registry_modules__ == _TASK_REGISTRY_MODULES
+def _is_allowed(module: str) -> bool:
+    if module.split(".")[0] in _ALLOWED_STDLIB:
+        return True
+    if module == "unilab" or module.startswith("unilab."):
+        return module == "unilab" or any(
+            module == root or module.startswith(root + ".")
+            for root in _ALLOWED_TASK_IMPORT_ROOTS
+            if root.startswith("unilab")
+        )
+    return any(
+        module == root or module.startswith(root + ".")
+        for root in _ALLOWED_TASK_IMPORT_ROOTS
+        if not root.startswith("unilab")
+    )
 
 
-def test_env_runtime_does_not_depend_on_tasks() -> None:
+def test_task_package_registers_simtoolreal_on_import() -> None:
+    import simtoolreal_unilab.tasks  # noqa: F401
+
+    registered = registry.registered_envs() if hasattr(registry, "registered_envs") else None
+    if registered is None:
+        # Registry API varies across revisions; fall back to the entry point.
+        import importlib.metadata as md
+
+        eps = md.entry_points(group="unilab.tasks")
+        assert any(ep.name == "simtoolreal_unilab" for ep in eps)
+    else:
+        assert any("SimToolReal" in str(name) for name in registered)
+
+
+def test_task_package_boundary() -> None:
     violations = [
         (path.relative_to(_REPO_ROOT).as_posix(), module)
-        for path in sorted(_ENV_PACKAGE.rglob("*.py"))
+        for path in sorted(_TASK_PACKAGE.rglob("*.py"))
         for module in sorted(_imports(path))
-        if module == "unilab.tasks" or module.startswith("unilab.tasks.")
+        if not _is_allowed(module)
     ]
+    assert violations == [], f"task package boundary violations: {violations}"
 
-    assert violations == [], "unilab.envs must not import concrete unilab.tasks modules"
 
+def test_compat_layer_is_applied() -> None:
+    from unilab.base.entity import Entity
+    from unilab.base.reset_state import ResetStateTransaction
 
-def test_env_runtime_does_not_own_concrete_task_packages() -> None:
-    violations = [
-        path.relative_to(_REPO_ROOT).as_posix()
-        for package in _CONCRETE_TASK_PACKAGES
-        for path in sorted((_ENV_PACKAGE / package).rglob("*.py"))
-    ]
-
-    assert violations == [], "concrete task source must be owned by unilab.tasks"
+    assert hasattr(ResetStateTransaction, "bind_root_state")
+    assert hasattr(Entity, "fixed_variant_mass")

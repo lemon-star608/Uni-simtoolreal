@@ -38,12 +38,12 @@ from typing import cast
 
 import numpy as np
 import yaml
-from unisim.backend.base import BackendRootStateLayout, SimBackend
-
 from unilab.base.entity import EntityCfg, EntityScene
 from unilab.base.reset_state import ResetStateTransaction
 from unilab.managers._types import ManagerBasedRlEnv
 from unilab.managers.command_manager import CommandManager
+from unisim.backend.base import BackendRootStateLayout, SimBackend
+
 from simtoolreal_unilab.tasks.simtoolreal.commands import (
     SimToolRealCommand,
     SimToolRealCommandCfg,
@@ -197,8 +197,7 @@ class _FakeRewardManager:
 
     def step_reward_extras(self) -> dict[str, float]:
         return {
-            f"reward/{name}": float(np.mean(values))
-            for name, values in self._step_terms.items()
+            f"reward/{name}": float(np.mean(values)) for name, values in self._step_terms.items()
         }
 
 
@@ -236,8 +235,7 @@ def _step_reward_terms(step_idx: int) -> dict[str, np.ndarray]:
     """Per-term vectors (term_idx + 1) * 10 + step + env, all float32-exact."""
     env_offsets = np.arange(NUM_ENVS, dtype=np.float32)
     return {
-        name: np.full(NUM_ENVS, (term_idx + 1) * 10 + step_idx, dtype=np.float32)
-        + env_offsets
+        name: np.full(NUM_ENVS, (term_idx + 1) * 10 + step_idx, dtype=np.float32) + env_offsets
         for term_idx, name in enumerate(REWARD_TERM_TO_LEGACY)
     }
 
@@ -344,9 +342,7 @@ def test_compat_layer_emits_all_l3_label_families_without_episode_reward_inputs(
         assert values[(f"env/reward/{name}", 2)] == (term_idx + 1) * 10 + 1 + mean_env_offset
     # Fact 2: the reset-time termination counts still flatten into env/*.
     for name, mask in masks.items():
-        assert values[(f"env/Episode_Termination/{name}", 2)] == float(
-            np.count_nonzero(mask)
-        )
+        assert values[(f"env/Episode_Termination/{name}", 2)] == float(np.count_nonzero(mask))
 
 
 # ----------------------------------------------------------------------------
@@ -355,11 +351,12 @@ def test_compat_layer_emits_all_l3_label_families_without_episode_reward_inputs(
 
 
 def test_required_label_families_keep_source_level_writers():
-    from simtoolreal_unilab.rlgames_sapg.observer import ExperimentTrackerObserver
     from unilab.envs.manager_based_rl_env import ManagerBasedRlEnv
     from unilab.managers.command_manager import CommandManager
     from unilab.managers.reward_manager import RewardManager
     from unilab.managers.termination_manager import TerminationManager
+
+    from simtoolreal_unilab.rlgames_sapg.observer import ExperimentTrackerObserver
 
     # episode_final/*, successes*, current_success_tolerance and the
     # episode_cumulative sources: the task term hook, the manager fan-out and
@@ -376,9 +373,7 @@ def test_required_label_families_keep_source_level_writers():
     process_infos_source = inspect.getsource(ExperimentTrackerObserver.process_infos)
     assert 'log.get("current_success_tolerance")' in process_infos_source
     assert '_process_vector_summaries(log, tag="successes")' in process_infos_source
-    vector_summaries_source = inspect.getsource(
-        ExperimentTrackerObserver._process_vector_summaries
-    )
+    vector_summaries_source = inspect.getsource(ExperimentTrackerObserver._process_vector_summaries)
     assert "{tag}_median" in vector_summaries_source
     assert "{tag}_max" in vector_summaries_source
 
@@ -396,11 +391,12 @@ def test_required_label_families_keep_source_level_writers():
 
 def test_compat_layer_source_never_references_episode_reward():
     """Fact 1, static side: no compat-layer module reads the removed family."""
-    from simtoolreal_unilab.rlgames_sapg import observer as observer_module
     from unilab.envs import manager_based_rl_env as env_module
     from unilab.managers import command_manager as command_manager_module
     from unilab.managers import reward_manager as reward_manager_module
     from unilab.managers import termination_manager as termination_manager_module
+
+    from simtoolreal_unilab.rlgames_sapg import observer as observer_module
     from simtoolreal_unilab.tasks.simtoolreal import commands as commands_module
 
     for module in (

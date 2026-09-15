@@ -7,9 +7,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from unilab.base.scene import SceneCfg
 from unilab.base.variants import FixedModelVariantCatalogCfg, _build_fixed_variant_plan
+
 from simtoolreal_unilab.tasks.simtoolreal.env_cfg import SimToolRealEnvCfg
 from simtoolreal_unilab.tasks.simtoolreal.tool_catalog import build_tool_catalog
 

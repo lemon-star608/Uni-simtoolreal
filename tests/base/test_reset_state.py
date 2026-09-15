@@ -6,6 +6,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
+from unilab.base.reset_state import ResetStateTransaction
 from unisim.backend.base import BackendMocapPoseBinding, BackendRootStateLayout, SimBackend
 from unisim.dr.types import (
     RESET_TERM_BODY_MASS,
@@ -14,8 +15,6 @@ from unisim.dr.types import (
     DomainRandomizationCapabilities,
     ResetRandomizationPayload,
 )
-
-from unilab.base.reset_state import ResetStateTransaction
 
 
 class _Backend:

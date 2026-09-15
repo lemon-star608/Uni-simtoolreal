@@ -14,7 +14,6 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 import numpy as np
-
 from unilab.base.entity import Entity
 from unilab.managers.manager_base import ManagerTermBase, ManagerTermBaseCfg
 
