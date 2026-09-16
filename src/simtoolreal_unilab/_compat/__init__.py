@@ -56,14 +56,10 @@ def apply() -> None:
     from simtoolreal_unilab._compat import (
         reset_state as _reset_state,
     )
-    from simtoolreal_unilab._compat import (
-        scene as _scene,
-    )
 
     _reset_state.apply()
     _entity.apply()
     _managers.apply()
     _envs.apply()
     _config_adapter.apply()
-    _scene.apply()
     _applied = True

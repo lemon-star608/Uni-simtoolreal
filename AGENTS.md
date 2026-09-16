@@ -13,8 +13,9 @@ URDF→USD asset path. See README.md for usage.
   development branch of UniLab onto the pinned official revision. It fails
   loudly if the pin drifts; when upstream UniLab grows these behaviors,
   remove the layer instead of skipping it.
-- Dependencies: `unilab` is pinned to the official commit the task was
-  developed against; `unisim-core` is pinned to the fork branch carrying
-  the IsaacSim scene-composition contract (upstream PR
-  unilabsim/unisim#79) — switch both to PyPI releases when available.
+- Dependencies (`feat/mujoco-mjcf`): `unilab` is pinned to official main
+  (`2e3f30ae`); `unisim-core` is pinned to the PyPI release (1.4.2);
+  `mujoco` (pip) backs the MJCF asset line's compiler gates. The IsaacSim
+  line on `main` still pins the unisim fork branch carrying the scene-
+  composition contract (upstream PR unilabsim/unisim#79).
 - No co-author trailers from AI assistants in commits.

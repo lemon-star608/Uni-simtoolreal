@@ -18,6 +18,9 @@ dependencies = [
   "unisim-core>=1.4.2",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
+  # MuJoCo/MJCF asset line (M-J1): compiler-backed asset gates. Pip-published,
+  # so the whole L1/L2 verification ladder can run in CI.
+  "mujoco>=3.13",
   "torch==2.8.0+cu128 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
   "tensorboard>=2.8",
   "tensorboardX>=2.5",

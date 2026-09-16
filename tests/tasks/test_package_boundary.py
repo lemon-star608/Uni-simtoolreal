@@ -43,6 +43,7 @@ _ALLOWED_STDLIB = {
     "random",
     "tempfile",
     "warnings",
+    "xml",  # ElementTree: the MJCF writers' transcription parser (no physics engine)
 }
 
 
