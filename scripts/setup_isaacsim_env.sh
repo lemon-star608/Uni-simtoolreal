@@ -33,7 +33,9 @@
 #   UNISIM_ISAACSIM_HOME  install root   (default: ~/.cache/unisim/isaacsim)
 #   TORCH_VERSION         torch version  (default: 2.7.0)
 #   TORCHVISION_VERSION   torchvision    (default: 0.22.0)
-#   TORCH_INDEX           torch CUDA index suffix (default: cu126)
+#   TORCH_INDEX           torch CUDA index suffix (default: cu128; covers
+#                          Blackwell/sm_120 down to older architectures — cu126
+#                          wheels lack Blackwell kernels)
 #   ISAACSIM_VERSION      isaacsim pip version (default: 5.1.0)
 #   ISAACLAB_VERSION      isaaclab pip version (default: 2.3.2.post1)
 #   IMPORTER_SPEC         urdf importer registry spec (default: 2.4.31+107.3.3.lx64.r.cp311)
@@ -44,7 +46,7 @@ set -euo pipefail
 ISAACSIM_HOME=${UNISIM_ISAACSIM_HOME:-${UNILAB_ISAACSIM_HOME:-$HOME/.cache/unisim/isaacsim}}
 TORCH_VERSION=${TORCH_VERSION:-2.7.0}
 TORCHVISION_VERSION=${TORCHVISION_VERSION:-0.22.0}
-TORCH_INDEX=${TORCH_INDEX:-cu126}
+TORCH_INDEX=${TORCH_INDEX:-cu128}
 ISAACSIM_VERSION=${ISAACSIM_VERSION:-5.1.0}
 ISAACLAB_VERSION=${ISAACLAB_VERSION:-2.3.2.post1}
 IMPORTER_SPEC=${IMPORTER_SPEC:-2.4.31+107.3.3.lx64.r.cp311}

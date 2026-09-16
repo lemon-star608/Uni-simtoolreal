@@ -110,11 +110,11 @@ def test_setup_script_exists_and_pins_the_validated_stack():
     text = script.read_text()
     assert script.stat().st_mode & 0o111, "setup script must be executable"
     # The validated worker stack (see README evidence): IsaacSim 5.1.0,
-    # IsaacLab 2.3.2.post1 wheels, torch 2.7.0 on the cu126 index.
+    # IsaacLab 2.3.2.post1 wheels, torch 2.7.0 on the cu128 index.
     for pin in (
         "ISAACSIM_VERSION:-5.1.0",
         "ISAACLAB_VERSION:-2.3.2.post1",
         "TORCH_VERSION:-2.7.0",
-        "TORCH_INDEX:-cu126",
+        "TORCH_INDEX:-cu128",
     ):
         assert pin in text, pin
