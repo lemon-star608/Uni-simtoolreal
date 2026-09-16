@@ -29,6 +29,9 @@ def _run(mode):
         generated += [f"algo.load_run={args.checkpoint_file}"]
     if mode == "play":
         generated += ["training.play_only=true"]
+    from simtoolreal_unilab._isaacsim_worker import ensure_worker_runtime
+
+    ensure_worker_runtime()
     import torch
 
     if not torch.cuda.is_available():

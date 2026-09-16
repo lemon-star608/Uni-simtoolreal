@@ -30,6 +30,7 @@ simtoolreal_unilab = "simtoolreal_unilab.tasks"
 
 [project.scripts]
 simtoolreal-train = "simtoolreal_unilab.cli:train_main"
+simtoolreal-assets = "simtoolreal_unilab.assets:main"
 simtoolreal-play = "simtoolreal_unilab.cli:play_main"
 simtoolreal-list-envs = "simtoolreal_unilab.cli:list_main"
 

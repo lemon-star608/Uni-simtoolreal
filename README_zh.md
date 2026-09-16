@@ -12,7 +12,7 @@
 | 后端支持 | 仅 IsaacSim；MuJoCo 路径未在本仓库实现 |
 | 与原 IsaacLab `DirectRLEnv` 实现的标签一致性 | TensorBoard 关键标签与原仓库同 seed 运行不可区分 |
 | 学生策略 / 相机 / 接触传感器、部署、sim2real | 未迁移；本仓库不含部署代码 |
-| 资产来源 | URDF→USD（工具池由上游 SimToolReal 的 URDF 资产生成）；不支持 MJCF 源 |
+| 资产来源 | URDF→USD（机器人/桌子 URDF 随仓库分发，1200 工具池程序化生成）；不支持 MJCF 源 |
 
 ## 证据
 
@@ -30,22 +30,19 @@
 git clone https://github.com/unilabsim/simtoolreal_unilab.git
 cd simtoolreal_unilab
 uv sync
+bash scripts/setup_isaacsim_env.sh   # 一次性：安装 IsaacSim worker 运行时（约 15 GB）
+uv run simtoolreal-assets            # 校验随仓库分发的资产
 ```
 
-还有两个部件在本仓库之外：
+以上就是全部安装。两件无法随 `uv sync` 分发的事：
 
-1. **IsaacSim worker 运行时**。UniSim 的 `isaacsim` extra 为空（SDK 不可再分发）；后端通过外部 Python 3.11 worker（装有 IsaacSim + IsaacLab）发现运行时。用以下任一方式指向它：
-   - `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`（任意 venv 布局——验证时使用的就是这条通道，worker venv 来自上游 SimToolReal checkout）；或
-   - `UNISIM_ISAACSIM_HOME=/path/to/isaacsim-home`，按 unisim 期望的目录布局（`venv/` + `IsaacLab/source/` checkout）。
+1. **IsaacSim worker 运行时**。UniSim 的 `isaacsim` extra 为空（NVIDIA 的 SDK 不可再分发），worker 跑在独立的 Python 3.11 venv 里。`scripts/setup_isaacsim_env.sh` 一次性把验证过的版本栈装进去（IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 wheel + torch 2.7.0/cu126，来自 NVIDIA PyPI 源），脚本幂等（分步 marker），装在 `~/.cache/unisim/isaacsim/venv`。`simtoolreal-train`/`simtoolreal-play` 自动发现该安装——无需配置任何环境变量。想改用别的 IsaacSim 解释器，则 export `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`（任意 venv 布局；验证时用的就是这条逃生口）。
 
-   worker 契约见 unisim 的支持矩阵。已验证版本：IsaacSim 5.1.0-rc.19、IsaacLab 2.3.2.post1。
-
-2. **工具资产**。1200 工具池由上游 [SimToolReal](https://github.com/tylerlum/simtoolreal) 仓库（MIT）的 URDF 资产生成。将该仓库 clone 到本仓库同级目录，或设置 `SIMTOOLREAL_ASSETS_ROOT` 指向其 `assets/` 目录。生成的 URDF 缓存在 `/tmp` 下（可用 `SIMTOOLREAL_GENERATED_ASSETS_ROOT` 覆盖）。
+2. **工具资产**。机器人（KUKA iiwa14 + SHARPA 手）与桌子的 URDF 随仓库分发在 `simtoolreal_unilab/assets/simtoolreal/`（上游 MIT，SHA-256 manifest；`uv run simtoolreal-assets` 校验）。1200 工具池首次使用时程序化生成，缓存在 `/tmp` 下（可用 `SIMTOOLREAL_TOOL_POOL_ROOT` 覆盖；生成的 bootstrap URDF 用 `SIMTOOLREAL_GENERATED_ASSETS_ROOT`）。想改用上游 checkout 的资产，设 `SIMTOOLREAL_ASSETS_ROOT` 指向其 `assets/` 目录。
 
 环境验收 smoke（64 环境、24 工具池、2 epochs——单卡数分钟；这组旗标是必需的，因为生产 rollout 恰好用六个探索块）：
 
 ```bash
-export UNISIM_ISAACSIM_PYTHON=/path/to/isaacsim-worker-venv/bin/python
 uv run simtoolreal-train \
   algo.num_envs=64 env.tool_pool_num_per_type=2 \
   rl_games.params.config.max_epochs=2 \

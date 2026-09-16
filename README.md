@@ -10,7 +10,7 @@ This is a downstream task package: install it and use UniLab's shared training t
 | Backend support | IsaacSim only; the MuJoCo path is not implemented here |
 | Label parity with the original IsaacLab `DirectRLEnv` implementation | TensorBoard key labels indistinguishable from the original same-seed run |
 | Student / camera / contact-sensor policies, deployment, sim2real | Not carried over; this repository contains no deployment code |
-| Asset sources | URDF→USD (task pool is generated from the upstream SimToolReal URDF assets); MJCF sources are not supported |
+| Asset sources | URDF→USD (robot/table URDFs vendored in-repo; the 1,200-tool pool is generated procedurally); MJCF sources are not supported |
 
 ## Evidence
 
@@ -28,22 +28,19 @@ Requirements: Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSi
 git clone https://github.com/unilabsim/simtoolreal_unilab.git
 cd simtoolreal_unilab
 uv sync
+bash scripts/setup_isaacsim_env.sh   # one-time: IsaacSim worker runtime (~15 GB)
+uv run simtoolreal-assets            # verify the vendored assets
 ```
 
-Two more pieces live outside this repository:
+That is the complete setup. The two pieces that cannot ship inside `uv sync`:
 
-1. **The IsaacSim worker runtime.** UniSim's `isaacsim` extra is empty (the SDK is not redistributed); the backend discovers an external Python 3.11 worker with IsaacSim + IsaacLab. Point unisim at it with either
-   - `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python` (any venv layout — this is the escape hatch used in validation, with the worker venv from the upstream SimToolReal checkout), or
-   - `UNISIM_ISAACSIM_HOME=/path/to/isaacsim-home` using unisim's expected layout (`venv/` plus an `IsaacLab/source/` checkout).
+1. **The IsaacSim worker runtime.** UniSim's `isaacsim` extra is empty (NVIDIA's SDK is not redistributed), so the worker runs in a dedicated Python 3.11 venv. `scripts/setup_isaacsim_env.sh` installs the validated stack there (IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 wheels + torch 2.7.0/cu126, from the NVIDIA PyPI index), idempotently with per-step markers, under `~/.cache/unisim/isaacsim/venv`. `simtoolreal-train`/`simtoolreal-play` detect that install automatically — no environment variable needed. To use a different IsaacSim-capable interpreter instead, export `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python` (any venv layout; this is the escape hatch the validation used).
 
-   See unisim's support matrix for the worker contract. Tested versions: IsaacSim 5.1.0-rc.19, IsaacLab 2.3.2.post1.
-
-2. **Tool assets.** The 1,200-tool pool is generated from the upstream [SimToolReal](https://github.com/tylerlum/simtoolreal) repository's URDF assets (MIT). Clone that repository as a sibling of this one, or set `SIMTOOLREAL_ASSETS_ROOT` to its `assets/` directory. Generated URDFs are cached under `/tmp` (override: `SIMTOOLREAL_GENERATED_ASSETS_ROOT`).
+2. **Tool assets.** The robot (KUKA iiwa14 + SHARPA hand) and table URDFs ship with this repository under `simtoolreal_unilab/assets/simtoolreal/` (upstream MIT, SHA-256 manifest; `uv run simtoolreal-assets` verifies them). The 1,200-tool pool is generated procedurally at first use and cached under `/tmp` (override: `SIMTOOLREAL_TOOL_POOL_ROOT`); generated bootstrap URDFs honor `SIMTOOLREAL_GENERATED_ASSETS_ROOT`. To test against an upstream checkout instead, set `SIMTOOLREAL_ASSETS_ROOT` to its `assets/` directory.
 
 Environment acceptance smoke (64 envs, 24-tool pool, 2 epochs — minutes on one GPU; the flag set is required because production rollouts use exactly six exploration blocks):
 
 ```bash
-export UNISIM_ISAACSIM_PYTHON=/path/to/isaacsim-worker-venv/bin/python
 uv run simtoolreal-train \
   algo.num_envs=64 env.tool_pool_num_per_type=2 \
   rl_games.params.config.max_epochs=2 \

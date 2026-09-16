@@ -7,8 +7,11 @@ The full 1200-file tool pool remains an init-randomization adapter concern.
 
 Resolution order for the assets root:
 1. ``SIMTOOLREAL_ASSETS_ROOT`` environment variable (explicit override);
-2. the ``simtoolreal/assets`` directory of a sibling checkout of the original
-   repository next to this UniLab checkout (the step-0 workspace layout).
+2. the vendored assets distributed with this package
+   (``simtoolreal_unilab/assets/simtoolreal``, provenance-checked by
+   ``simtoolreal-assets``) — the default, so a fresh clone needs nothing else;
+3. the ``simtoolreal/assets`` directory of a sibling checkout of the original
+   repository (the historical workspace layout, kept for existing setups).
 
 Anything else fails closed with an explanatory error instead of silently
 producing a dangling scene path.
@@ -22,6 +25,7 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 
+from ...assets import ASSET_ROOT as _VENDORED_ASSET_ROOT
 from .config import AssetsCfg
 from .tool_catalog import build_tool_catalog
 from .tool_urdf_writer import write_tool_urdf
@@ -36,7 +40,10 @@ def resolve_assets_root() -> Path:
     candidates: list[Path] = []
     if override:
         candidates.append(Path(override).expanduser())
-    # <workspace>/simtoolreal/assets for a UniLab checkout at <workspace>/UniLab.
+    # Vendored assets ship with the package: urdf/<robot>, urdf/table_narrow.urdf.
+    candidates.append(_VENDORED_ASSET_ROOT)
+    # <workspace>/simtoolreal/assets for a checkout layout with the original
+    # repository cloned next to this repository.
     candidates.append(Path(__file__).resolve().parents[4].parent / "simtoolreal" / "assets")
     for candidate in candidates:
         if (candidate / AssetsCfg().robot_urdf).is_file():
@@ -44,8 +51,9 @@ def resolve_assets_root() -> Path:
     searched = ", ".join(str(candidate) for candidate in candidates)
     raise FileNotFoundError(
         "SimToolReal assets root not found (looked for "
-        f"{AssetsCfg().robot_urdf} in: {searched}). Set {_ASSETS_ROOT_ENV} to the "
-        "assets directory of the original simtoolreal repository checkout."
+        f"{AssetsCfg().robot_urdf} in: {searched}). The vendored assets ship "
+        "with this package; set SIMTOOLREAL_ASSETS_ROOT only to override them "
+        "with a checkout of the original simtoolreal repository."
     )
 
 
