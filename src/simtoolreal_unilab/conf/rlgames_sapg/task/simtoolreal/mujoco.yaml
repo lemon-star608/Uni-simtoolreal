@@ -15,19 +15,21 @@ training:
   task_name: SimToolReal
   sim_backend: mujoco
 
-# Smoke-scale defaults (CPU single process + mjbatch threads); production
-# scale is the user's override.  384 = 6 x 64 keeps the SAPG exploration-block
-# invariant (num_actors % expl_coef_block_size == 0 with exactly six blocks),
-# and 384 * horizon_length(16) = 6144 rows with matching minibatches.
+# MuJoCo-line default scale: 12,288 envs x 1,200 tools, matching the Isaac
+# line's 12,288-env comparison run (CPU single process + mjbatch threads).
+# 12,288 = 6 x 2,048 keeps the SAPG exploration-block invariant
+# (num_actors % expl_coef_block_size == 0 with exactly six blocks), and
+# 12,288 * horizon_length(16) = 196,608 rows = 2 x 98,304 minibatches — the
+# same minibatch size as the Isaac line's production runs.
 algo:
-  num_envs: 384
+  num_envs: 12288
 rl_games:
   params:
     config:
-      minibatch_size: 6144
-      expl_coef_block_size: 64
+      minibatch_size: 98304
+      expl_coef_block_size: 2048
       central_value_config:
-        minibatch_size: 6144
+        minibatch_size: 98304
 
 env:
   # MuJoCo line: composed-MJCF variant pool (robot_mjcf_writer /

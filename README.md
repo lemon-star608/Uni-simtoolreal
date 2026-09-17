@@ -71,10 +71,35 @@ uv run simtoolreal-play --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn
 List registered tasks and backends:
 
 ```bash
-uv run simtoolreal-list-envs            # SimToolReal   isaacsim
+uv run simtoolreal-list-envs            # SimToolReal   isaacsim / SimToolReal   mujoco
 ```
 
 TensorBoard: `uv run tensorboard --logdir logs/rlgames_sapg`. The label names are kept compatible with the original repository's tag set, so runs from both sides can be overlaid directly.
+
+## MuJoCo backend (MJCF line, branch `feat/mujoco-mjcf`)
+
+The same task runs on UniSim's MuJoCo backend (pure CPU, no IsaacSim worker runtime needed; the composed-MJCF variant pool is generated at first use). Everything goes through the same CLI with `--backend mujoco`:
+
+```bash
+uv run simtoolreal-train --backend mujoco   # defaults: 12,288 envs x 1,200 tools
+```
+
+2,048-environment smoke recipe (2048 is not six-block divisible, so it goes through the explicit smoke channel, which also disables playback):
+
+```bash
+uv run simtoolreal-train --backend mujoco \
+  algo.num_envs=2048 \
+  rl_games.params.config.expl_coef_block_size=512 \
+  rl_games.params.config.minibatch_size=8192 \
+  rl_games.params.config.central_value_config.minibatch_size=8192 \
+  training.smoke=true training.no_play=true
+```
+
+TensorBoard and checkpoints land in the same `logs/rlgames_sapg/SimToolReal/<run>/` layout; `uv run tensorboard --logdir logs/rlgames_sapg` overlays both backends' runs.
+
+> Dependency note: this line currently needs the unmerged mjbatch fix
+> (unilabsim/mjbatch_uni#34) for the mass-varying variant pool; see the
+> roadmap's M-J2/M-J3 notes for the temporary local-overlay instructions.
 
 ## Modify and extend
 
