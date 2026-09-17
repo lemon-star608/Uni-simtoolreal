@@ -8,6 +8,8 @@ TASK_OWNERS = {
     "SimToolReal": "simtoolreal",
 }
 
+# Registered backends per task, default first.  isaacsim is the merge anchor;
+# mujoco is the MJCF asset line (M-J2).
 TASK_BACKENDS = {
-    "SimToolReal": "isaacsim",
+    "SimToolReal": ("isaacsim", "mujoco"),
 }

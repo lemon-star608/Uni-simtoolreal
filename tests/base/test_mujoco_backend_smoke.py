@@ -1,0 +1,125 @@
+"""L2 smoke: SimToolReal on the real MuJoCo backend (roadmap M-J2).
+
+Small pool (tool_pool_num_per_type=1 -> 12 composed-MJCF variants) and
+num_envs=8, built through the production wiring (Hydra compose of the mujoco
+owner leaf -> BackendAdapter override -> registry.make with
+sim_backend="mujoco").  No mocks: the UniSim MuJoCo backend compiles the
+variant pack and steps mjbatch on CPU.
+
+Blocked by upstream gap unilabsim/mjbatch_uni#33: mjbatch's VariantPack
+treats the compiler-derived ``body_simple``/``dof_simplenum`` flags as shared
+parameters, so mass-varying same-layout pools are rejected.  Every assertion
+below was verified green with the one-line whitelist widening monkeypatched
+(probe 2026-09-17); the fixture xfails imperatively until the pin moves to a
+fixed mjbatch-uni.
+"""
+
+from __future__ import annotations
+
+import mujoco
+import numpy as np
+import pytest
+
+NUM_ENVS = 8
+NUM_PER_TYPE = 1  # 12 variants
+NUM_VARIANTS = 12
+
+
+def _build_env(tmp_path):
+    from hydra import compose, initialize_config_dir
+    from unilab.base import registry
+    from unilab.base.config_adapter import BackendAdapter
+
+    import simtoolreal_unilab.tasks  # noqa: F401  (registers env + resolvers)
+    from simtoolreal_unilab.config import CONF_ROOT
+
+    with initialize_config_dir(str(CONF_ROOT), version_base=None):
+        cfg = compose(config_name="config", overrides=["task=simtoolreal/mujoco"])
+    adapter = BackendAdapter(cfg, root_dir=str(tmp_path))
+    override = adapter.build_task_env_cfg_override()
+    override["tool_pool_num_per_type"] = NUM_PER_TYPE
+    override["tool_pool_root"] = str(tmp_path / "pool")
+    try:
+        return registry.make(
+            "SimToolReal", sim_backend="mujoco", env_cfg_override=override, num_envs=NUM_ENVS
+        )
+    except ValueError as exc:
+        if "changes shared field" in str(exc):
+            pytest.xfail(
+                "upstream gap unilabsim/mjbatch_uni#33: VariantPack treats compiler-derived "
+                f"body_simple/dof_simplenum as shared parameters ({exc})"
+            )
+        raise
+
+
+@pytest.fixture(scope="module")
+def env(tmp_path_factory):
+    built = _build_env(tmp_path_factory.mktemp("mujoco_smoke"))
+    yield built
+    built.close()
+
+
+def test_reset_obs_contract(env):
+    obs, info = env.reset()
+    assert isinstance(info, dict)
+    assert obs["obs"].shape == (NUM_ENVS, 140)  # OBS_FIELD_SIZES pins
+    assert obs["critic"].shape == (NUM_ENVS, 162)
+    assert all(np.isfinite(value).all() for value in obs.values())
+
+
+def test_step_100_no_nan(env):
+    for _ in range(100):
+        state = env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+    assert all(np.isfinite(value).all() for value in state.obs.values())
+    assert np.isfinite(state.reward).all()
+
+
+def test_variant_assignment_binds_distinct_masses(env):
+    """Round-robin assignment over 12 variants; per-env masses match catalog."""
+    import simtoolreal_unilab.tasks.simtoolreal.env_cfg as env_cfg_module
+
+    assignment = env_cfg_module.fixed_variant_plan_assignment(env.cfg, NUM_ENVS)
+    assert assignment is not None
+    assert assignment.shape == (NUM_ENVS,)
+    catalog_masses = np.asarray(env.cfg.tool_pool_masses)
+    assert catalog_masses.shape == (NUM_VARIANTS,)
+
+    backend = env._backend
+    object_id = mujoco.mj_name2id(backend._model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
+    per_env = np.asarray(backend._base_body_mass)[:, object_id]
+    # mjbatch stores per-variant tables in float32; the catalog is float64.
+    np.testing.assert_allclose(per_env, catalog_masses[assignment], rtol=1e-5)
+    assert len(np.unique(catalog_masses[assignment])) > 1
+
+
+def test_wrench_event_measurably_perturbs_object(env):
+    """Force the interval wrench to fire and compare against a control phase."""
+    env.reset()
+    backend = env._backend
+    for _ in range(90):  # let the object settle onto the table
+        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+
+    term = env.event_manager._mode_class_term_cfgs["interval"][0].func
+    assert type(term).__name__ == "SimToolRealWrenchEvent"
+    # The wrench masses come from the task-side catalog table (D5).
+    assert term._object_masses is not None
+    assert term._object_masses.shape == (NUM_ENVS,)
+
+    hub = env.command_manager.get_term("goal")
+    hub.lifted[:] = True
+    term._force_prob[:] = 0.0
+    term._torque_prob[:] = 0.0
+    for _ in range(10):
+        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+    control = np.linalg.norm(backend._qvel_view[:, 29:32], axis=1).mean()
+
+    term._force_prob[:] = 1.0
+    term._torque_prob[:] = 1.0
+    for _ in range(10):
+        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+    active = np.linalg.norm(backend._qvel_view[:, 29:32], axis=1).mean()
+
+    assert active > 100 * max(control, 1e-9), (
+        f"wrench event had no measurable effect: control={control}, active={active}"
+    )
+    env.reset()

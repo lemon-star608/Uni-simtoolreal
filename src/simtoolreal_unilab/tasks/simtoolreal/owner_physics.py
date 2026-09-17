@@ -1,12 +1,14 @@
 """Owner-YAML physics values consumed by the MJCF writers (D6).
 
 On the MuJoCo line the MJCF carries gains and friction natively, so the
-frozen values in ``conf/rlgames_sapg/task/simtoolreal/base.yaml`` (the owner
-declaration the IsaacSim line feeds to its bake layer) are parsed here and
-injected at asset generation time.  Nothing in this module restates a number:
-every value is read from the owner YAML, and
-``tests/tasks/test_simtoolreal_owner_yaml_parity.py`` pins that YAML against
-the original repository's frozen tables.
+frozen values declared by the owner are parsed here and injected at asset
+generation time.  The declaration lives in the IsaacSim leaf's
+``entity_assets`` section (``conf/rlgames_sapg/task/simtoolreal/
+isaacsim.yaml``; M-J2 moved it out of base.yaml because the pinned SceneCfg
+owns no such field) — the values are the task's frozen physics truth shared
+by both lines.  Nothing in this module restates a number: every value is read
+from the owner YAML, and ``tests/tasks/test_simtoolreal_owner_yaml_parity.py``
+pins that YAML against the original repository's frozen tables.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ OWNER_YAML = (
     / "rlgames_sapg"
     / "task"
     / "simtoolreal"
-    / "base.yaml"
+    / "isaacsim.yaml"
 )
 
 # MuJoCo torsional/rolling friction defaults.  The owner YAML only pins the
@@ -55,11 +57,16 @@ class OwnerPhysics:
     sim_dt: float
 
 
+_BASE_YAML = OWNER_YAML.with_name("base.yaml")
+
+
 @lru_cache(maxsize=1)
 def load_owner_physics(path: Path = OWNER_YAML) -> OwnerPhysics:
     """Parse the owner YAML once and return its physics values."""
     conf = OmegaConf.load(path)
     assets = {entry.name: entry for entry in conf.env.scene.entity_assets}
+    # sim_dt lives in the backend-neutral base.yaml, not the leaf.
+    sim_dt = float(OmegaConf.load(_BASE_YAML).env.sim_dt)
 
     gains: dict[str, ActuatorGains] = {}
     for entry in assets["robot"].actuator_gain_overrides:
@@ -83,7 +90,7 @@ def load_owner_physics(path: Path = OWNER_YAML) -> OwnerPhysics:
         fingertip_body_names=tuple(str(entry.body_name) for entry in fingertip),
         object_slide_friction=float(assets["object"].contact_friction[0]),
         table_slide_friction=float(assets["table"].contact_friction[0]),
-        sim_dt=float(conf.env.sim_dt),
+        sim_dt=sim_dt,
     )
 
 

@@ -99,7 +99,7 @@ def test_all_composed_mjcf_compile_with_object_mass(mjcf_pool):
     for index, path in enumerate(paths):
         model = mujoco.MjModel.from_xml_path(str(path))
         assert (model.nq, model.nv, model.nu, model.nmesh) == EXPECTED_CONTRACT
-        body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
+        body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
         assert body_id >= 1
         assert model.body_mass[body_id] == pytest.approx(masses[index], rel=1e-12)
         assert model.nkey == 1

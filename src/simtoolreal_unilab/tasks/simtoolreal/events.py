@@ -159,10 +159,16 @@ class SimToolRealReset(ManagerTermBase):
         if self._table is None and self._object is None:
             return
         count = ids.size
-        table_z = self._table_reset_z + env.rng.uniform(
-            -self._table_reset_z_range, self._table_reset_z_range, size=count
-        ).astype(np.float32)
-        if self._table is not None:
+        if self._table is None:
+            # MuJoCo line (roadmap M-J2 known divergence): the composed MJCF's
+            # table is a static world body that the reset transaction cannot
+            # move, so the table z stays fixed at table_reset_z and the noise
+            # draw is skipped.  The Isaac line keeps the original sampling.
+            table_z = np.full(count, self._table_reset_z, dtype=np.float32)
+        else:
+            table_z = self._table_reset_z + env.rng.uniform(
+                -self._table_reset_z_range, self._table_reset_z_range, size=count
+            ).astype(np.float32)
             table_pose = np.array(self._table.read_reset_root_pose(ids), copy=True)
             table_pose[:, 2] = table_z
             self._table.write_root_link_pose_to_sim(table_pose, env_ids=ids)
@@ -235,29 +241,39 @@ class SimToolRealWrenchEvent(ManagerTermBase):
         if not np.isfinite(self._object_mass) or self._object_mass < 0.0:
             raise ValueError("object_mass must be finite and non-negative")
         self._object_masses: np.ndarray | None = None
-        # The worker measures each environment's variant mass from the baked
-        # asset and exposes it through the Entity facade readback; the
-        # immutable per-environment assignment comes from the scene's fixed
-        # variant plan.  An explicit term-level object_mass remains available
-        # for lightweight fixtures and other backends.  A scene without the
-        # object entity keeps the scalar fallback: the term never dispatches
-        # without it.
+        # Variant mass priority (D5): the task-side catalog mass table filled
+        # by SimToolRealEnvCfg.validate (both asset formats) is authoritative;
+        # the backend readback facade (IsaacSim line legacy) is the fallback,
+        # and an explicit term-level object_mass remains for lightweight
+        # fixtures.  A scene without the object entity keeps the scalar
+        # fallback: the term never dispatches without it.
         if "object_mass" not in params:
             assignments = fixed_variant_plan_assignment(
                 getattr(env, "cfg", None), int(env.num_envs)
             )
-            if assignments is not None and self._object is not None:
-                masses = np.asarray(self._object.fixed_variant_mass, dtype=np.float32)
-                if masses.ndim != 1 or not np.isfinite(masses).all() or np.any(masses < 0.0):
+            table = tuple(getattr(getattr(env, "cfg", None), "tool_pool_masses", ()) or ())
+            if assignments is not None and table:
+                if len(table) < int(assignments.max()) + 1:
                     raise ValueError(
-                        "fixed variant mass readback must be finite non-negative 1-D values"
+                        "task-side tool pool mass table is shorter than the variant "
+                        f"assignment requires: {len(table)} vs {int(assignments.max()) + 1}"
                     )
-                if masses.shape[0] != env.num_envs:
-                    raise ValueError(
-                        "fixed variant mass readback must have one entry per environment; "
-                        f"got {masses.shape[0]}, expected {env.num_envs}"
-                    )
-                self._object_masses = masses
+                masses = np.asarray(table, dtype=np.float32)[assignments]
+                self._object_masses = np.asarray(masses, dtype=np.float32)
+            elif assignments is not None and self._object is not None:
+                readback = getattr(self._object, "fixed_variant_mass", None)
+                if readback is not None:
+                    masses = np.asarray(readback, dtype=np.float32)
+                    if masses.ndim != 1 or not np.isfinite(masses).all() or np.any(masses < 0.0):
+                        raise ValueError(
+                            "fixed variant mass readback must be finite non-negative 1-D values"
+                        )
+                    if masses.shape[0] != env.num_envs:
+                        raise ValueError(
+                            "fixed variant mass readback must have one entry per environment; "
+                            f"got {masses.shape[0]}, expected {env.num_envs}"
+                        )
+                    self._object_masses = masses
         body_names = params.get("body_names", ("object_root",))
         self._local_body_ids = self._backend_body_ids = np.empty(0, dtype=np.int32)
         if self._object is not None:

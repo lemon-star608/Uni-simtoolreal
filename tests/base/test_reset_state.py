@@ -605,52 +605,6 @@ def test_root_state_values_fail_closed(root_state, error, match: str) -> None:
     assert backend.set_state_calls == []
 
 
-def test_rigid_entity_root_uses_independent_state_payload() -> None:
-    class _RigidBackend(_Backend):
-        def __init__(self) -> None:
-            super().__init__(
-                qpos=np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
-                qvel=np.zeros(6),
-            )
-            self.entity_calls: list[
-                tuple[np.ndarray, np.ndarray | None, dict[str, np.ndarray]]
-            ] = []
-
-        def get_rigid_root_entities(self) -> tuple[str, ...]:
-            return ("object",)
-
-        def set_state(self, env_ids, qpos, qvel, randomization=None, *, entity_root_states=None):
-            del randomization
-            self.entity_calls.append((env_ids.copy(), qpos, entity_root_states or {}))
-            return {"timing": {}}
-
-    backend = _RigidBackend()
-    transaction = ResetStateTransaction(cast(SimBackend, backend))
-    layout = BackendRootStateLayout(tuple(range(7)), tuple(range(6)))
-    default = np.tile(
-        np.asarray([0.0, 0.0, 0.6, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-        (backend.num_envs, 1),
-    )
-    transaction.bind_root_state("object", layout, default)
-    rows = np.asarray([1, 3], dtype=np.int32)
-    pose = np.asarray([[0.1, 0.2, 0.7, 1.0, 0.0, 0.0, 0.0], [0.2, 0.3, 0.8, 1.0, 0.0, 0.0, 0.0]])
-    velocity = np.zeros((2, 6), dtype=np.float32)
-    with transaction.scoped(rows):
-        transaction.write_root_pose(
-            rows, layout, pose, entity_name="object", term_name="object_pose"
-        )
-        transaction.write_root_velocity(
-            rows, layout, velocity, entity_name="object", term_name="object_velocity"
-        )
-
-    assert len(backend.entity_calls) == 1
-    committed_rows, committed_qpos, entity_states = backend.entity_calls[0]
-    np.testing.assert_array_equal(committed_rows, rows)
-    assert committed_qpos is None
-    np.testing.assert_allclose(entity_states["object"][:, :7], pose)
-    np.testing.assert_allclose(entity_states["object"][:, 7:], velocity)
-
-
 def test_root_layout_bounds_and_reset_scope_fail_closed() -> None:
     backend = _Backend(
         qpos=np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),

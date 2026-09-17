@@ -2,14 +2,15 @@
 
 The UniSim adapter owns the wire contract for whole-file model variants.  This
 module is the task-owner side of that contract: it builds the deterministic
-1200-tool catalog, materializes the URDF pool, and declares the pool as
-``EnvCfg.fixed_model_variants``.  The upstream ``make_manager_based_rl_env``
-guard turns that catalog into ``cfg.scene.fixed_variant_plan`` (an int32
-round-robin assignment over the catalog order, identical to this task's
-historical formula) and negotiates the backend capability before the worker
-materializes the pool.  Variant masses are worker-measured and read back
-through the backend contract; only the object-scale table stays on this
-config for the command hub's expansion.
+1200-tool catalog, materializes the pool in the configured ``asset_format``
+(``urdf`` for the IsaacSim line, ``mjcf`` composed single-model scenes for the
+MuJoCo line, D3), and declares the pool as ``EnvCfg.fixed_model_variants``.
+The upstream ``make_manager_based_rl_env`` guard turns that catalog into
+``cfg.scene.fixed_variant_plan`` (an int32 round-robin assignment over the
+catalog order, identical to this task's historical formula) and negotiates the
+backend capability before the worker materializes the pool.  Variant masses
+live in the task-side ``tool_pool_masses`` table (D5, catalog order); the
+object-scale table stays on this config for the command hub's expansion.
 """
 
 from __future__ import annotations
@@ -31,6 +32,19 @@ from .tool_urdf_writer import write_tool_catalog_urdfs
 _DEFAULT_NUM_PER_TYPE = 100
 _DEFAULT_SEED = 42
 _DEFAULT_TARGET_ENTITY = "object"
+_DEFAULT_ASSET_FORMAT = "urdf"
+_VALID_ASSET_FORMATS = ("urdf", "mjcf")
+
+
+def _materialize_mjcf_pool(
+    *, seed: int, num_per_type: int, configured_root: str | None
+) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[tuple[float, float, float], ...]]:
+    """MJCF pool branch (D3): composed single-model scenes per variant."""
+    from .tool_pool_mjcf import materialize_tool_pool_mjcf
+
+    return materialize_tool_pool_mjcf(
+        seed=seed, num_per_type=num_per_type, configured_root=configured_root
+    )
 
 
 def _pool_root(seed: int, num_per_type: int, configured: str | None) -> Path:
@@ -141,16 +155,22 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     tool_pool_target_entity: str = _DEFAULT_TARGET_ENTITY
     tool_pool_root: str | None = None
     tool_pool_enabled: bool = True
+    # ``urdf`` (IsaacSim line, default — unchanged behavior) or ``mjcf``
+    # (MuJoCo line, D3): picks which writer materializes the variant pool.
+    asset_format: str = _DEFAULT_ASSET_FORMAT
 
     # Filled by ``validate()`` — after Hydra/registry overlays settle the pool
     # knobs and before the upstream factory guard reads the catalog — and read
     # by the command hub's object-scale expansion (scale deliberately stays
-    # task-side) plus diagnostics.  Deliberately kept off the Hydra surface.
+    # task-side) plus diagnostics.  ``tool_pool_masses`` is the task-side
+    # variant mass table (D5) feeding the wrench event; all three tables share
+    # the catalog order.  Deliberately kept off the Hydra surface.
     tool_pool_scales: tuple[tuple[float, float, float], ...] = field(
         default_factory=tuple, init=False, repr=False
     )
     tool_pool_files: tuple[str, ...] = field(default_factory=tuple, init=False, repr=False)
-    _tool_pool_materialized_from: tuple[int, int, str | None] | None = field(
+    tool_pool_masses: tuple[float, ...] = field(default_factory=tuple, init=False, repr=False)
+    _tool_pool_materialized_from: tuple[int, int, str, str | None] | None = field(
         default=None, init=False, repr=False, compare=False
     )
 
@@ -181,6 +201,11 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
             raise ValueError("SimToolReal tool_pool_root must be a non-empty string or None")
         if not isinstance(self.tool_pool_enabled, bool):
             raise ValueError("SimToolReal tool_pool_enabled must be bool")
+        if self.asset_format not in _VALID_ASSET_FORMATS:
+            raise ValueError(
+                f"SimToolReal asset_format must be one of {_VALID_ASSET_FORMATS}, "
+                f"got {self.asset_format!r}"
+            )
         self._refresh_fixed_model_variants()
 
     def _refresh_fixed_model_variants(self) -> None:
@@ -213,9 +238,15 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
             self.fixed_model_variants = None
             self.tool_pool_scales = ()
             self.tool_pool_files = ()
+            self.tool_pool_masses = ()
             self._tool_pool_materialized_from = None
             return
-        knobs = (int(self.tool_pool_seed), int(self.tool_pool_num_per_type), self.tool_pool_root)
+        knobs = (
+            int(self.tool_pool_seed),
+            int(self.tool_pool_num_per_type),
+            str(self.asset_format),
+            self.tool_pool_root,
+        )
         if self.fixed_model_variants is not None and self._tool_pool_materialized_from == knobs:
             return
         if plan is not None:
@@ -227,13 +258,14 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
                 "construct a fresh config for a different pool"
             )
 
-        paths, _masses, scales = _materialize_pool(
+        materialize = _materialize_mjcf_pool if self.asset_format == "mjcf" else _materialize_pool
+        paths, masses, scales = materialize(
             seed=int(self.tool_pool_seed),
             num_per_type=int(self.tool_pool_num_per_type),
             configured_root=self.tool_pool_root,
         )
         if not paths:
-            raise RuntimeError("SimToolReal tool pool materialized no URDF files")
+            raise RuntimeError(f"SimToolReal tool pool materialized no {self.asset_format} files")
         # Variant names are the deterministic pool file ids (the manifest file
         # names without suffix, unique by their per-type ordinal); the default
         # round-robin assignment needs no explicit names.
@@ -244,6 +276,8 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         )
         self.tool_pool_scales = tuple(scales)
         self.tool_pool_files = tuple(str(path) for path in paths)
+        # Task-side variant mass table (D5): same catalog order as the files.
+        self.tool_pool_masses = tuple(float(mass) for mass in masses)
         self._tool_pool_materialized_from = knobs
 
 

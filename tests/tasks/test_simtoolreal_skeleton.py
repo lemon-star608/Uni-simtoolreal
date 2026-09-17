@@ -9,11 +9,11 @@ from simtoolreal_unilab.tasks.simtoolreal import config as simtoolreal_config
 from simtoolreal_unilab.tasks.simtoolreal.scene import resolve_asset
 
 
-def test_simtoolreal_registered_isaacsim_only():
+def test_simtoolreal_registered_backends():
     registry.ensure_registries()
     meta = registry._envs["SimToolReal"]
-    assert set(meta.env_factory_dict) == {"isaacsim"}, (
-        "step-0 registers only isaacsim; mujoco lands in step 2 after verification"
+    assert set(meta.env_factory_dict) == {"isaacsim", "mujoco"}, (
+        "isaacsim is the merge anchor; mujoco landed in M-J2 after the L2 smoke gate"
     )
 
 

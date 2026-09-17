@@ -261,15 +261,22 @@ def test_body_masses_match_urdf_compile(robot_model, urdf_model):
 
 
 def _collision_profiles(model: mujoco.MjModel) -> dict[str, tuple]:
+    """Key collision geoms by mesh identity when present, else by geom name.
+
+    (Our writer names every geom — the mjbatch variant pack requires it — while
+    the old tree left the arm mesh geoms unnamed; the mesh identity is the
+    shared key on both sides.)
+    """
     profiles: dict[str, tuple] = {}
     for g in range(model.ngeom):
         if model.geom_contype[g] == 0 and model.geom_conaffinity[g] == 0:
             continue
-        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
-        if name is None:
-            mesh_id = model.geom_dataid[g]
-            assert mesh_id >= 0
+        mesh_id = model.geom_dataid[g]
+        if mesh_id >= 0:
             name = f"mesh:{mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_MESH, mesh_id)}"
+        else:
+            name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
+            assert name, f"collision geom {g} has neither mesh nor name"
         profiles[name] = (
             int(model.geom_contype[g]),
             int(model.geom_conaffinity[g]),

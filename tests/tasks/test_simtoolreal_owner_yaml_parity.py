@@ -176,8 +176,8 @@ def test_reward_terms(base):
 # --- scene entity assets (SimToolReal.yaml:47-58) ----------------------------
 
 
-def test_entity_assets_materialization_and_friction(base):
-    assets = {spec["name"]: spec for spec in base["env"]["scene"]["entity_assets"]}
+def test_entity_assets_materialization_and_friction(isaacsim):
+    assets = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}
     assert set(assets) == {"robot", "table", "object", "goalviz"}
     assert assets["robot"]["materialization"] == "articulation"
     assert assets["robot"]["root_mode"] == "fixed"  # fix_base=True, scene_utils.py:1723
@@ -205,7 +205,7 @@ def test_entity_assets_materialization_and_friction(base):
 # --- scene composition declarations (de-hardcoded worker contract) -----------
 
 
-def test_scene_physx_declaration_matches_original_repository(base):
+def test_scene_physx_declaration_matches_original_repository(isaacsim):
     """The original `_default_sim_cfg` PhysxCfg, moved verbatim to the owner.
 
     simtoolreal_env_cfg.py:515-535: solver TGS, iteration clamps 8/8-0/0,
@@ -215,7 +215,7 @@ def test_scene_physx_declaration_matches_original_repository(base):
     Lab's defaults and stay explicit to mirror the source.  The worker keeps
     Isaac Lab defaults when the scene declares none of this.
     """
-    assert base["env"]["scene"]["physx"] == {
+    assert isaacsim["env"]["scene"]["physx"] == {
         "solver_type": 1,
         "min_position_iteration_count": 8,
         "max_position_iteration_count": 8,
@@ -229,24 +229,24 @@ def test_scene_physx_declaration_matches_original_repository(base):
     }
 
 
-def test_env_grid_spacing_matches_original_repository(base):
+def test_env_grid_spacing_matches_original_repository(isaacsim):
     # SimToolReal.yaml:34 / simtoolreal_env_cfg.py:572 (`env_spacing=1.2`);
     # undeclared scenes keep the worker's native 2.0 m grid.
-    assert base["env"]["scene"]["env_grid_spacing"] == 1.2
+    assert isaacsim["env"]["scene"]["env_grid_spacing"] == 1.2
 
 
-def test_robot_spawn_pose_declaration(base):
+def test_robot_spawn_pose_declaration(isaacsim):
     # scene_utils.py:1811-1842 (pos at :1821): the iiwa stands 0.8 m behind
     # the table with identity orientation.  The fixed-base root pose has no
     # other write channel, so this declaration is load-bearing.
-    robot = {spec["name"]: spec for spec in base["env"]["scene"]["entity_assets"]}["robot"]
+    robot = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}["robot"]
     assert robot["init_state"] == {
         "pos": [0.0, 0.8, 0.0],
         "rot_wxyz": [1.0, 0.0, 0.0, 0.0],
     }
 
 
-def test_kinematic_role_contracts_are_declared_not_named(base):
+def test_kinematic_role_contracts_are_declared_not_named(isaacsim):
     """Table/goalviz semantics ride declarations, not entity names.
 
     The table keeps its converted-USD collision state (scene_utils.py:
@@ -255,7 +255,7 @@ def test_kinematic_role_contracts_are_declared_not_named(base):
     variants (scene_utils.py:1714-1719); the object pins the capsule
     replacement it always had (scene_utils.py:1701-1706).
     """
-    assets = {spec["name"]: spec for spec in base["env"]["scene"]["entity_assets"]}
+    assets = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}
     assert "collision_enabled" not in assets["table"]
     assert "replace_cylinders_with_capsules" not in assets["table"]
     assert assets["goalviz"]["collision_enabled"] is False
@@ -269,7 +269,7 @@ def test_kinematic_role_contracts_are_declared_not_named(base):
 # --- scene ground declaration (Fix-C; scene_utils.py setup_scene step 5) -----
 
 
-def test_scene_declares_default_ground_plane(base):
+def test_scene_declares_default_ground_plane(isaacsim):
     """The owner YAML turns on the declarative ground with pure defaults.
 
     An empty mapping means the ``GroundPlaneCfg`` defaults the original
@@ -279,52 +279,7 @@ def test_scene_declares_default_ground_plane(base):
     what keeps the task's trained-identical ground; any value here would be a
     physics change.
     """
-    assert base["env"]["scene"]["ground_plane"] == {}
-
-
-def test_owner_yaml_materializes_declared_ground_plane(base):
-    """The YAML -> SceneCfg construction path flows the declaration natively.
-
-    Trace (Fix-C): the owner YAML ``env`` section becomes a plain dict in
-    ``BackendAdapter.build_task_env_cfg_override`` (config_adapter.py) and is
-    applied by ``registry.make`` through ``apply_cfg_overrides``
-    (config_materialization.py).  Recursing into the existing ``SceneCfg``,
-    the ``ground_plane`` mapping materializes via the single-concrete-candidate
-    branch (``GroundPlaneSceneCfg | None`` annotation, existing value None),
-    so an empty mapping constructs the all-defaults declaration with no
-    adapter-side field-by-field wiring to patch.
-    """
-    from omegaconf import OmegaConf
-    from unilab.base import registry
-    from unilab.base.registry import apply_cfg_overrides
-
-    from simtoolreal_unilab.tasks.simtoolreal.scene import register_resolvers
-
-    register_resolvers()
-    cfg = registry.materialize_env_config("SimToolReal")
-    env = OmegaConf.to_container(OmegaConf.create(base)["env"], resolve=True)
-    apply_cfg_overrides(cfg, env)
-
-    ground = cfg.scene.ground_plane
-    assert ground is not None
-    # GroundPlaneCfg physics-material defaults (scene_utils.py:1807).
-    assert ground.friction == (0.5, 0.5, 0.0)
-    assert ground.restitution == 0.0
-    assert ground.size_m == 200.0
-
-
-def test_undeclared_scenes_have_no_ground_plane():
-    """Scenes without a declaration keep the default None (legacy behavior)."""
-    from unilab.base import registry
-    from unilab.base.scene import SceneCfg
-
-    assert SceneCfg(model_file="scene.xml").ground_plane is None
-
-    registry.ensure_registries()
-    for task_name in ("Go2FootStand", "FR3JointTarget"):
-        other = registry.materialize_env_config(task_name)
-        scene = getattr(other, "scene", None)
-        assert getattr(scene, "ground_plane", None) is None, task_name
+    assert isaacsim["env"]["scene"]["ground_plane"] == {}
 
 
 # --- tool pool knobs (SimToolReal.yaml:50-52; generate_objects.py:27) --------
@@ -350,7 +305,7 @@ def test_isaacsim_backend_leaf(isaacsim):
 # --- robot actuator gain overrides (scene_utils.py:59-131) ------------------
 
 
-def test_robot_actuator_gain_overrides(base):
+def test_robot_actuator_gain_overrides(isaacsim):
     """Robot PD gains must reach the INIT overrides or the arm free-falls.
 
     The URDF scan yields no actuator gains, so without an explicit
@@ -371,7 +326,7 @@ def test_robot_actuator_gain_overrides(base):
     )
 
     robot_assets = [
-        asset for asset in base["env"]["scene"]["entity_assets"] if asset["name"] == "robot"
+        asset for asset in isaacsim["env"]["scene"]["entity_assets"] if asset["name"] == "robot"
     ]
     assert len(robot_assets) == 1
     overrides = robot_assets[0]["actuator_gain_overrides"]

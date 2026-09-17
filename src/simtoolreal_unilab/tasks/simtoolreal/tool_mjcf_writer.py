@@ -11,6 +11,14 @@ no string surgery on a host scene.  Mass/inertia come straight from
 function the URDF writer uses), so the compiled ``body_mass``/``body_inertia``
 match the URDF line value-for-value.  Inline comments cite the original
 ``generate_objects.py`` line numbers, as in ``tool_urdf_writer.py``.
+
+M-J2 same-layout rule: the UniSim MuJoCo batch executor requires every fixed
+variant to share one public layout (same entity names and counts; per-variant
+``geom_type``/``geom_size``/``geom_quat``/inertial arrays are natively
+supported).  Every tool therefore emits exactly four geom slots —
+``object_handle_col``/``object_handle_vis``/``object_head_col``/
+``object_head_vis`` — and headless variants (eraser) fill the head slots with
+epsilon-size, non-contacting, fully transparent placeholders.
 """
 
 from __future__ import annotations
@@ -26,22 +34,26 @@ from .owner_physics import (
 )
 from .tool_catalog import OBJECT_BASE_SIZE, ToolSpec
 
-# Root body/joint naming matches the old tree's composed scenes
-# (tool_assets.py:51, scene.xml qpos-layout comment): one floating body
-# ``object`` with a freejoint, appended to the scene worldbody.
-_OBJECT_BODY = "object"
-_OBJECT_FREEJOINT = "object_joint"
+# Root body/joint naming follows this repository's canonical object namespace
+# (``tool_urdf_writer._OBJECT_ROOT_LINK``; the owner YAML's object entity
+# declares root_body_name=object_root): one floating body ``object_root`` with
+# a freejoint, appended to the scene worldbody.  The old tree's MJCF called it
+# ``object``; the rename keeps the entity contract identical across lines.
+_OBJECT_BODY = "object_root"
+_OBJECT_FREEJOINT = "object_root_joint"
 
-# Cylinder axis rotations as MJCF quaternions (wxyz).  The URDF writer rotates
-# handle cylinders with rpy="0 -pi/2 0" (generate_objects.py:110) and head
-# cylinders with rpy="-pi/2 0 0" (generate_objects.py:198); capsules carry the
-# same orientations, which is exactly the geometry the URDF line trained with
-# after replace_cylinders_with_capsules.
+# Cylinder axis rotation as an MJCF quaternion (wxyz).  The URDF writer rotates
+# handle cylinders with rpy="0 -pi/2 0" (generate_objects.py:110); capsules
+# carry the same orientation, which is exactly the geometry the URDF line
+# trained with after replace_cylinders_with_capsules.
 _QUAT_HANDLE_CYLINDER = "0.7071067811865476 0 -0.7071067811865476 0"  # -pi/2 about y
-_QUAT_HEAD_CYLINDER = "0.7071067811865476 -0.7071067811865476 0 0"  # -pi/2 about x
 
 _HANDLE_RGBA = "0.55 0.27 0.07 1.0"  # brown (generate_objects.py:78)
 _HEAD_RGBA = "0.5 0.5 0.5 1.0"  # gray (generate_objects.py:232)
+
+# Headless-variant placeholder size: MuJoCo rejects zero geom sizes, so the
+# head slots shrink to an invisible, non-contacting epsilon box instead.
+_PLACEHOLDER_EPS = 1e-6
 
 
 def _fmt(value: float) -> str:
@@ -65,54 +77,66 @@ def _friction() -> str:
 
 
 def _handle_geoms(spec: ToolSpec) -> str:
-    """Handle geometry: one box geom, or a visual cylinder + collision capsule.
+    """Handle geometry slots: collision geom + visual geom.
 
     Mirrors the handle branches of generate_objects.py:47-112 as compiled by
     the URDF line's capsule replacement (scene_utils.py:1701-1706): MJCF box
     sizes are the URDF full sizes halved; cylinders keep their visual shape and
-    gain a capsule collision geom (tool_assets.py:26-38).
+    gain a capsule collision geom (tool_assets.py:26-38).  Both slots exist in
+    every variant (M-J2 same-layout rule, see module docstring): only the
+    compiled type/size/quat arrays differ per variant, which mjbatch's variant
+    pack supports natively (``geom_type``/``geom_size``/``geom_quat`` are
+    per-variant fields).
     """
     if len(spec.handle_scale) == 3:
         half = tuple(v / 2 for v in spec.handle_scale)
-        return (
-            f'      <geom name="object_handle" type="box" size="{_fmt3(half)}" '
-            f'friction="{_friction()}" density="0" rgba="{_HANDLE_RGBA}"/>\n'
-        )
-    height, diameter = spec.handle_scale
-    radius, half_length = diameter / 2, height / 2
+        size = _fmt3(half)
+        vis_type, col_type, quat = "box", "box", ""
+    else:
+        height, diameter = spec.handle_scale
+        radius, half_length = diameter / 2, height / 2
+        size = f"{_fmt(radius)} {_fmt(half_length)}"
+        vis_type, col_type = "cylinder", "capsule"
+        quat = f' quat="{_QUAT_HANDLE_CYLINDER}"'
     return (
-        f'      <geom name="object_handle_cyl_visual" type="cylinder" '
-        f'size="{_fmt(radius)} {_fmt(half_length)}" quat="{_QUAT_HANDLE_CYLINDER}" '
-        f'contype="0" conaffinity="0" density="0" rgba="{_HANDLE_RGBA}"/>\n'
-        f'      <geom name="object_handle_cyl" type="capsule" '
-        f'size="{_fmt(radius)} {_fmt(half_length)}" quat="{_QUAT_HANDLE_CYLINDER}" '
-        f'friction="{_friction()}" density="0"/>\n'
+        f'      <geom name="object_handle_col" type="{col_type}" size="{size}"{quat} '
+        f'friction="{_friction()}" density="0" group="3"/>\n'
+        f'      <geom name="object_handle_vis" type="{vis_type}" size="{size}"{quat} '
+        f'contype="0" conaffinity="0" density="0" group="2" rgba="{_HANDLE_RGBA}"/>\n'
     )
 
 
 def _head_geoms(spec: ToolSpec) -> str:
-    """Head geometry at +x past the handle (generate_objects.py:183-204)."""
-    assert spec.head_scale is not None
-    if len(spec.head_scale) == 3:
-        hlx = spec.head_scale[0]
-        x_offset = spec.handle_scale[0] / 2 + hlx / 2
-        half = tuple(v / 2 for v in spec.head_scale)
+    """Head geometry slots at +x past the handle (generate_objects.py:183-204).
+
+    Headless variants (eraser) keep both slots as epsilon-size,
+    non-contacting, fully transparent placeholders so every pool variant has
+    the same public layout (M-J2 same-layout rule).
+    """
+    if spec.head_scale is None:
+        size = _fmt3((_PLACEHOLDER_EPS,) * 3)
+        # The collision slot keeps contact bits enabled so the backend's
+        # discardvisual physics pass does not strip it (visual-only geoms are
+        # discarded; layouts must stay identical across variants).  The
+        # epsilon box sits at the body origin, fully enclosed by the handle
+        # collision geom, so it never generates a contact; density=0 keeps it
+        # massless.  The visual slot is discarded uniformly in every variant.
         return (
-            f'      <geom name="object_head" type="box" size="{_fmt3(half)}" '
-            f'pos="{_fmt(x_offset)} 0 0" friction="{_friction()}" density="0" '
-            f'rgba="{_HEAD_RGBA}"/>\n'
+            f'      <geom name="object_head_col" type="box" size="{size}" '
+            f'friction="{_friction()}" density="0" group="3"/>\n'
+            f'      <geom name="object_head_vis" type="box" size="{size}" '
+            'contype="0" conaffinity="0" density="0" group="2" rgba="0.5 0.5 0.5 0"/>\n'
         )
-    hh, hd = spec.head_scale
-    hr = hd / 2
-    x_offset = spec.handle_scale[0] / 2 + hr
+    assert len(spec.head_scale) == 3, "catalog heads are always boxes (tool_catalog)"
+    hlx = spec.head_scale[0]
+    x_offset = spec.handle_scale[0] / 2 + hlx / 2
+    half = tuple(v / 2 for v in spec.head_scale)
     return (
-        f'      <geom name="object_head_cyl_visual" type="cylinder" '
-        f'size="{_fmt(hr)} {_fmt(hh / 2)}" pos="{_fmt(x_offset)} 0 0" '
-        f'quat="{_QUAT_HEAD_CYLINDER}" contype="0" conaffinity="0" density="0" '
+        f'      <geom name="object_head_col" type="box" size="{_fmt3(half)}" '
+        f'pos="{_fmt(x_offset)} 0 0" friction="{_friction()}" density="0" group="3"/>\n'
+        f'      <geom name="object_head_vis" type="box" size="{_fmt3(half)}" '
+        f'pos="{_fmt(x_offset)} 0 0" contype="0" conaffinity="0" density="0" group="2" '
         f'rgba="{_HEAD_RGBA}"/>\n'
-        f'      <geom name="object_head_cyl" type="capsule" size="{_fmt(hr)} {_fmt(hh / 2)}" '
-        f'pos="{_fmt(x_offset)} 0 0" quat="{_QUAT_HEAD_CYLINDER}" '
-        f'friction="{_friction()}" density="0"/>\n'
     )
 
 
@@ -122,9 +146,7 @@ def _tool_mjcf_text(spec: ToolSpec) -> str:
             f"head_scale and head_density must both be set or both None (got "
             f"{spec.head_scale} and {spec.head_density})"
         )
-    geoms = _handle_geoms(spec)
-    if spec.head_scale is not None:
-        geoms += _head_geoms(spec)
+    geoms = _handle_geoms(spec) + _head_geoms(spec)
     return f"""<mujoco model="{_OBJECT_BODY}">
   <worldbody>
     <body name="{_OBJECT_BODY}">
@@ -149,11 +171,11 @@ def _tool_filename(spec: ToolSpec, idx: int) -> str:
 def write_tool_mjcf(spec: ToolSpec, path: Path) -> Path:
     """Serialize one ``ToolSpec`` to a standalone MJCF file.
 
-    Same dispatch contract as ``write_tool_urdf`` (generate_objects.py:262-285):
-    a spec without a head emits handle geometry only; a spec with both head
-    scale and density emits the handle+head composite.  The ``<inertial>``
-    fields are the ToolSpec's own mass/com/diaginertia (the composite
-    parallel-axis math of generate_objects.py:206-218 lives in
+    Same validation contract as ``write_tool_urdf`` (generate_objects.py:
+    262-285): headless specs emit placeholder head slots (module docstring's
+    same-layout rule); headed specs emit the handle+head composite.  The
+    ``<inertial>`` fields are the ToolSpec's own mass/com/diaginertia (the
+    composite parallel-axis math of generate_objects.py:206-218 lives in
     ``tool_catalog.build_tool_catalog``).
     """
     path.write_text(_tool_mjcf_text(spec))

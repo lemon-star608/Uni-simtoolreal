@@ -39,7 +39,7 @@ _HANDLE_CYL_QUAT = (math.sqrt(0.5), 0.0, -math.sqrt(0.5), 0.0)  # -pi/2 about y
 
 
 def _object_body_id(model: mujoco.MjModel) -> int:
-    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
+    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
     assert body_id >= 1
     return body_id
 
@@ -69,7 +69,8 @@ def test_mjcf_geometry_matches_compiled_urdf(spec: ToolSpec, tmp_path: Path):
     mjcf_geoms = [
         g
         for g in range(mjcf_model.ngeom)
-        if mjcf_model.geom_contype[g] or mjcf_model.geom_conaffinity[g]
+        if (mjcf_model.geom_contype[g] or mjcf_model.geom_conaffinity[g])
+        and mjcf_model.geom_size[g].max() > 1e-5  # skip the headless placeholder slot
     ]
     assert len(mjcf_geoms) == len(urdf_geoms)
 
@@ -95,29 +96,62 @@ def test_mjcf_geometry_matches_compiled_urdf(spec: ToolSpec, tmp_path: Path):
 
 @pytest.mark.parametrize("spec", CATALOG, ids=lambda s: f"{s.type}-{s.topology}")
 def test_mjcf_visual_and_collision_geom_roles(spec: ToolSpec, tmp_path: Path):
-    """Visual geoms are contype/conaffinity 0; collision geoms carry friction."""
+    """Fixed four-slot layout (M-J2 same-layout rule); roles by contact bits."""
     model = mujoco.MjModel.from_xml_path(str(write_tool_mjcf(spec, tmp_path / "tool.xml")))
+    names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) for g in range(model.ngeom)]
+    assert names == [
+        "object_handle_col",
+        "object_handle_vis",
+        "object_head_col",
+        "object_head_vis",
+    ]
     collisions = visuals = 0
     for g in range(model.ngeom):
-        if model.geom_contype[g] == 0 and model.geom_conaffinity[g] == 0:
-            visuals += 1
-        else:
+        contacting = model.geom_contype[g] != 0 or model.geom_conaffinity[g] != 0
+        if contacting:
             collisions += 1
             # Owner-YAML object slide (tuning item), torsion/roll defaults.
             np.testing.assert_allclose(model.geom_friction[g], (0.5, 0.005, 0.0001))
-    n_primitive = 1 + (spec.head_scale is not None)
-    n_visual_cyl = int(spec.authored_shape == "cylinder")
-    assert collisions == n_primitive
-    assert visuals == n_visual_cyl
+        else:
+            visuals += 1
+    # Both collision slots always exist (same-layout rule); the headless
+    # placeholder keeps contact bits but is epsilon-sized and enclosed.
+    assert collisions == 2
+    assert visuals == 2
+    if spec.head_scale is None:
+        head_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_head_col")
+        assert model.geom_size[head_id].max() < 1e-5
+
+
+def test_all_variants_share_public_layout(tmp_path: Path):
+    """M-J2 same-layout contract: identical geom names/counts across topologies."""
+    layouts = []
+    for index, spec in enumerate(CATALOG):
+        model = mujoco.MjModel.from_xml_path(str(write_tool_mjcf(spec, tmp_path / f"t{index}.xml")))
+        layouts.append(
+            (
+                model.ngeom,
+                tuple(
+                    mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
+                    for g in range(model.ngeom)
+                ),
+            )
+        )
+    assert len(set(layouts)) == 1
 
 
 def test_mjcf_handle_cylinder_orientation(tmp_path: Path):
     """The capsule axis rotation is the URDF cylinder's -pi/2 about y."""
     spec = next(s for s in CATALOG if s.authored_shape == "cylinder")
     model = mujoco.MjModel.from_xml_path(str(write_tool_mjcf(spec, tmp_path / "tool.xml")))
-    geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_handle_cyl")
-    assert geom_id >= 0
-    np.testing.assert_allclose(model.geom_quat[geom_id], _HANDLE_CYL_QUAT, atol=1e-15)
+    for name in ("object_handle_col", "object_handle_vis"):
+        geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, name)
+        assert geom_id >= 0
+        np.testing.assert_allclose(model.geom_quat[geom_id], _HANDLE_CYL_QUAT, atol=1e-15)
+    assert (
+        model.geom_type[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_handle_col")]
+        == mujoco.mjtGeom.mjGEOM_CAPSULE
+    )
 
 
 def test_batch_writer_contract_matches_urdf_writer(tmp_path: Path):

@@ -734,12 +734,15 @@ def _friction_attr(slide: float) -> str:
 
 
 def _emit_visual_geom(
-    body: ET.Element, geometry: _Geometry, frame: tuple[np.ndarray, np.ndarray]
+    body: ET.Element, name: str, geometry: _Geometry, frame: tuple[np.ndarray, np.ndarray]
 ) -> None:
     geom = ET.SubElement(
         body,
         "geom",
         {
+            # Every geom is named: the mjbatch variant pack requires unique,
+            # non-empty geom names (M-J2).  The old tree left these unnamed.
+            "name": name,
             "type": "mesh",
             "mesh": _mesh_asset_name(geometry.mesh_file),
             "contype": "0",
@@ -754,12 +757,17 @@ def _emit_visual_geom(
 
 
 def _emit_arm_collision_geom(
-    body: ET.Element, geometry: _Geometry, frame: tuple[np.ndarray, np.ndarray], slide: float
+    body: ET.Element,
+    name: str,
+    geometry: _Geometry,
+    frame: tuple[np.ndarray, np.ndarray],
+    slide: float,
 ) -> None:
     geom = ET.SubElement(
         body,
         "geom",
         {
+            "name": name,
             "type": "mesh",
             "mesh": _mesh_asset_name(geometry.mesh_file),
             "friction": _friction_attr(slide),
@@ -858,14 +866,16 @@ def build_robot_mjcf() -> ET.Element:
             is_hand = member.startswith("left_")
             for visual in links[member].visuals:
                 frame = _compose_frame(member_frame, visual.origin_xyz, visual.origin_rpy)
-                _emit_visual_geom(body, visual, frame)
+                _emit_visual_geom(body, f"{member}_visual_geom", visual, frame)
             if is_hand:
                 # SHARPA URDF collision meshes are deliberately unused; the
                 # Menagerie transplant layer below is the collision authority.
                 continue
             for collision in links[member].collisions:
                 frame = _compose_frame(member_frame, collision.origin_xyz, collision.origin_rpy)
-                _emit_arm_collision_geom(body, collision, frame, physics.robot_slide_friction)
+                _emit_arm_collision_geom(
+                    body, f"{member}_collision_geom", collision, frame, physics.robot_slide_friction
+                )
 
         # Menagerie transplant collision layer (data tables above).
         for i, mesh_name in enumerate(_PALM_MESH_NAMES):
@@ -1023,8 +1033,9 @@ def _build_table_body() -> ET.Element:
 def build_base_scene_mjcf() -> ET.Element:
     """Build the tool-less base scene: robot + table + floor + option + keyframe.
 
-    Scene-owned sections (option/statistic/visual/light/floor/keyframe) are
-    transcribed from the old tree's scene.xml; the robot and table come from
+    Scene-owned sections (option/statistic/visual/floor/keyframe) are
+    transcribed from the old tree's scene.xml (the old tree's directional
+    light is dropped — see build body below); the robot and table come from
     this writer.  qpos layout (matches the old scene): [0:29] robot hinge
     joints in canonical order; composed tool scenes append the object's
     freejoint (7) at the end.
@@ -1101,7 +1112,11 @@ def build_base_scene_mjcf() -> ET.Element:
         asset_el.append(mesh)
 
     worldbody = ET.SubElement(scene, "worldbody")
-    ET.SubElement(worldbody, "light", {"pos": "0 0 2.0", "dir": "0 0 -1", "directional": "true"})
+    # The old scene.xml's directional light is deliberately dropped: mjbatch
+    # treats every light_* model field as shared across fixed variants, but
+    # light_poscom0 is derived from the model COM, which legitimately varies
+    # with the tool mass.  Visual-only divergence (the renderer headlight
+    # remains); zero physics impact (M-J2 known divergence).
     # Floor slide 1.0 is transcribed from the old scene.xml (the owner YAML's
     # ground_plane declaration is the IsaacSim line's channel; tuning item).
     ET.SubElement(

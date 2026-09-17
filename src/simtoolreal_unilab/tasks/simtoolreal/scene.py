@@ -32,6 +32,7 @@ from .tool_urdf_writer import write_tool_urdf
 
 _ASSETS_ROOT_ENV = "SIMTOOLREAL_ASSETS_ROOT"
 _RESOLVER_NAME = "simtoolreal_asset"
+_SCENE_MJCF_RESOLVER_NAME = "simtoolreal_scene_mjcf"
 
 
 def resolve_assets_root() -> Path:
@@ -67,6 +68,16 @@ def resolve_asset(relative_path: str) -> str:
     return str(path)
 
 
+def _generated_assets_root() -> Path:
+    root = (
+        Path(os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "")).expanduser()
+        if os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "").strip()
+        else Path(tempfile.gettempdir()) / "simtoolreal_generated_assets"
+    )
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
 def _resolve_generated_asset(name: str) -> str:
     """Materialize the deterministic bootstrap object/goal asset on demand.
 
@@ -81,12 +92,7 @@ def _resolve_generated_asset(name: str) -> str:
             "unknown generated SimToolReal asset; expected object.urdf or goalviz.urdf, "
             f"got {name!r}"
         )
-    root = (
-        Path(os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "")).expanduser()
-        if os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "").strip()
-        else Path(tempfile.gettempdir()) / "simtoolreal_generated_assets"
-    )
-    root.mkdir(parents=True, exist_ok=True)
+    root = _generated_assets_root()
     path = root / name
     if path.is_file():
         return str(path)
@@ -104,10 +110,34 @@ def _resolve_generated_asset(name: str) -> str:
     return str(path)
 
 
+def _resolve_bootstrap_scene_mjcf() -> str:
+    """Materialize the deterministic bootstrap composed scene (MuJoCo line).
+
+    Same role as ``generated/object.urdf`` on the IsaacSim line: under the
+    fixed variant plan the scene ``model_file`` is the cold-path/visual
+    anchor, so one canonical composed scene (catalog[0] hammer) suffices.
+    """
+    root = _generated_assets_root()
+    path = root / "scene_mjcf_bootstrap.xml"
+    if path.is_file():
+        return str(path)
+    from .robot_mjcf_writer import write_base_scene_mjcf
+    from .tool_pool_mjcf import compose_scene_mjcf
+
+    spec = build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
+    base_scene = write_base_scene_mjcf(root / "base_scene_mjcf.xml")
+    compose_scene_mjcf(base_scene, spec, path)
+    return str(path)
+
+
 def register_resolvers() -> None:
     """Register the ``${simtoolreal_asset:...}`` OmegaConf resolver once."""
     if not OmegaConf.has_resolver(_RESOLVER_NAME):
         OmegaConf.register_new_resolver(_RESOLVER_NAME, resolve_asset)
+    if not OmegaConf.has_resolver(_SCENE_MJCF_RESOLVER_NAME):
+        OmegaConf.register_new_resolver(
+            _SCENE_MJCF_RESOLVER_NAME, lambda *_: _resolve_bootstrap_scene_mjcf()
+        )
 
 
 __all__ = ["register_resolvers", "resolve_asset", "resolve_assets_root"]

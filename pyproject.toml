@@ -14,13 +14,12 @@ dependencies = [
   # Official UniLab main at the latest commit (MuJoCo line pin discipline:
   # track upstream main, let _compat guards report drift).
   "unilab",
-  # Official PyPI release of unisim-core.
-  "unisim-core>=1.4.2",
+  # Official PyPI release of unisim-core. The [mujoco] extra pulls in the
+  # mujoco/mjbatch-uni pair the MuJoCo backend is pinned and tested against;
+  # the MJCF asset line's compiler gates (M-J1) run on that same pin.
+  "unisim-core[mujoco]>=1.4.2",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
-  # MuJoCo/MJCF asset line (M-J1): compiler-backed asset gates. Pip-published,
-  # so the whole L1/L2 verification ladder can run in CI.
-  "mujoco>=3.13",
   "torch==2.8.0+cu128 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
   "tensorboard>=2.8",
   "tensorboardX>=2.5",

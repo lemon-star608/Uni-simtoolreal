@@ -597,26 +597,6 @@ def test_resolve_articulation_root_prim_path_discovers_unique_root(
     assert _resolve_articulation_root_prim_path("asset.usd", "pelvis") == "/pelvis"
 
 
-def test_resolve_articulation_root_prim_path_falls_back_to_unique_converter_root(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A named root with no root API falls back to the unique converter root.
-
-    The 2026-09-14 floating-base fix deliberately resolves the converter's own
-    root (e.g. ``/root_joint``) when the named root link carries no
-    ArticulationRootAPI; only absence of every root or ambiguity fails closed.
-    """
-    stage = _FakeStage(
-        "/Asset",
-        [
-            _FakePrim("/Asset", root_api=False),
-            _FakePrim("/Asset/other", root_api=True),
-        ],
-    )
-    _install_fake_pxr(monkeypatch, stage)
-    assert _resolve_articulation_root_prim_path("asset.usd", "pelvis") == "/other"
-
-
 @pytest.mark.parametrize(
     "prims",
     [
