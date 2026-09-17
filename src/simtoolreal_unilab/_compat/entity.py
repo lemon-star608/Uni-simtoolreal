@@ -62,6 +62,107 @@ _SOURCES = {
         "            self._fixed_variant_mass = cached\n"
         "        return cached\n"
     ),
+    "Entity.write_root_link_pose_to_sim": (
+        "    def write_root_link_pose_to_sim(\n"
+        "        self,\n"
+        "        root_pose: np.ndarray,\n"
+        "        env_ids: np.ndarray | slice | None = None,\n"
+        "    ) -> None:\n"
+        '        """Stage world position and wxyz root orientation during reset."""\n'
+        "        reset_state, layout = self._require_root_state_write()\n"
+        "        resolved_env_ids = self._normalize_reset_env_ids(env_ids)\n"
+        "        reset_state.write_root_pose(\n"
+        "            resolved_env_ids,\n"
+        "            layout,\n"
+        "            root_pose,\n"
+        "            entity_name=self.name,\n"
+        '            term_name=f"{self.name}.write_root_link_pose_to_sim",\n'
+        "        )\n"
+    ),
+    "Entity.write_root_link_velocity_to_sim": (
+        "    def write_root_link_velocity_to_sim(\n"
+        "        self,\n"
+        "        root_velocity: np.ndarray,\n"
+        "        env_ids: np.ndarray | slice | None = None,\n"
+        "    ) -> None:\n"
+        '        """Stage world linear/angular root velocity during reset."""\n'
+        "        reset_state, layout = self._require_root_state_write()\n"
+        "        resolved_env_ids = self._normalize_reset_env_ids(env_ids)\n"
+        "        reset_state.write_root_velocity(\n"
+        "            resolved_env_ids,\n"
+        "            layout,\n"
+        "            root_velocity,\n"
+        "            entity_name=self.name,\n"
+        '            term_name=f"{self.name}.write_root_link_velocity_to_sim",\n'
+        "        )\n"
+    ),
+    "Entity.read_reset_root_pose": (
+        "    def read_reset_root_pose(\n"
+        "        self,\n"
+        "        env_ids: np.ndarray | slice | None = None,\n"
+        "    ) -> np.ndarray:\n"
+        '        """Read the world position and wxyz root orientation staged in the reset.\n'
+        "\n"
+        "        Returns a detached ``(len(env_ids), 7)`` copy of the pose currently\n"
+        "        staged in the active reset transaction (backend default for rows no\n"
+        "        term has written yet), so a later reset term can build on an earlier\n"
+        "        term's root placement.\n"
+        '        """\n'
+        "        reset_state, layout = self._require_root_state_write()\n"
+        "        resolved_env_ids = self._normalize_reset_env_ids(env_ids)\n"
+        "        return reset_state.read_root_pose(\n"
+        "            resolved_env_ids,\n"
+        "            layout,\n"
+        "            entity_name=self.name,\n"
+        '            term_name=f"{self.name}.read_reset_root_pose",\n'
+        "        )\n"
+    ),
+    "Entity.apply_body_wrench_to_sim": (
+        "    def apply_body_wrench_to_sim(\n"
+        "        self,\n"
+        "        forces: np.ndarray,\n"
+        "        torques: np.ndarray | None,\n"
+        "        body_ids: np.ndarray,\n"
+        "        env_ids: np.ndarray | slice | None = None,\n"
+        "        *,\n"
+        "        term_name: str,\n"
+        "    ) -> None:\n"
+        '        """Dispatch world-frame body forces/torques through the formal interval plan.\n'
+        "\n"
+        "        ``body_ids`` are the immutable backend columns returned by\n"
+        "        :meth:`bind_body_wrench`; ``forces``/``torques`` are world-frame rows\n"
+        "        for ``env_ids`` staged for the upcoming step.\n"
+        '        """\n'
+        "        ids = self._normalize_reset_env_ids(env_ids)\n"
+        "        force_values = self._validate_body_wrench_values(\n"
+        "            forces,\n"
+        "            ids,\n"
+        "            body_ids,\n"
+        '            label="force",\n'
+        "            term_name=term_name,\n"
+        "        )\n"
+        "        torque_values = self._validate_body_wrench_values(\n"
+        "            torques,\n"
+        "            ids,\n"
+        "            body_ids,\n"
+        '            label="torque",\n'
+        "            term_name=term_name,\n"
+        "        )\n"
+        "        try:\n"
+        "            self._backend.apply_interval_randomization(\n"
+        "                IntervalRandomizationPlan(\n"
+        "                    ops=_interval_term_ops(\n"
+        "                        (INTERVAL_TERM_BODY_FORCE, force_values, body_ids),\n"
+        "                        (INTERVAL_TERM_BODY_TORQUE, torque_values, body_ids),\n"
+        "                    )\n"
+        "                )\n"
+        "            )\n"
+        "        except NotImplementedError as exc:\n"
+        "            raise self._capability_error(\n"
+        '                "interval body wrench",\n'
+        "                f\"EventManager term '{term_name}': {exc}\",\n"
+        "            ) from exc\n"
+    ),
     "Entity.write_root_state_to_sim": (
         "    def write_root_state_to_sim(\n"
         "        self,\n"
