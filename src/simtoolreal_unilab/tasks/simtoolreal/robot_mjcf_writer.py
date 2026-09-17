@@ -1044,6 +1044,11 @@ def build_base_scene_mjcf() -> ET.Element:
     robot = build_robot_mjcf()
 
     scene = ET.Element("mujoco", {"model": "simtoolreal_scene"})
+    # The scene is the top document, so it owns the compiler declaration:
+    # without angle="radian" MuJoCo reads every joint range as degrees and
+    # the composed model compiles with a ±0.05 rad cage (forensic finding
+    # 2026-09-17; the robot file carries the same declaration).
+    ET.SubElement(scene, "compiler", {"angle": "radian"})
     option = ET.SubElement(
         scene,
         "option",

@@ -104,6 +104,13 @@ def test_all_composed_mjcf_compile_with_object_mass(mjcf_pool):
         assert model.body_mass[body_id] == pytest.approx(masses[index], rel=1e-12)
         assert model.nkey == 1
         assert model.key_qpos.shape[1] == model.nq  # home keyframe extended
+        # Range-cage regression gate (2026-09-17 forensic finding): the scene
+        # must carry angle="radian" or every joint range compiles ~57x too
+        # small.  Pin the actual radian magnitude rather than the source values
+        # here; exact URDF-value parity is covered in test_simtoolreal_robot_mjcf.
+        np.testing.assert_allclose(
+            model.jnt_range[0], (-2.96705972839, 2.96705972839), rtol=0, atol=0
+        )
 
 
 def test_composed_scene_has_no_include(mjcf_pool):

@@ -209,6 +209,54 @@ def test_joint_ranges_transcribe_urdf(robot_model, old_model):
         np.testing.assert_allclose(robot_model.jnt_range[j], old_model.jnt_range[old_j], atol=1e-5)
 
 
+def test_composed_scene_preserves_joint_ranges(base_scene_xml, tmp_path):
+    """The scene is the top document and must carry <compiler angle="radian">.
+
+    Regression gate for the 2026-09-17 forensic finding: the scene composer
+    dropped the robot file's compiler declaration, so composed MJCFs compiled
+    with angle=degree and every joint range collapsed to a ±0.05 rad cage
+    (the trained policy could never reach the table).  The robot-file-only
+    range test above did not see it; this one covers the scene and a composed
+    pool variant.
+    """
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(ROBOT_URDF).getroot()
+    limits = {
+        joint.get("name"): (
+            float(joint.find("limit").get("lower")),
+            float(joint.find("limit").get("upper")),
+        )
+        for joint in root.findall("joint")
+        if joint.get("type") == "revolute"
+    }
+    spec = build_tool_catalog(("hammer",), 1, 42, shuffle=False)[0]
+    composed = compose_scene_mjcf(base_scene_xml, spec, tmp_path / "composed.xml")
+    for label, path in (("base_scene", base_scene_xml), ("composed", composed)):
+        scene_root = ET.parse(path).getroot()
+        compiler = scene_root.find("compiler")
+        assert compiler is not None and compiler.get("angle") == "radian", label
+        model = mujoco.MjModel.from_xml_path(str(path))
+        for j in range(model.njnt):
+            name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
+            if name == "object_root_joint":
+                continue
+            np.testing.assert_allclose(
+                model.jnt_range[j], limits[name], rtol=0, atol=0, err_msg=f"{label}:{name}"
+            )
+            # inheritrange=1: actuator ctrlrange tracks the joint range (the
+            # compiler's copy can differ by 1 ulp; the joint range itself is
+            # asserted exact above).
+            act = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_ctrl")
+            np.testing.assert_allclose(
+                model.actuator_ctrlrange[act],
+                limits[name],
+                rtol=0,
+                atol=1e-12,
+                err_msg=f"{label}:{name}_ctrl",
+            )
+
+
 def test_fingertip_sites_exist(robot_model):
     sites = {
         mujoco.mj_id2name(robot_model, mujoco.mjtObj.mjOBJ_SITE, i)

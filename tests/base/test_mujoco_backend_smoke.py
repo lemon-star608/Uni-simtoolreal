@@ -67,6 +67,30 @@ def test_reset_obs_contract(env):
     assert all(np.isfinite(value).all() for value in obs.values())
 
 
+def test_reset_joints_land_near_home(env):
+    """Post-reset joints = home + sampling noise, not the zero pose.
+
+    Regression gate for the 2026-09-17 angle="radian" finding: with the
+    range cage the reset term clipped home into ±0.05 rad and the arm started
+    vertical every episode.  The asserted band is the term's exact sampling
+    envelope: default + 0.1 * (limit - default) per side (events.py
+    _reset_robot, reset_dof_pos_random_interval=0.1).
+    """
+    obs, info = env.reset()
+    robot = env.scene["robot"]
+    q = np.asarray(robot.data.joint_pos)  # (num_envs, 29), canonical order
+    default = np.asarray(robot.data.default_joint_pos)  # (num_envs, 29), home
+    limits = np.asarray(robot.data.soft_joint_pos_limits)  # (29, 2)
+    lo = default - 0.1 * (default - limits[:, 0])
+    hi = default + 0.1 * (limits[:, 1] - default)
+    assert (q >= lo - 1e-4).all() and (q <= hi + 1e-4).all()
+    # Cage signature guard: iiwa14_joint_1's home is -1.571 rad and its real
+    # range is ±2.967 rad; the caged model's limit was ±0.0518 rad.  0.46 is
+    # the joint's sampling envelope half-width (0.1 * (2.967 + 1.571)) + slack.
+    assert limits[0, 1] > 2.9
+    assert np.abs(q[:, 0] - (-1.571)).max() < 0.46
+
+
 def test_step_100_no_nan(env):
     for _ in range(100):
         state = env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
