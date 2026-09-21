@@ -37,12 +37,9 @@ from simtoolreal_unilab.tasks.simtoolreal.config import (
 from simtoolreal_unilab.tasks.simtoolreal.owner_physics import OWNER_YAML
 from simtoolreal_unilab.tasks.simtoolreal.robot_mjcf_writer import (
     FINGERTIP_SITE_LINKS,
-    build_base_scene_mjcf,
-    write_base_scene_mjcf,
     write_robot_mjcf,
 )
 from simtoolreal_unilab.tasks.simtoolreal.tool_catalog import build_tool_catalog
-from simtoolreal_unilab.tasks.simtoolreal.tool_pool_mjcf import compose_scene_mjcf
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 OLD_TREE_KUKA_MJCF = (
@@ -82,8 +79,64 @@ def urdf_model() -> mujoco.MjModel:
 
 
 @pytest.fixture(scope="module")
-def base_scene_xml(tmp_path_factory) -> Path:
-    return write_base_scene_mjcf(tmp_path_factory.mktemp("scene_mjcf") / "scene.xml")
+def entity_set_dir(tmp_path_factory) -> Path:
+    """The B-form entity bootstrap sources (robot/table/floor + object)."""
+    from simtoolreal_unilab.tasks.simtoolreal.entity_mjcf_writer import (
+        write_bootstrap_entity_set,
+    )
+
+    root = tmp_path_factory.mktemp("entity_bootstrap")
+    write_bootstrap_entity_set(root)
+    return root
+
+
+@pytest.fixture(scope="module")
+def composed_model(entity_set_dir):
+    """The B-form scene through the official unisim compose_scene (M-J5).
+
+    Replaces the retired A-form task-side composer: robot + table + floor +
+    bootstrap object composed as entities, home keyframe merged by name.
+    """
+    from unisim.dr.types import ModelSourceDescriptor
+    from unisim.entities import EntityInitialState, SceneEntitySpec
+    from unisim.mjcf_compiler import compose_scene
+    from unisim.scene import SceneCfg
+
+    scene = SceneCfg(
+        entity_assets=(
+            SceneEntitySpec(
+                name="robot",
+                source=ModelSourceDescriptor(str(entity_set_dir / "robot.xml")),
+                kind="articulation",
+                root_mode="fixed",
+                initial_state=EntityInitialState(position=(0.0, 0.8, 0.0)),
+            ),
+            SceneEntitySpec(
+                name="table",
+                source=ModelSourceDescriptor(str(entity_set_dir / "table.xml")),
+                kind="rigid",
+                root_mode="kinematic",
+                initial_state=EntityInitialState(position=(0.0, 0.0, 0.38)),
+            ),
+            SceneEntitySpec(
+                name="floor",
+                source=ModelSourceDescriptor(str(entity_set_dir / "floor.xml")),
+                kind="rigid",
+                root_mode="kinematic",
+            ),
+            SceneEntitySpec(
+                name="object",
+                source=ModelSourceDescriptor(str(entity_set_dir / "object_bootstrap.xml")),
+                kind="rigid",
+                root_mode="floating",
+                initial_state=EntityInitialState(position=(0.0, 0.0, 0.63)),
+            ),
+        ),
+        default_keyframe_name="home",
+    )
+    composed = compose_scene(scene, 1, 1 / 120)
+    yield composed.model
+    composed.close()
 
 
 def _body_names(model: mujoco.MjModel) -> list[str]:
@@ -116,13 +169,18 @@ def test_robot_compile_contract(robot_model, old_model):
     assert robot_model.body_mass.sum() == pytest.approx(old_model.body_mass.sum(), rel=1e-12)
 
 
-def test_base_scene_compile_contract(base_scene_xml):
-    model = mujoco.MjModel.from_xml_path(str(base_scene_xml))
-    assert (model.nq, model.nv, model.nu, model.nmesh) == (29, 29, 29, 40)
-    assert model.ngeom == 72  # robot 70 + floor + table
+def test_composed_compile_contract(composed_model):
+    """The B-form composed scene (official compose_scene) keeps the contract."""
+    model = composed_model
+    assert (model.nq, model.nv, model.nu, model.nmesh) == (36, 35, 29, 40)
+    # 72 robot+floor+table geoms + 4 object geoms (handle/head, vis/col).
+    assert model.ngeom == 76
     assert model.nkey == 1
-    assert model.key_qpos.shape[1] == 29
-    assert model.opt.timestep == pytest.approx(1.0 / 120.0)
+    assert model.key_qpos.shape[1] == 36
+    # The composer's XML round-trip quantizes timestep to 6 significant
+    # digits; the backend overwrites opt.timestep with the double sim_dt at
+    # build time, so this never reaches the runtime.
+    assert model.opt.timestep == pytest.approx(1.0 / 120.0, abs=1e-8)
     assert model.opt.integrator == mujoco.mjtIntegrator.mjINT_IMPLICITFAST
     assert model.opt.solver == mujoco.mjtSolver.mjSOL_NEWTON
     assert model.opt.cone == mujoco.mjtCone.mjCONE_ELLIPTIC
@@ -131,23 +189,27 @@ def test_base_scene_compile_contract(base_scene_xml):
     assert model.opt.ls_iterations == 50
 
 
-def test_scene_ownership_sections(base_scene_xml, robot_xml):
-    """Option/keyframe live in the scene only, never in the robot file."""
+def test_scene_ownership_sections(entity_set_dir, robot_xml):
+    """The bare robot file carries no option/keyframe; the entity robot does."""
     import xml.etree.ElementTree as ET
 
     robot_root = ET.parse(robot_xml).getroot()
     assert not list(robot_root.iter("keyframe"))
     assert not list(robot_root.iter("option"))
-    scene_root = ET.parse(base_scene_xml).getroot()
-    assert len(list(scene_root.iter("key"))) == 1
-    assert len(list(scene_root.iter("option"))) == 1
+    entity_root = ET.parse(entity_set_dir / "robot.xml").getroot()
+    assert len(list(entity_root.iter("key"))) == 1
+    assert len(list(entity_root.iter("option"))) == 1
 
 
-def test_home_keyframe_matches_config(base_scene_xml):
-    model = mujoco.MjModel.from_xml_path(str(base_scene_xml))
+def test_home_keyframe_matches_config(composed_model):
+    model = composed_model
     expected = [ARM_DEFAULT_JOINT_POS[name] for name in JOINT_NAMES_CANONICAL[:7]] + [0.0] * 22
-    np.testing.assert_allclose(model.key_qpos[0], expected, rtol=0, atol=1e-15)
-    np.testing.assert_allclose(model.key_ctrl[0], expected, rtol=0, atol=1e-15)
+    # Robot segment exact; the object freejoint segment is the home spawn pose.
+    np.testing.assert_allclose(model.key_qpos[0][:29], expected, rtol=0, atol=1e-15)
+    np.testing.assert_allclose(
+        model.key_qpos[0][29:36], [0.0, 0.0, 0.63, 1.0, 0.0, 0.0, 0.0], rtol=0, atol=1e-12
+    )
+    np.testing.assert_allclose(model.key_ctrl[0][:29], expected, rtol=0, atol=1e-12)
 
 
 # ----------------------------------------------------------------------------
@@ -213,15 +275,15 @@ def test_joint_ranges_transcribe_urdf(robot_model, old_model):
         np.testing.assert_allclose(robot_model.jnt_range[j], old_model.jnt_range[old_j], atol=1e-5)
 
 
-def test_composed_scene_preserves_joint_ranges(base_scene_xml, tmp_path):
-    """The scene is the top document and must carry <compiler angle="radian">.
+def test_composed_scene_preserves_joint_ranges(entity_set_dir, composed_model):
+    """Every entity source and the composed model must carry radian ranges.
 
-    Regression gate for the 2026-09-17 forensic finding: the scene composer
-    dropped the robot file's compiler declaration, so composed MJCFs compiled
-    with angle=degree and every joint range collapsed to a ±0.05 rad cage
-    (the trained policy could never reach the table).  The robot-file-only
-    range test above did not see it; this one covers the scene and a composed
-    pool variant.
+    Regression gate for the 2026-09-17 forensic finding (a composer that
+    dropped the robot file's <compiler angle="radian"> compiled every joint
+    range into a ±0.05 rad cage).  On the B form the risk surface is the
+    entity sources; all of them carry the declaration and the official
+    compose preserves the radian-compiled ranges (up to its 6-significant-
+    digit XML round-trip).
     """
     import xml.etree.ElementTree as ET
 
@@ -234,30 +296,34 @@ def test_composed_scene_preserves_joint_ranges(base_scene_xml, tmp_path):
         for joint in root.findall("joint")
         if joint.get("type") == "revolute"
     }
-    spec = build_tool_catalog(("hammer",), 1, 42, shuffle=False)[0]
-    composed = compose_scene_mjcf(base_scene_xml, spec, tmp_path / "composed.xml")
-    for label, path in (("base_scene", base_scene_xml), ("composed", composed)):
-        scene_root = ET.parse(path).getroot()
-        compiler = scene_root.find("compiler")
-        assert compiler is not None and compiler.get("angle") == "radian", label
-        model = mujoco.MjModel.from_xml_path(str(path))
+    for name in ("robot.xml", "table.xml", "floor.xml", "object_bootstrap.xml"):
+        source_root = ET.parse(entity_set_dir / name).getroot()
+        compiler = source_root.find("compiler")
+        assert compiler is not None and compiler.get("angle") == "radian", name
+    for label, model in (
+        ("entity_robot", mujoco.MjModel.from_xml_path(str(entity_set_dir / "robot.xml"))),
+        ("composed", composed_model),
+    ):
         for j in range(model.njnt):
             name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
-            if name == "object_root_joint":
+            bare = name.rsplit("/", 1)[-1]
+            if bare == "object_root_joint":
                 continue
             np.testing.assert_allclose(
-                model.jnt_range[j], limits[name], rtol=0, atol=0, err_msg=f"{label}:{name}"
+                model.jnt_range[j], limits[bare], rtol=1e-5, atol=1e-7, err_msg=f"{label}:{name}"
             )
             # inheritrange=1: actuator ctrlrange tracks the joint range (the
             # compiler's copy can differ by 1 ulp; the joint range itself is
-            # asserted exact above).
-            act = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_ctrl")
+            # asserted to the compose quantization bound above).
+            act_name = f"robot/{bare}_ctrl" if "/" in name else f"{bare}_ctrl"
+            act = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, act_name)
+            assert act >= 0, f"{label}:{act_name}"
             np.testing.assert_allclose(
                 model.actuator_ctrlrange[act],
-                limits[name],
-                rtol=0,
-                atol=1e-12,
-                err_msg=f"{label}:{name}_ctrl",
+                limits[bare],
+                rtol=1e-5,
+                atol=1e-7,
+                err_msg=f"{label}:{act_name}",
             )
 
 
@@ -495,10 +561,8 @@ def test_fingertip_sites_match_old_tree_fingertip_bodies(robot_model, old_model)
             )
 
 
-def test_step_smoke_no_nan(robot_model, base_scene_xml, tmp_path):
-    spec = build_tool_catalog(("hammer",), 1, 42, shuffle=False)[0]
-    composed = compose_scene_mjcf(base_scene_xml, spec, tmp_path / "composed.xml")
-    for model in (robot_model, mujoco.MjModel.from_xml_path(str(composed))):
+def test_step_smoke_no_nan(robot_model, composed_model):
+    for model in (robot_model, composed_model):
         data = mujoco.MjData(model)
         mujoco.mj_resetData(model, data)
         for _ in range(4):
@@ -508,17 +572,16 @@ def test_step_smoke_no_nan(robot_model, base_scene_xml, tmp_path):
             assert np.isfinite(data.ctrl).all()
 
 
-def test_grip_hold_on_urdf_mesh_collision_layer(base_scene_xml, tmp_path):
+def test_grip_hold_on_urdf_mesh_collision_layer(composed_model):
     """A closed fist retains an object under gravity on the URDF-mesh layer.
 
     Scripted grip probe (baseline from the 2026-09-19 Menagerie-layer probe:
     escape_dist 0.020, HELD): close the fist at home, insert the object at the
     palm center, hold 2 s.  The DP-mesh + elastomer contact surfaces (the
-    owner's 1.5-slide fingertip weld groups) must keep it caged.
+    owner's 1.5-slide fingertip weld groups) must keep it caged.  Runs on the
+    B-form composed scene (M-J5; entity-qualified names).
     """
-    spec = build_tool_catalog(("hammer",), 1, 42, shuffle=False)[0]
-    composed = compose_scene_mjcf(base_scene_xml, spec, tmp_path / "grip.xml")
-    model = mujoco.MjModel.from_xml_path(str(composed))
+    model = composed_model
     data = mujoco.MjData(model)
     mujoco.mj_resetDataKeyframe(
         model, data, mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
@@ -526,18 +589,19 @@ def test_grip_hold_on_urdf_mesh_collision_layer(base_scene_xml, tmp_path):
     ctrl = np.zeros(model.nu)
     for j in range(model.njnt):
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
-        if name is None or name == "object_root_joint":
+        if name is None or name == "object/object_root_joint":
             continue
-        act = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_ctrl")
+        bare = name.rsplit("/", 1)[-1]
+        act = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"robot/{bare}_ctrl")
         lo, hi = model.jnt_range[j]
-        ctrl[act] = (lo + 0.9 * (hi - lo)) if name.startswith("left_") else data.qpos[j]
+        ctrl[act] = (lo + 0.9 * (hi - lo)) if bare.startswith("left_") else data.qpos[j]
     for _ in range(60):  # close the fist
         data.ctrl[:] = ctrl
         mujoco.mj_step(model, data)
-    palm_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "iiwa14_link_7")
+    palm_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "robot/iiwa14_link_7")
     center = data.xpos[palm_id] + data.xmat[palm_id].reshape(3, 3) @ np.asarray((0.0, -0.02, 0.14))
     obj_adr = model.jnt_qposadr[
-        mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "object_root_joint")
+        mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "object/object_root_joint")
     ]
     data.qpos[obj_adr : obj_adr + 3] = center
     data.qpos[obj_adr + 3 : obj_adr + 7] = (1.0, 0.0, 0.0, 0.0)

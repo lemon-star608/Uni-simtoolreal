@@ -165,3 +165,108 @@ def test_repeated_validate_with_plan_built_is_side_effect_free(tmp_path):
     assert cfg.tool_pool_files == files
     assert cfg.tool_pool_scales == scales
     assert cfg.scene.fixed_variant_plan.assignment.shape == (7,)
+
+
+def _mjcf_cfg(tmp_path, **kwargs) -> SimToolRealEnvCfg:
+    """B-form (mjcf) owner config with a tiny entity pool at ``tmp_path``."""
+    from unisim.dr.types import ModelSourceDescriptor
+    from unisim.entities import SceneEntitySpec
+
+    kwargs.setdefault("asset_format", "mjcf")
+    kwargs.setdefault("tool_pool_num_per_type", 1)
+    kwargs.setdefault("tool_pool_root", str(tmp_path))
+    return SimToolRealEnvCfg(
+        scene=SceneCfg(
+            entity_assets=(
+                SceneEntitySpec(
+                    name="object",
+                    source=ModelSourceDescriptor("object.xml"),
+                    kind="rigid",
+                    root_mode="floating",
+                ),
+            )
+        ),
+        max_episode_seconds=10.0,
+        **kwargs,
+    )
+
+
+def test_mjcf_branch_materializes_entity_pool_without_model_variants(tmp_path):
+    cfg = _mjcf_cfg(tmp_path)
+    cfg.validate()
+
+    # B form: the whole-model channel stays empty; the catalog waits for
+    # bind_entity_variant (num_envs is only known at the factory call site).
+    assert cfg.fixed_model_variants is None
+    assert len(cfg.tool_pool_files) == 12
+    assert all(path.endswith(".xml") for path in cfg.tool_pool_files)
+
+    root = Path(cfg.tool_pool_files[0]).parent.parent
+    assert (root / "robot.xml").is_file()
+    assert (root / "table.xml").is_file()
+    assert (root / "floor.xml").is_file()
+    manifest = json.loads((root / "manifest.json").read_text())
+    assert manifest["schema"] == "simtoolreal_unilab.entity_assets.v1"
+    assert manifest["tool_files"] == [Path(path).name for path in cfg.tool_pool_files]
+
+    catalog = build_tool_catalog(num_per_type=1, seed=cfg.tool_pool_seed, shuffle=True)
+    assert cfg.tool_pool_masses == tuple(float(spec.mass) for spec in catalog)
+    assert cfg.tool_pool_scales == tuple(
+        tuple(float(x) for x in spec.object_scale) for spec in catalog
+    )
+
+    # Reuse: a second owner over the same root must not rewrite the pool.
+    second = _mjcf_cfg(tmp_path)
+    second.validate()
+    assert second.tool_pool_files == cfg.tool_pool_files
+    assert second.tool_pool_masses == cfg.tool_pool_masses
+
+
+def test_bind_entity_variant_builds_round_robin_plan(tmp_path):
+    cfg = _mjcf_cfg(tmp_path)
+    cfg.validate()
+    cfg.bind_entity_variant(num_envs=13)
+
+    binding = cfg.scene.entity_variant
+    assert binding is not None
+    assert binding.target_entity == "object"
+    np.testing.assert_array_equal(binding.plan.assignment, np.arange(13, dtype=np.int64) % 12)
+    assert binding.plan.assignment.dtype == np.int32
+    assert tuple(variant.model_file for variant in binding.plan.variants) == cfg.tool_pool_files
+
+    # The task-side reader sees the same assignment through the entity binding.
+    from simtoolreal_unilab.tasks.simtoolreal.env_cfg import fixed_variant_plan_assignment
+
+    np.testing.assert_array_equal(fixed_variant_plan_assignment(cfg, 13), binding.plan.assignment)
+
+    # Idempotent for the same num_envs; a conflicting rebind fails closed.
+    cfg.bind_entity_variant(num_envs=13)
+    with pytest.raises(ValueError, match="entity variant plan is already bound"):
+        cfg.bind_entity_variant(num_envs=7)
+
+
+def test_bind_entity_variant_is_noop_for_urdf_and_disabled_pool(tmp_path):
+    urdf_cfg = _cfg(tmp_path / "urdf")
+    urdf_cfg.validate()
+    urdf_cfg.bind_entity_variant(num_envs=4)
+    assert urdf_cfg.scene.entity_variant is None
+
+    disabled = _mjcf_cfg(tmp_path / "disabled", tool_pool_enabled=False)
+    disabled.validate()
+    disabled.bind_entity_variant(num_envs=4)
+    assert disabled.scene.entity_variant is None
+
+
+def test_mjcf_knob_change_after_binding_fails_closed(tmp_path):
+    """Same immutability as the whole-model plan, on the entity channel."""
+    cfg = _mjcf_cfg(tmp_path)
+    cfg.validate()
+    cfg.bind_entity_variant(num_envs=7)
+
+    cfg.tool_pool_seed = 7
+    with pytest.raises(ValueError, match="pool knobs changed after the factory built"):
+        cfg.validate()
+    cfg.tool_pool_enabled = False
+    with pytest.raises(ValueError, match="tool pool disabled after the factory built"):
+        cfg.validate()
+    assert cfg.scene.entity_variant.plan.assignment.shape == (7,)

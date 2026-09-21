@@ -71,8 +71,8 @@ FINGERTIP_SITE_LINKS: tuple[str, ...] = (
 )
 
 # Robot spawn pose (owner YAML robot init_state; scene_utils.py:1811-1842).
-# Owned by the scene, not the robot file: write_robot_mjcf leaves the root at
-# the origin and build_base_scene_mjcf applies this offset.
+# Owned by the scene declaration, not the robot file: write_robot_mjcf leaves
+# the root at the origin and the entity initial_state applies this offset.
 ROBOT_SCENE_POS = (0.0, 0.8, 0.0)
 
 _HAND_COLLISION_RGB = "0.1 0.8 1 0.35"
@@ -773,18 +773,18 @@ def write_robot_mjcf(path: Path) -> Path:
 
 
 # ----------------------------------------------------------------------------
-# Scene ownership: table + floor + option + home keyframe (old-tree scene.xml)
+# Scene physics-solver option block (old-tree scene.xml), shared by the
+# B-form entity sources (M-J5; the A-form scene builders are retired).
 # ----------------------------------------------------------------------------
 
 
 def _scene_option_element() -> ET.Element:
     """The scene's physics-solver option block (old-tree scene.xml).
 
-    Single source for both packagings: the A-form composed scene embeds it
-    directly, and the B-form entity sources each carry an identical copy
-    because unisim's entity composition requires agreeing global options
-    across every source (mjcf_compiler ``_options``; timestep excluded —
-    the composer forces ``sim_dt``).
+    Every B-form entity source carries an identical copy because unisim's
+    entity composition requires agreeing global options across every source
+    (mjcf_compiler ``_options``; timestep excluded — the composer forces
+    ``sim_dt``).
     """
     physics = load_owner_physics()
     option = ET.Element(
@@ -804,162 +804,11 @@ def _scene_option_element() -> ET.Element:
     return option
 
 
-def _build_table_body() -> ET.Element:
-    """Static table, hand-written MJCF box from the vendored table_narrow.urdf.
-
-    Size parsed from the URDF; pose and friction are owner/task values
-    (ResetCfg.table_reset_z, owner table slide).  Matches the old tree's
-    scene.xml table (surface at 0.53 m).
-    """
-    from .config import ResetCfg
-
-    root = ET.parse(TABLE_URDF).getroot()
-    box = root.find("link/collision/geometry/box")
-    if box is None:
-        raise ValueError(f"{TABLE_URDF}: expected a collision box")
-    full = tuple(float(v) for v in box.get("size").split())
-    half = tuple(v / 2 for v in full)
-    rgba_el = root.find("link/visual/material/color")
-    rgba = rgba_el.get("rgba") if rgba_el is not None else "0.82 0.56 0.35 1.0"
-    body = ET.Element("body", {"name": "table", "pos": f"0 0 {_fmt(ResetCfg().table_reset_z)}"})
-    ET.SubElement(
-        body,
-        "geom",
-        {
-            "name": "table_box",
-            "type": "box",
-            "size": _fmt_vec(half),
-            "friction": _friction_attr(load_owner_physics().table_slide_friction),
-            "rgba": rgba,
-        },
-    )
-    return body
-
-
-def build_base_scene_mjcf() -> ET.Element:
-    """Build the tool-less base scene: robot + table + floor + option + keyframe.
-
-    Scene-owned sections (option/statistic/visual/floor/keyframe) are
-    transcribed from the old tree's scene.xml (the old tree's directional
-    light is dropped — see build body below); the robot and table come from
-    this writer.  qpos layout (matches the old scene): [0:29] robot hinge
-    joints in canonical order; composed tool scenes append the object's
-    freejoint (7) at the end.
-    """
-    robot = build_robot_mjcf()
-
-    scene = ET.Element("mujoco", {"model": "simtoolreal_scene"})
-    # The scene is the top document, so it owns the compiler declaration:
-    # without angle="radian" MuJoCo reads every joint range as degrees and
-    # the composed model compiles with a ±0.05 rad cage (forensic finding
-    # 2026-09-17; the robot file carries the same declaration).
-    ET.SubElement(scene, "compiler", {"angle": "radian"})
-    scene.append(_scene_option_element())
-    ET.SubElement(scene, "statistic", {"center": "0 0.3 0.5", "extent": "1.5"})
-    visual = ET.SubElement(scene, "visual")
-    ET.SubElement(
-        visual,
-        "headlight",
-        {"diffuse": "0.6 0.6 0.6", "ambient": "0.2 0.2 0.2", "specular": "0.9 0.9 0.9"},
-    )
-    ET.SubElement(visual, "rgba", {"haze": "0.15 0.25 0.35 1"})
-    ET.SubElement(visual, "global", {"azimuth": "140", "elevation": "-20"})
-
-    asset_el = ET.SubElement(scene, "asset")
-    ET.SubElement(
-        asset_el,
-        "texture",
-        {
-            "type": "skybox",
-            "builtin": "gradient",
-            "rgb1": "0.3 0.5 0.7",
-            "rgb2": "0 0 0",
-            "width": "512",
-            "height": "3072",
-        },
-    )
-    ET.SubElement(
-        asset_el,
-        "texture",
-        {
-            "type": "2d",
-            "name": "groundplane",
-            "builtin": "checker",
-            "mark": "edge",
-            "rgb1": "0.2 0.3 0.4",
-            "rgb2": "0.1 0.2 0.3",
-            "markrgb": "0.8 0.8 0.8",
-            "width": "300",
-            "height": "300",
-        },
-    )
-    ET.SubElement(
-        asset_el,
-        "material",
-        {
-            "name": "groundplane",
-            "texture": "groundplane",
-            "texuniform": "true",
-            "texrepeat": "5 5",
-            "reflectance": "0.2",
-        },
-    )
-    for mesh in robot.find("asset"):
-        asset_el.append(mesh)
-
-    worldbody = ET.SubElement(scene, "worldbody")
-    # The old scene.xml's directional light is deliberately dropped: mjbatch
-    # treats every light_* model field as shared across fixed variants, but
-    # light_poscom0 is derived from the model COM, which legitimately varies
-    # with the tool mass.  Visual-only divergence (the renderer headlight
-    # remains); zero physics impact (M-J2 known divergence).
-    # Floor slide 1.0 is transcribed from the old scene.xml (the owner YAML's
-    # ground_plane declaration is the IsaacSim line's channel; tuning item).
-    ET.SubElement(
-        worldbody,
-        "geom",
-        {
-            "name": "floor",
-            "pos": "0 0 0",
-            "size": "0 0 0.05",
-            "type": "plane",
-            "material": "groundplane",
-            "friction": "1.0 0.005 0.0001",
-        },
-    )
-    worldbody.append(_build_table_body())
-    robot_root_body = robot.find("worldbody").find("body")
-    robot_root_body.set("pos", _fmt_vec(ROBOT_SCENE_POS))
-    worldbody.append(robot_root_body)
-
-    for section in ("actuator", "contact"):
-        scene.append(robot.find(section))
-
-    home_qpos = [ARM_DEFAULT_JOINT_POS[name] for name in JOINT_NAMES_CANONICAL[:7]] + [0.0] * 22
-    keyframe = ET.SubElement(scene, "keyframe")
-    ET.SubElement(
-        keyframe,
-        "key",
-        {"name": "home", "qpos": _fmt_vec(home_qpos), "ctrl": _fmt_vec(home_qpos)},
-    )
-
-    ET.indent(scene, space="  ")
-    return scene
-
-
-def write_base_scene_mjcf(path: Path) -> Path:
-    """Serialize the tool-less base scene MJCF."""
-    path.write_text(ET.tostring(build_base_scene_mjcf(), encoding="unicode") + "\n")
-    return path
-
-
 __all__ = [
     "FINGERTIP_SITE_LINKS",
     "ROBOT_SCENE_POS",
     "ROBOT_URDF",
     "TABLE_URDF",
-    "build_base_scene_mjcf",
     "build_robot_mjcf",
-    "write_base_scene_mjcf",
     "write_robot_mjcf",
 ]

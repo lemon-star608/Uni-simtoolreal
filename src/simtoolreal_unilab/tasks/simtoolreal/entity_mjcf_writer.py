@@ -1,11 +1,11 @@
-"""Entity-split MJCF output (B form) for the M2 entity-composition contract.
+"""Entity-split MJCF output (B form) — the MuJoCo line's asset set (M-J5).
 
-The MuJoCo line's training-verified A form is one composed single-model MJCF
-per tool variant (``tool_pool_mjcf.py``).  The Isaac/MJCF line's official M2
-channel (unisim ``entity_assets`` + ``EntityVariantBinding``) consumes
-per-entity sources instead: this module writes that asset set from the same
-single sources of truth (``build_robot_mjcf``, the vendored table URDF, the
-tool catalog) — no second copy of any number.
+The MuJoCo line consumes per-entity sources through the official M2 channel
+(unisim ``entity_assets`` + ``EntityVariantBinding``); the A form (task-side
+composed single models) served as the parity oracle for the M-J5 switch and
+is retired.  This module writes the asset set from the single sources of
+truth (``build_robot_mjcf``, the vendored table URDF, the tool catalog) — no
+second copy of any number.
 
 Output layout (see ``write_entity_set``):
     robot.xml            articulation, fixed base, home keyframe embedded
@@ -61,11 +61,11 @@ def _write_tree(root: ET.Element, path: Path) -> Path:
 
 
 def _build_robot_entity() -> ET.Element:
-    """A-form robot tree + the home keyframe (M2 reads keyframes from sources).
+    """Robot tree + the home keyframe (M2 reads keyframes from sources).
 
     qpos/ctrl are the 29-DoF home pose (ARM_DEFAULT_JOINT_POS + hand zeros);
-    the standalone robot file has no object freejoint, so the A-form scene's
-    36-wide keyframe does not apply here.
+    the standalone robot file has no object freejoint — the composer merges
+    in the object home pose at scene level.
     """
     robot = build_robot_mjcf()
     # M-J5: as a composition source the robot must carry the scene's global
@@ -124,7 +124,7 @@ def _build_floor_entity() -> ET.Element:
             "name": "floor",
             "type": "plane",
             "size": "0 0 0.05",
-            # Same transcribed value as the A-form scene's floor geom.
+            # Same transcribed value as the old tree's scene.xml floor geom.
             "friction": "1.0 0.005 0.0001",
         },
     )
@@ -167,11 +167,11 @@ def write_entity_set(
                 "asset_format": "mjcf",
                 "kind": "articulation",
                 "root_mode": "fixed",
-                "self_collision": True,
-                # gravity_disabled (#270) lands in unisim after 1.7.3; the
-                # MJCF bodies already carry gravcomp="1", which the mujoco
-                # path honors natively.  Declare it on the Isaac leaf once
-                # the pin crosses the merge.
+                # self_collision is not declared on the mujoco leaf: the MJCF
+                # compose path is fail-closed on the toggle and keeps the
+                # source-authored exclusions (robot.xml carries all 35).  The
+                # IsaacSim leaf declares it once the pin crosses #270, along
+                # with gravity_disabled.
                 "default_keyframe_name": "home",
             },
             "table": {
@@ -210,9 +210,8 @@ def write_bootstrap_entity_set(out_dir: str | Path) -> dict[str, Path]:
     The owner YAML's ``entity_assets`` needs concrete source files at Hydra
     resolution time — before the env config's pool knobs (seed/num_per_type)
     settle.  Robot/table/floor are pool-independent; the object entity's
-    source is one canonical catalog entry (same bootstrap role as the A-form
-    scene resolver's catalog[0] hammer) whose per-env identity the variant
-    binding replaces at build time.
+    source is one canonical catalog entry (the deterministic bootstrap
+    hammer) whose per-env identity the variant binding replaces at build time.
     """
     from .tool_mjcf_writer import write_tool_mjcf
 

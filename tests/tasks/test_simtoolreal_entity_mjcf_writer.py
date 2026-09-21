@@ -1,11 +1,10 @@
 """Entity-split (B form) MJCF asset tests.
 
-The B form feeds the official M2 entity-composition channel (unisim
-``entity_assets`` + ``EntityVariantBinding``); the A form (composed single
-models, ``tool_pool_mjcf.py``) stays the MuJoCo training line.  Both derive
-from the same sources of truth; these tests pin the split output's compile
-contracts, the official-path integration (unisim ``compose_scene``), and A/B
-value/FK parity.
+The B form is the MuJoCo line's asset path (M-J5), consumed through the
+official M2 entity-composition channel (unisim ``entity_assets`` +
+``EntityVariantBinding``).  These tests pin the split output's compile
+contracts, the catalog value transcription, and the official-path
+integration (unisim ``compose_scene``) including the composed home pose.
 """
 
 from __future__ import annotations
@@ -24,15 +23,7 @@ from simtoolreal_unilab.tasks.simtoolreal.entity_mjcf_writer import (
     GOALVIZ_MIRROR_DECLARATION,
     write_entity_set,
 )
-from simtoolreal_unilab.tasks.simtoolreal.robot_mjcf_writer import (
-    write_base_scene_mjcf,
-    write_robot_mjcf,
-)
 from simtoolreal_unilab.tasks.simtoolreal.tool_catalog import build_tool_catalog
-from simtoolreal_unilab.tasks.simtoolreal.tool_pool_mjcf import (
-    compose_scene_mjcf,
-    materialize_tool_pool_mjcf,
-)
 
 NUM_PER_TYPE = 2  # 24 tools keep the test fast; the full 1200 run is the A-form gate.
 
@@ -110,30 +101,27 @@ def test_tools_same_layout_and_compile(entity_set):
     assert len(layouts) == 1  # SAME_LAYOUT across every tool variant
 
 
-def test_ab_value_and_fk_parity(entity_set, tmp_path):
-    """Same catalog -> same per-variant physics values; same home-pose FK."""
-    out, manifest = entity_set
-    # A form: composed pool from the same catalog knobs.
-    a_paths, a_masses, _ = materialize_tool_pool_mjcf(
-        seed=42, num_per_type=NUM_PER_TYPE, configured_root=str(tmp_path / "a_pool")
-    )
-    # A pool files and B tool files share the writer's filename template;
-    # match by name (catalog order != filename order under the shuffle).
-    b_tools = sorted((out / "tools").glob("*.xml"))
-    b_by_name = {p.name: p for p in b_tools}
-    assert len(a_paths) == len(b_by_name)
-    for a_path in a_paths:
-        b_path = b_by_name[a_path.name]
-        a_model = mujoco.MjModel.from_xml_path(str(a_path))
-        b_model = mujoco.MjModel.from_xml_path(str(b_path))
-        a_obj = mujoco.mj_name2id(a_model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
-        b_obj = mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
-        assert a_model.body_mass[a_obj] == b_model.body_mass[b_obj]
-        np.testing.assert_allclose(
-            a_model.body_inertia[a_obj], b_model.body_inertia[b_obj], rtol=0, atol=0
-        )
+def test_tool_files_match_catalog_values(entity_set):
+    """Every tool file compiles to its catalog spec's mass/inertia exactly.
 
-    # FK: B composed through the official unisim compose_scene vs A composed.
+    Catalog-order manifest pairing: ``manifest["tool_files"]`` shares the
+    catalog order, and the writer transcribes ToolSpec mass/com/diaginertia
+    verbatim (the same pure function the URDF line uses).
+    """
+    out, manifest = entity_set
+    catalog = build_tool_catalog(num_per_type=NUM_PER_TYPE, seed=42, shuffle=True)
+    assert len(manifest["tool_files"]) == len(catalog)
+    for spec, name in zip(catalog, manifest["tool_files"], strict=True):
+        model = mujoco.MjModel.from_xml_path(str(out / "tools" / name))
+        body = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
+        assert model.body_mass[body] == spec.mass
+        np.testing.assert_allclose(model.body_inertia[body], spec.diaginertia, rtol=0, atol=0)
+
+
+def test_composed_scene_home_pose(entity_set):
+    """The officially composed B-form scene lands every entity at home."""
+    out, manifest = entity_set
+    tools = sorted((out / "tools").glob("*.xml"))
     from unisim.dr.types import FixedVariantLayout, FixedVariantPlan, ModelSourceDescriptor
     from unisim.entities import (
         EntityInitialState,
@@ -167,9 +155,10 @@ def test_ab_value_and_fk_parity(entity_set, tmp_path):
             ),
             SceneEntitySpec(
                 name="tool",
-                source=ModelSourceDescriptor(str(b_tools[0])),
+                source=ModelSourceDescriptor(str(tools[0])),
                 kind="rigid",
                 root_mode="floating",
+                initial_state=EntityInitialState(position=(0.0, 0.0, 0.63)),
             ),
             SceneEntitySpec(
                 name="goalviz",
@@ -177,63 +166,39 @@ def test_ab_value_and_fk_parity(entity_set, tmp_path):
                 kind="rigid",
                 root_mode="kinematic",
                 collision_enabled=False,
+                initial_state=EntityInitialState(position=(0.0, 0.0, 0.63)),
             ),
         ),
         entity_variant=EntityVariantBinding(
             target_entity="tool",
             plan=FixedVariantPlan(
-                variants=tuple(ModelSourceDescriptor(str(p)) for p in b_tools),
-                assignment=np.arange(4, dtype=np.int32) % len(b_tools),
+                variants=tuple(ModelSourceDescriptor(str(p)) for p in tools),
+                assignment=np.arange(4, dtype=np.int32) % len(tools),
                 layout=FixedVariantLayout.SAME_LAYOUT,
             ),
         ),
         default_keyframe_name="home",
     )
     composed = compose_scene(scene, 4, 1 / 120)
-    b_model = composed.model
-    assert (b_model.nq, b_model.nv, b_model.nu) == (36, 35, 29)
-    assert b_model.nexclude == 35  # source-authored excludes carried
-    # Mirror present, collision-free.
-    mirror_body = mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, "goalviz/object_root")
-    assert mirror_body >= 1
+    try:
+        b_model = composed.model
+        assert (b_model.nq, b_model.nv, b_model.nu) == (36, 35, 29)
+        assert b_model.nexclude == 35  # source-authored excludes carried
+        # Mirror present, collision-free.
+        mirror_body = mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, "goalviz/object_root")
+        assert mirror_body >= 1
 
-    b_data = mujoco.MjData(b_model)
-    mujoco.mj_resetDataKeyframe(
-        b_model, b_data, mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_KEY, "home")
-    )
-    mujoco.mj_forward(b_model, b_data)
+        b_data = mujoco.MjData(b_model)
+        mujoco.mj_resetDataKeyframe(
+            b_model, b_data, mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_KEY, "home")
+        )
+        mujoco.mj_forward(b_model, b_data)
 
-    a_scene = write_base_scene_mjcf(tmp_path / "a_scene.xml")
-    a_composed = compose_scene_mjcf(
-        a_scene, build_tool_catalog(("hammer",), 1, 42, False)[0], tmp_path / "a.xml"
-    )
-    a_model = mujoco.MjModel.from_xml_path(str(a_composed))
-    a_data = mujoco.MjData(a_model)
-    mujoco.mj_resetDataKeyframe(a_model, a_data, 0)
-    mujoco.mj_forward(a_model, a_data)
+        def body_pos(name):
+            return b_data.xpos[mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, name)].copy()
 
-    for i in range(1, a_model.nbody):
-        name = mujoco.mj_id2name(a_model, mujoco.mjtObj.mjOBJ_BODY, i)
-        j = -1
-        for candidate in (f"robot/{name}", f"table/{name}", f"floor/{name}", name):
-            j = mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, candidate)
-            if j >= 0:
-                break
-        if j < 0:
-            continue  # object_root spawn pose is scene/reset-owned, not compared
-        np.testing.assert_allclose(b_data.xpos[j], a_data.xpos[i], atol=1e-6, err_msg=name)
-    composed.close()
-
-
-def test_a_form_regression_unchanged_pool_bytes(tmp_path):
-    """The collision swap changed the hand layer only; the manifest tables
-    (masses/scales) must stay identical and the 1200 pool must still compile."""
-    paths, masses, scales = materialize_tool_pool_mjcf(
-        seed=42, num_per_type=NUM_PER_TYPE, configured_root=str(tmp_path / "pool")
-    )
-    assert len(paths) == 12 * NUM_PER_TYPE
-    catalog = build_tool_catalog(num_per_type=NUM_PER_TYPE, seed=42, shuffle=True)
-    assert masses == tuple(float(s.mass) for s in catalog)
-    assert scales == tuple(tuple(float(x) for x in s.object_scale) for s in catalog)
-    model = mujoco.MjModel.from_xml_path(str(paths[0]))
-    assert (model.nq, model.nv, model.nu, model.nmesh) == (36, 35, 29, 40)
+        # Home FK on the composed scene: frozen spawn poses land exactly.
+        np.testing.assert_allclose(body_pos("robot/iiwa14_link_0"), (0.0, 0.8, 0.0), atol=1e-12)
+        np.testing.assert_allclose(body_pos("object/object_root"), (0.0, 0.0, 0.63), atol=1e-12)
+    finally:
+        composed.close()

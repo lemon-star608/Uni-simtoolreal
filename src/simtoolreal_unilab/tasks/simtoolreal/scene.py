@@ -32,7 +32,6 @@ from .tool_urdf_writer import write_tool_urdf
 
 _ASSETS_ROOT_ENV = "SIMTOOLREAL_ASSETS_ROOT"
 _RESOLVER_NAME = "simtoolreal_asset"
-_SCENE_MJCF_RESOLVER_NAME = "simtoolreal_scene_mjcf"
 _ENTITY_MJCF_RESOLVER_NAME = "simtoolreal_entity_mjcf"
 _ENTITY_POSITION_RESOLVER_NAME = "simtoolreal_entity_position"
 
@@ -115,8 +114,8 @@ def _resolve_generated_asset(name: str) -> str:
 def _resolve_entity_bootstrap(name: str) -> str:
     """Materialize the pool-independent entity sources (B form, M-J5).
 
-    Robot/table/floor plus one canonical bootstrap object (catalog hammer,
-    same role as the A-form bootstrap scene): the owner YAML's entity_assets
+    Robot/table/floor plus one canonical bootstrap object (catalog hammer):
+    the owner YAML's entity_assets
     resolve these at Hydra time, before pool knobs settle; each env's object
     identity comes from the entity variant binding, not this file.
     """
@@ -150,8 +149,7 @@ def _resolve_entity_position(name: str) -> list[float]:
     (``mujoco.yaml``): the robot stands 0.8 m behind the table
     (``ROBOT_SCENE_POS``), the table top sits at ``table_reset_z``, and the
     object/goalviz roots start at the object home pose
-    (``table_reset_z + table_object_z_offset``) — the same numbers the A-form
-    composer bakes, kept on one source.
+    (``table_reset_z + table_object_z_offset``) — kept on one source.
     """
     from .config import ResetCfg
     from .robot_mjcf_writer import ROBOT_SCENE_POS
@@ -172,34 +170,10 @@ def _resolve_entity_position(name: str) -> list[float]:
     return values[name]
 
 
-def _resolve_bootstrap_scene_mjcf() -> str:
-    """Materialize the deterministic bootstrap composed scene (MuJoCo line).
-
-    Same role as ``generated/object.urdf`` on the IsaacSim line: under the
-    fixed variant plan the scene ``model_file`` is the cold-path/visual
-    anchor, so one canonical composed scene (catalog[0] hammer) suffices.
-    """
-    root = _generated_assets_root()
-    path = root / "scene_mjcf_bootstrap.xml"
-    if path.is_file():
-        return str(path)
-    from .robot_mjcf_writer import write_base_scene_mjcf
-    from .tool_pool_mjcf import compose_scene_mjcf
-
-    spec = build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
-    base_scene = write_base_scene_mjcf(root / "base_scene_mjcf.xml")
-    compose_scene_mjcf(base_scene, spec, path)
-    return str(path)
-
-
 def register_resolvers() -> None:
     """Register the task's OmegaConf resolvers once."""
     if not OmegaConf.has_resolver(_RESOLVER_NAME):
         OmegaConf.register_new_resolver(_RESOLVER_NAME, resolve_asset)
-    if not OmegaConf.has_resolver(_SCENE_MJCF_RESOLVER_NAME):
-        OmegaConf.register_new_resolver(
-            _SCENE_MJCF_RESOLVER_NAME, lambda *_: _resolve_bootstrap_scene_mjcf()
-        )
     if not OmegaConf.has_resolver(_ENTITY_MJCF_RESOLVER_NAME):
         OmegaConf.register_new_resolver(_ENTITY_MJCF_RESOLVER_NAME, _resolve_entity_bootstrap)
     if not OmegaConf.has_resolver(_ENTITY_POSITION_RESOLVER_NAME):

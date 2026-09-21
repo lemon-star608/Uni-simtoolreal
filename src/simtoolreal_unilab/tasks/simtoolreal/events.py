@@ -57,7 +57,9 @@ def _declared_root_mode(env: Any, name: str) -> str | None:
     """
     scene = getattr(getattr(env, "cfg", None), "scene", None)
     for spec in getattr(scene, "entity_assets", ()) or ():
-        spec_name = getattr(spec, "name", None) if not isinstance(spec, Mapping) else spec.get("name")
+        spec_name = (
+            getattr(spec, "name", None) if not isinstance(spec, Mapping) else spec.get("name")
+        )
         if spec_name == name:
             return spec.get("root_mode") if isinstance(spec, Mapping) else spec.root_mode
     return None
