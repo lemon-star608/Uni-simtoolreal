@@ -73,6 +73,8 @@ from .config import (
     DomainRandomizationCfg,
     ObsCfg,
     RewardCfg,
+    declared_names,
+    match_entity_names,
 )
 
 # DESIGN.md section 1 (obs_utils.py:231-348): actor 140 / critic 162 fields.
@@ -338,7 +340,12 @@ class _Geometry:
         self.object = cast(Entity, env.scene["object"])
         self.hub = goal_command(env)
 
-        joint_ids, _ = self.robot.find_joints(list(JOINT_NAMES_CANONICAL), preserve_order=True)
+        joint_ids, _ = self.robot.find_joints(
+            match_entity_names(
+                declared_names(self.robot, "joint"), JOINT_NAMES_CANONICAL, label="joint"
+            ),
+            preserve_order=True,
+        )
         if len(joint_ids) != NUM_JOINTS:
             raise ValueError(
                 f"SimToolReal observations expected {NUM_JOINTS} canonical joints, "
@@ -352,8 +359,19 @@ class _Geometry:
         self.joint_lower_canon = limits[:, 0]
         self.joint_upper_canon = limits[:, 1]
 
-        self.palm_id = int(self.robot.find_bodies([PALM_BODY_NAME])[0][0])
-        fingertip_ids, _ = self.robot.find_bodies(list(FINGERTIP_LINK_NAMES), preserve_order=True)
+        self.palm_id = int(
+            self.robot.find_bodies(
+                match_entity_names(
+                    declared_names(self.robot, "body"), [PALM_BODY_NAME], label="body"
+                )
+            )[0][0]
+        )
+        fingertip_ids, _ = self.robot.find_bodies(
+            match_entity_names(
+                declared_names(self.robot, "body"), FINGERTIP_LINK_NAMES, label="body"
+            ),
+            preserve_order=True,
+        )
         assert len(fingertip_ids) == NUM_FINGERTIPS  # reset_utils.py:38
         self.fingertip_ids = np.asarray(fingertip_ids, dtype=np.intp)
 

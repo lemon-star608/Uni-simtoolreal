@@ -1,10 +1,11 @@
-"""L2 smoke: SimToolReal on the real MuJoCo backend (roadmap M-J2).
+"""L2 smoke: SimToolReal on the real MuJoCo backend (roadmap M-J2/M-J5).
 
-Small pool (tool_pool_num_per_type=1 -> 12 composed-MJCF variants) and
-num_envs=8, built through the production wiring (Hydra compose of the mujoco
-owner leaf -> BackendAdapter override -> registry.make with
-sim_backend="mujoco").  No mocks: the UniSim MuJoCo backend compiles the
-variant pack and steps mjbatch on CPU.
+Small pool (tool_pool_num_per_type=1 -> 12 tool variants) and num_envs=8,
+built through the production wiring (Hydra compose of the mujoco owner leaf
+-> BackendAdapter override -> registry.make with sim_backend="mujoco").  No
+mocks: the UniSim MuJoCo backend composes the entity scene (B form, M-J5:
+robot/table/floor/object/goalviz entity assets + the object entity variant
+binding), compiles the variant pack, and steps mjbatch on CPU.
 
 History: this suite was xfail-blocked by unilabsim/mjbatch_uni#33 (VariantPack
 treated the compiler-derived ``body_simple``/``dof_simplenum`` flags as shared
@@ -100,11 +101,27 @@ def test_variant_assignment_binds_distinct_masses(env):
     assert catalog_masses.shape == (NUM_VARIANTS,)
 
     backend = env._backend
-    object_id = mujoco.mj_name2id(backend._model, mujoco.mjtObj.mjOBJ_BODY, "object_root")
+    object_id = mujoco.mj_name2id(backend._model, mujoco.mjtObj.mjOBJ_BODY, "object/object_root")
+    assert object_id > 0
     per_env = np.asarray(backend._base_body_mass)[:, object_id]
     # mjbatch stores per-variant tables in float32; the catalog is float64.
     np.testing.assert_allclose(per_env, catalog_masses[assignment], rtol=1e-5)
     assert len(np.unique(catalog_masses[assignment])) > 1
+
+
+def test_table_z_randomization_restored(env):
+    """M-J5: the table is a kinematic entity again — z randomization is back.
+
+    A-form composed scenes baked the table as a static world body (the M-J2
+    known divergence); the entity reset channel samples table z in
+    table_reset_z ± table_reset_z_range (0.38 ± 0.01) per env at reset.  The
+    kinematic root is static between resets, so the pose readable after the
+    previous tests' steps is still the sampled value — no extra reset here
+    (keeping the shared env's rng stream stable for the wrench test).
+    """
+    table_z = np.asarray(env.scene["table"].data.root_link_pos_w)[:, 2]
+    assert np.all(table_z >= 0.37 - 1e-6) and np.all(table_z <= 0.39 + 1e-6)
+    assert np.unique(np.round(table_z, 6)).size > 1, "table z must vary across envs"
 
 
 def test_wrench_event_measurably_perturbs_object(env):

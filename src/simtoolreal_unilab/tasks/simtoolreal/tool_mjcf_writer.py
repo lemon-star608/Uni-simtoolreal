@@ -24,6 +24,7 @@ epsilon-size, non-contacting, fully transparent placeholders.
 from __future__ import annotations
 
 import os
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Sequence
 
@@ -147,7 +148,17 @@ def _tool_mjcf_text(spec: ToolSpec) -> str:
             f"{spec.head_scale} and {spec.head_density})"
         )
     geoms = _handle_geoms(spec) + _head_geoms(spec)
+    # Standalone files double as B-form entity-composition sources (M-J5):
+    # unisim's compose_scene requires identical global options across every
+    # source, so each tool carries the scene option block verbatim.  The
+    # A-form composer (compose_scene_mjcf) only lifts the worldbody body and
+    # is unaffected; the composer overwrites timestep with sim_dt anyway.
+    from .robot_mjcf_writer import _scene_option_element
+
+    option_xml = ET.tostring(_scene_option_element(), encoding="unicode")
     return f"""<mujoco model="{_OBJECT_BODY}">
+  <compiler angle="radian"/>
+  {option_xml}
   <worldbody>
     <body name="{_OBJECT_BODY}">
       <freejoint name="{_OBJECT_FREEJOINT}"/>

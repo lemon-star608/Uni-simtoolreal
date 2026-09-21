@@ -40,7 +40,13 @@ import numpy as np
 from unilab.managers import ActionTerm, ActionTermCfg
 
 from .commands import goal_command
-from .config import JOINT_NAMES_CANONICAL, NUM_ARM_JOINTS, NUM_JOINTS
+from .config import (
+    JOINT_NAMES_CANONICAL,
+    NUM_ARM_JOINTS,
+    NUM_JOINTS,
+    declared_names,
+    match_entity_names,
+)
 
 if TYPE_CHECKING:
     from unilab.base.entity import Entity
@@ -75,7 +81,10 @@ class SimToolRealAction(ActionTerm):
         # column of canonical joint k; the facade write maps it to the
         # backend actuator order.
         joint_ids, self._resolved_joint_names = self._entity.find_joints(
-            list(JOINT_NAMES_CANONICAL), preserve_order=True
+            match_entity_names(
+                declared_names(self._entity, "joint"), JOINT_NAMES_CANONICAL, label="joint"
+            ),
+            preserve_order=True,
         )
         if len(joint_ids) != NUM_JOINTS:
             raise ValueError(

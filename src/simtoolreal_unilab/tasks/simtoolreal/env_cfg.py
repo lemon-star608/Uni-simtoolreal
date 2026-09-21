@@ -1,16 +1,14 @@
 """SimToolReal owner configuration and the fixed model variant catalog.
 
-The UniSim adapter owns the wire contract for whole-file model variants.  This
-module is the task-owner side of that contract: it builds the deterministic
-1200-tool catalog, materializes the pool in the configured ``asset_format``
-(``urdf`` for the IsaacSim line, ``mjcf`` composed single-model scenes for the
-MuJoCo line, D3), and declares the pool as ``EnvCfg.fixed_model_variants``.
-The upstream ``make_manager_based_rl_env`` guard turns that catalog into
-``cfg.scene.fixed_variant_plan`` (an int32 round-robin assignment over the
-catalog order, identical to this task's historical formula) and negotiates the
-backend capability before the worker materializes the pool.  Variant masses
-live in the task-side ``tool_pool_masses`` table (D5, catalog order); the
-object-scale table stays on this config for the command hub's expansion.
+The UniSim adapter owns the wire contract for model variants.  This module is
+the task-owner side of that contract: it builds the deterministic 1200-tool
+catalog, materializes the pool in the configured ``asset_format`` (``urdf``
+for the IsaacSim line — whole-file variants via ``fixed_model_variants``;
+``mjcf`` for the MuJoCo line — entity-split B form, M-J5: the catalog binds
+to the scene's ``object`` entity through ``bind_entity_variant`` once the
+factory's ``num_envs`` is known).  Variant masses live in the task-side
+``tool_pool_masses`` table (D5, catalog order); the object-scale table stays
+on this config for the command hub's expansion.
 """
 
 from __future__ import annotations
@@ -36,15 +34,61 @@ _DEFAULT_ASSET_FORMAT = "urdf"
 _VALID_ASSET_FORMATS = ("urdf", "mjcf")
 
 
+def _entity_pool_root(seed: int, num_per_type: int, configured: str | None) -> Path:
+    if configured is not None and str(configured).strip():
+        root = Path(str(configured)).expanduser()
+    else:
+        env_root = os.environ.get("SIMTOOLREAL_TOOL_POOL_ROOT", "").strip()
+        base = Path(env_root).expanduser() if env_root else Path(tempfile.gettempdir())
+        root = base / "simtoolreal_entity_pool"
+    return root / f"seed_{seed}_n{num_per_type}"
+
+
 def _materialize_mjcf_pool(
     *, seed: int, num_per_type: int, configured_root: str | None
 ) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[tuple[float, float, float], ...]]:
-    """MJCF pool branch (D3): composed single-model scenes per variant."""
-    from .tool_pool_mjcf import materialize_tool_pool_mjcf
+    """MJCF pool branch (M-J5, B form): entity-split sources, tool variants only.
 
-    return materialize_tool_pool_mjcf(
-        seed=seed, num_per_type=num_per_type, configured_root=configured_root
-    )
+    The pool directory carries the full entity set (``write_entity_set``:
+    robot/table/floor + tools/); the variant catalog binds to the ``object``
+    entity through ``bind_entity_variant`` instead of the whole-model
+    ``fixed_model_variants`` channel.  Masses/scales stay task-side tables in
+    catalog order (D5), exactly like the URDF branch.
+    """
+    from .entity_mjcf_writer import write_entity_set
+
+    catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
+    root = _entity_pool_root(seed, num_per_type, configured_root)
+    manifest_path = root / "manifest.json"
+    expected = {
+        "schema": "simtoolreal_unilab.entity_assets.v1",
+        "seed": int(seed),
+        "num_per_type": int(num_per_type),
+        "tool_count": len(catalog),
+    }
+    tool_names: tuple[str, ...] | None = None
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text())
+            names = tuple(str(value) for value in manifest["tool_files"])
+            static = ("robot.xml", "table.xml", "floor.xml")
+            if (
+                all(manifest.get(key) == value for key, value in expected.items())
+                and len(names) == len(catalog)
+                and all((root / name).is_file() for name in static)
+                and all((root / "tools" / name).is_file() for name in names)
+            ):
+                tool_names = names
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            # A partial or stale pool is rebuilt below.
+            tool_names = None
+    if tool_names is None:
+        manifest = write_entity_set(root, seed=seed, num_per_type=num_per_type)
+        tool_names = tuple(str(name) for name in manifest["tool_files"])
+    paths = tuple((root / "tools" / name).resolve() for name in tool_names)
+    masses = tuple(float(spec.mass) for spec in catalog)
+    scales = tuple(tuple(float(x) for x in spec.object_scale) for spec in catalog)
+    return paths, masses, scales
 
 
 def _pool_root(seed: int, num_per_type: int, configured: str | None) -> Path:
@@ -130,6 +174,11 @@ def fixed_variant_plan_assignment(cfg: Any, num_envs: int) -> np.ndarray | None:
     scene = getattr(cfg, "scene", None)
     plan = getattr(scene, "fixed_variant_plan", None)
     if plan is None:
+        # B form (M-J5): the pool binds to one entity instead of the whole
+        # scene model; the plan shape/semantics are identical.
+        binding = getattr(scene, "entity_variant", None)
+        plan = binding.plan if binding is not None else None
+    if plan is None:
         return None
     assignment = np.asarray(plan.assignment)
     if assignment.ndim != 1 or assignment.shape[0] != num_envs:
@@ -214,9 +263,11 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         Idempotent per pool-knob set: repeated ``validate()`` calls (registry,
         factory, env construction) reuse the already materialized catalog, and
         knob changes applied before the factory guard builds the scene plan
-        rebuild from the new values.  Once ``cfg.scene.fixed_variant_plan``
-        exists the plan is immutable: a knob change that would rebuild the
-        catalog — or disabling the pool — fails closed instead of silently
+        rebuild from the new values.  Once the variant plan exists —
+        ``cfg.scene.fixed_variant_plan`` (URDF branch, factory guard) or
+        ``cfg.scene.entity_variant`` (MJCF B form, ``bind_entity_variant``) —
+        it is immutable: a knob change that would rebuild the catalog — or
+        disabling the pool — fails closed instead of silently
         desynchronizing catalog and plan (final review M-6; e.g. a larger pool
         would leave the command hub's object-scale expansion indexing a stale
         table, and a disable would leave the backend materializing the pool
@@ -225,14 +276,17 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         unset.
         """
 
-        plan = getattr(getattr(self, "scene", None), "fixed_variant_plan", None)
+        scene = getattr(self, "scene", None)
+        plan_built = getattr(scene, "fixed_variant_plan", None) is not None or (
+            getattr(scene, "entity_variant", None) is not None
+        )
         if not self.tool_pool_enabled:
-            if plan is not None:
+            if plan_built:
                 raise ValueError(
                     "SimToolReal tool pool disabled after the factory built the "
-                    "fixed variant plan: the plan was built from knobs "
+                    "variant plan: the plan was built from knobs "
                     f"{self._tool_pool_materialized_from!r} but validate now sees "
-                    "the pool disabled; the fixed variant plan is immutable once "
+                    "the pool disabled; the variant plan is immutable once "
                     "built, so construct a fresh config for a different pool"
                 )
             self.fixed_model_variants = None
@@ -247,14 +301,14 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
             str(self.asset_format),
             self.tool_pool_root,
         )
-        if self.fixed_model_variants is not None and self._tool_pool_materialized_from == knobs:
+        if self.tool_pool_files and self._tool_pool_materialized_from == knobs:
             return
-        if plan is not None:
+        if plan_built:
             raise ValueError(
-                "SimToolReal pool knobs changed after the factory built the fixed "
+                "SimToolReal pool knobs changed after the factory built the "
                 "variant plan: the plan was built from knobs "
                 f"{self._tool_pool_materialized_from!r} but validate now sees "
-                f"{knobs!r}; the fixed variant plan is immutable once built, so "
+                f"{knobs!r}; the variant plan is immutable once built, so "
                 "construct a fresh config for a different pool"
             )
 
@@ -266,19 +320,71 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         )
         if not paths:
             raise RuntimeError(f"SimToolReal tool pool materialized no {self.asset_format} files")
-        # Variant names are the deterministic pool file ids (the manifest file
-        # names without suffix, unique by their per-type ordinal); the default
-        # round-robin assignment needs no explicit names.
-        self.fixed_model_variants = FixedModelVariantCatalogCfg(
-            variants=tuple(
-                FixedModelVariantCfg(name=path.stem, source_model_file=str(path)) for path in paths
+        if self.asset_format == "mjcf":
+            # B form (M-J5): the catalog binds to the scene's object entity
+            # via ``bind_entity_variant`` once the factory's num_envs is
+            # known; the whole-model variant channel stays empty.
+            self.fixed_model_variants = None
+        else:
+            # Variant names are the deterministic pool file ids (the manifest
+            # file names without suffix, unique by their per-type ordinal);
+            # the default round-robin assignment needs no explicit names.
+            self.fixed_model_variants = FixedModelVariantCatalogCfg(
+                variants=tuple(
+                    FixedModelVariantCfg(name=path.stem, source_model_file=str(path))
+                    for path in paths
+                )
             )
-        )
         self.tool_pool_scales = tuple(scales)
         self.tool_pool_files = tuple(str(path) for path in paths)
         # Task-side variant mass table (D5): same catalog order as the files.
         self.tool_pool_masses = tuple(float(mass) for mass in masses)
         self._tool_pool_materialized_from = knobs
+
+    def bind_entity_variant(self, num_envs: int) -> None:
+        """Attach the tool catalog to the scene's object entity (MJCF B form).
+
+        The entity variant plan's assignment needs ``num_envs``, which only
+        the env factory call site knows — so the task's mujoco factory
+        wrapper calls this right before ``make_manager_based_rl_env``.  The
+        assignment is the same round-robin the whole-model guard would build
+        (``arange(num_envs) % len(catalog)``).  No-op for the URDF branch and
+        for a disabled pool; idempotent per num_envs; a conflicting rebind
+        fails closed (the plan is immutable once built).
+        """
+        if not self.tool_pool_enabled or self.asset_format != "mjcf":
+            return
+        if isinstance(num_envs, bool) or not isinstance(num_envs, int) or num_envs <= 0:
+            raise ValueError(f"num_envs must be a positive integer, got {num_envs!r}")
+        scene = getattr(self, "scene", None)
+        if scene is None:
+            raise ValueError("SimToolReal bind_entity_variant requires a materialized scene")
+        existing = getattr(scene, "entity_variant", None)
+        if existing is not None:
+            if existing.plan.assignment.shape == (num_envs,):
+                return
+            raise ValueError(
+                "SimToolReal entity variant plan is already bound with "
+                f"num_envs={existing.plan.assignment.shape[0]}; the plan is immutable "
+                "once built, so construct a fresh config for a different num_envs"
+            )
+        if not self.tool_pool_files:
+            raise RuntimeError(
+                "SimToolReal tool pool is not materialized; validate() must run before "
+                "bind_entity_variant"
+            )
+        from unisim.dr.types import FixedVariantLayout, FixedVariantPlan, ModelSourceDescriptor
+        from unisim.entities import EntityVariantBinding
+
+        assignment = np.arange(num_envs, dtype=np.int32) % np.int32(len(self.tool_pool_files))
+        plan = FixedVariantPlan(
+            assignment=assignment,
+            variants=tuple(ModelSourceDescriptor(model_file=path) for path in self.tool_pool_files),
+            layout=FixedVariantLayout.SAME_LAYOUT,
+        )
+        scene.entity_variant = EntityVariantBinding(
+            target_entity=self.tool_pool_target_entity, plan=plan
+        )
 
 
 __all__ = ["SimToolRealEnvCfg", "fixed_variant_plan_assignment"]

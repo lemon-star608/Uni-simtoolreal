@@ -33,6 +33,8 @@ from .tool_urdf_writer import write_tool_urdf
 _ASSETS_ROOT_ENV = "SIMTOOLREAL_ASSETS_ROOT"
 _RESOLVER_NAME = "simtoolreal_asset"
 _SCENE_MJCF_RESOLVER_NAME = "simtoolreal_scene_mjcf"
+_ENTITY_MJCF_RESOLVER_NAME = "simtoolreal_entity_mjcf"
+_ENTITY_POSITION_RESOLVER_NAME = "simtoolreal_entity_position"
 
 
 def resolve_assets_root() -> Path:
@@ -110,6 +112,66 @@ def _resolve_generated_asset(name: str) -> str:
     return str(path)
 
 
+def _resolve_entity_bootstrap(name: str) -> str:
+    """Materialize the pool-independent entity sources (B form, M-J5).
+
+    Robot/table/floor plus one canonical bootstrap object (catalog hammer,
+    same role as the A-form bootstrap scene): the owner YAML's entity_assets
+    resolve these at Hydra time, before pool knobs settle; each env's object
+    identity comes from the entity variant binding, not this file.
+    """
+    if name not in {"robot", "table", "floor", "object"}:
+        raise ValueError(
+            "unknown SimToolReal entity bootstrap source; expected robot/table/floor/object, "
+            f"got {name!r}"
+        )
+    from .entity_mjcf_writer import write_bootstrap_entity_set
+
+    root = (
+        Path(os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "")).expanduser()
+        if os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "").strip()
+        else Path(tempfile.gettempdir()) / "simtoolreal_generated_assets"
+    ) / "entity_bootstrap"
+    paths = {
+        "robot": root / "robot.xml",
+        "table": root / "table.xml",
+        "floor": root / "floor.xml",
+        "object": root / "object_bootstrap.xml",
+    }
+    if not all(path.is_file() for path in paths.values()):
+        write_bootstrap_entity_set(root)
+    return str(paths[name])
+
+
+def _resolve_entity_position(name: str) -> list[float]:
+    """Entity root spawn positions, read from the task's frozen values.
+
+    EntityInitialState positions for the B-form scene declaration
+    (``mujoco.yaml``): the robot stands 0.8 m behind the table
+    (``ROBOT_SCENE_POS``), the table top sits at ``table_reset_z``, and the
+    object/goalviz roots start at the object home pose
+    (``table_reset_z + table_object_z_offset``) — the same numbers the A-form
+    composer bakes, kept on one source.
+    """
+    from .config import ResetCfg
+    from .robot_mjcf_writer import ROBOT_SCENE_POS
+
+    reset = ResetCfg()
+    object_z = reset.table_reset_z + reset.table_object_z_offset
+    values = {
+        "robot": list(ROBOT_SCENE_POS),
+        "table": [0.0, 0.0, reset.table_reset_z],
+        "floor": [0.0, 0.0, 0.0],
+        "object": [0.0, 0.0, object_z],
+        "goalviz": [0.0, 0.0, object_z],
+    }
+    if name not in values:
+        raise ValueError(
+            f"unknown SimToolReal entity position {name!r}; expected one of {sorted(values)}"
+        )
+    return values[name]
+
+
 def _resolve_bootstrap_scene_mjcf() -> str:
     """Materialize the deterministic bootstrap composed scene (MuJoCo line).
 
@@ -131,13 +193,17 @@ def _resolve_bootstrap_scene_mjcf() -> str:
 
 
 def register_resolvers() -> None:
-    """Register the ``${simtoolreal_asset:...}`` OmegaConf resolver once."""
+    """Register the task's OmegaConf resolvers once."""
     if not OmegaConf.has_resolver(_RESOLVER_NAME):
         OmegaConf.register_new_resolver(_RESOLVER_NAME, resolve_asset)
     if not OmegaConf.has_resolver(_SCENE_MJCF_RESOLVER_NAME):
         OmegaConf.register_new_resolver(
             _SCENE_MJCF_RESOLVER_NAME, lambda *_: _resolve_bootstrap_scene_mjcf()
         )
+    if not OmegaConf.has_resolver(_ENTITY_MJCF_RESOLVER_NAME):
+        OmegaConf.register_new_resolver(_ENTITY_MJCF_RESOLVER_NAME, _resolve_entity_bootstrap)
+    if not OmegaConf.has_resolver(_ENTITY_POSITION_RESOLVER_NAME):
+        OmegaConf.register_new_resolver(_ENTITY_POSITION_RESOLVER_NAME, _resolve_entity_position)
 
 
 __all__ = ["register_resolvers", "resolve_asset", "resolve_assets_root"]

@@ -35,6 +35,7 @@ from .robot_mjcf_writer import (
     TABLE_URDF,
     _fmt,
     _fmt_vec,
+    _scene_option_element,
     build_robot_mjcf,
 )
 from .tool_catalog import build_tool_catalog
@@ -67,6 +68,9 @@ def _build_robot_entity() -> ET.Element:
     36-wide keyframe does not apply here.
     """
     robot = build_robot_mjcf()
+    # M-J5: as a composition source the robot must carry the scene's global
+    # option block (unisim compose_scene requires agreeing options).
+    robot.append(_scene_option_element())
     home = [ARM_DEFAULT_JOINT_POS[name] for name in JOINT_NAMES_CANONICAL[:7]] + [0.0] * 22
     keyframe = ET.SubElement(robot, "keyframe")
     ET.SubElement(
@@ -89,6 +93,7 @@ def _build_table_entity() -> ET.Element:
     rgba = rgba_el.get("rgba") if rgba_el is not None else "0.82 0.56 0.35 1.0"
     mujoco_el = ET.Element("mujoco", {"model": "table"})
     ET.SubElement(mujoco_el, "compiler", {"angle": "radian"})
+    mujoco_el.append(_scene_option_element())
     worldbody = ET.SubElement(mujoco_el, "worldbody")
     body = ET.SubElement(worldbody, "body", {"name": "table", "pos": "0 0 0"})
     ET.SubElement(
@@ -109,6 +114,7 @@ def _build_floor_entity() -> ET.Element:
     """One-body floor plane (M2 adds no implicit ground; the floor is ours)."""
     mujoco_el = ET.Element("mujoco", {"model": "floor"})
     ET.SubElement(mujoco_el, "compiler", {"angle": "radian"})
+    mujoco_el.append(_scene_option_element())
     worldbody = ET.SubElement(mujoco_el, "worldbody")
     body = ET.SubElement(worldbody, "body", {"name": "floor", "pos": "0 0 0"})
     ET.SubElement(
@@ -151,6 +157,9 @@ def write_entity_set(
         "seed": int(seed),
         "num_per_type": int(num_per_type),
         "tool_count": len(catalog),
+        # Catalog-order tool file names (the variant catalog order the task
+        # side's mass/scale tables share).
+        "tool_files": [Path(p).name for p in tool_paths],
         "layout": "same_layout",
         "entities": {
             "robot": {
@@ -192,8 +201,31 @@ def write_entity_set(
         },
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    manifest["tool_files"] = [Path(p).name for p in tool_paths]
     return manifest
 
 
-__all__ = ["GOALVIZ_MIRROR_DECLARATION", "write_entity_set"]
+def write_bootstrap_entity_set(out_dir: str | Path) -> dict[str, Path]:
+    """Write the pool-independent entity sources for the scene declaration.
+
+    The owner YAML's ``entity_assets`` needs concrete source files at Hydra
+    resolution time — before the env config's pool knobs (seed/num_per_type)
+    settle.  Robot/table/floor are pool-independent; the object entity's
+    source is one canonical catalog entry (same bootstrap role as the A-form
+    scene resolver's catalog[0] hammer) whose per-env identity the variant
+    binding replaces at build time.
+    """
+    from .tool_mjcf_writer import write_tool_mjcf
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths = {
+        "robot": _write_tree(_build_robot_entity(), out_dir / "robot.xml"),
+        "table": _write_tree(_build_table_entity(), out_dir / "table.xml"),
+        "floor": _write_tree(_build_floor_entity(), out_dir / "floor.xml"),
+    }
+    spec = build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
+    paths["object"] = write_tool_mjcf(spec, out_dir / "object_bootstrap.xml")
+    return paths
+
+
+__all__ = ["GOALVIZ_MIRROR_DECLARATION", "write_bootstrap_entity_set", "write_entity_set"]

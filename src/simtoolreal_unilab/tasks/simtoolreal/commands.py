@@ -78,7 +78,7 @@ from unilab.base.entity import Entity
 from unilab.managers import CommandTerm, CommandTermCfg
 from unilab.utils.rotation import np_quat_from_angle_axis, np_quat_mul
 
-from .config import FINGERTIP_LINK_NAMES, PALM_BODY_NAME
+from .config import FINGERTIP_LINK_NAMES, PALM_BODY_NAME, declared_names, match_entity_names
 from .env_cfg import fixed_variant_plan_assignment
 
 # Goal pose layout: env-local position (3) + wxyz quaternion (4).
@@ -190,9 +190,20 @@ class SimToolRealCommand(CommandTerm):
         # Cold path: resolve the bodies the success criterion reads
         # (obs_utils.py:153-205 computes palm/fingertip/keypoint geometry).
         self.robot = cast(Entity, env.scene["robot"])
-        self.palm_id = int(self.robot.find_bodies([PALM_BODY_NAME])[0][0])
+        self.palm_id = int(
+            self.robot.find_bodies(
+                match_entity_names(
+                    declared_names(self.robot, "body"), [PALM_BODY_NAME], label="body"
+                )
+            )[0][0]
+        )
         self.fingertip_ids = np.asarray(
-            self.robot.find_bodies(list(FINGERTIP_LINK_NAMES), preserve_order=True)[0],
+            self.robot.find_bodies(
+                match_entity_names(
+                    declared_names(self.robot, "body"), FINGERTIP_LINK_NAMES, label="body"
+                ),
+                preserve_order=True,
+            )[0],
             dtype=np.int32,
         )
         # GoalViz mirror entity (reset_utils.py:304-369).  The scene assembly

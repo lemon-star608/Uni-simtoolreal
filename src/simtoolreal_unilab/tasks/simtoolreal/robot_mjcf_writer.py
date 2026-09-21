@@ -777,6 +777,33 @@ def write_robot_mjcf(path: Path) -> Path:
 # ----------------------------------------------------------------------------
 
 
+def _scene_option_element() -> ET.Element:
+    """The scene's physics-solver option block (old-tree scene.xml).
+
+    Single source for both packagings: the A-form composed scene embeds it
+    directly, and the B-form entity sources each carry an identical copy
+    because unisim's entity composition requires agreeing global options
+    across every source (mjcf_compiler ``_options``; timestep excluded —
+    the composer forces ``sim_dt``).
+    """
+    physics = load_owner_physics()
+    option = ET.Element(
+        "option",
+        {
+            "timestep": _fmt(physics.sim_dt),
+            "gravity": "0 0 -9.81",
+            "integrator": "implicitfast",
+            "solver": "Newton",
+            "cone": "elliptic",
+            "impratio": "10",
+            "iterations": "100",
+            "ls_iterations": "50",
+        },
+    )
+    ET.SubElement(option, "flag", {"contact": "enable", "multiccd": "enable"})
+    return option
+
+
 def _build_table_body() -> ET.Element:
     """Static table, hand-written MJCF box from the vendored table_narrow.urdf.
 
@@ -819,7 +846,6 @@ def build_base_scene_mjcf() -> ET.Element:
     joints in canonical order; composed tool scenes append the object's
     freejoint (7) at the end.
     """
-    physics = load_owner_physics()
     robot = build_robot_mjcf()
 
     scene = ET.Element("mujoco", {"model": "simtoolreal_scene"})
@@ -828,21 +854,7 @@ def build_base_scene_mjcf() -> ET.Element:
     # the composed model compiles with a ±0.05 rad cage (forensic finding
     # 2026-09-17; the robot file carries the same declaration).
     ET.SubElement(scene, "compiler", {"angle": "radian"})
-    option = ET.SubElement(
-        scene,
-        "option",
-        {
-            "timestep": _fmt(physics.sim_dt),
-            "gravity": "0 0 -9.81",
-            "integrator": "implicitfast",
-            "solver": "Newton",
-            "cone": "elliptic",
-            "impratio": "10",
-            "iterations": "100",
-            "ls_iterations": "50",
-        },
-    )
-    ET.SubElement(option, "flag", {"contact": "enable", "multiccd": "enable"})
+    scene.append(_scene_option_element())
     ET.SubElement(scene, "statistic", {"center": "0 0.3 0.5", "extent": "1.5"})
     visual = ET.SubElement(scene, "visual")
     ET.SubElement(
