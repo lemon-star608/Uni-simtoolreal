@@ -6,12 +6,11 @@ owner leaf -> BackendAdapter override -> registry.make with
 sim_backend="mujoco").  No mocks: the UniSim MuJoCo backend compiles the
 variant pack and steps mjbatch on CPU.
 
-Blocked by upstream gap unilabsim/mjbatch_uni#33: mjbatch's VariantPack
-treats the compiler-derived ``body_simple``/``dof_simplenum`` flags as shared
-parameters, so mass-varying same-layout pools are rejected.  Every assertion
-below was verified green with the one-line whitelist widening monkeypatched
-(probe 2026-09-17); the fixture xfails imperatively until the pin moves to a
-fixed mjbatch-uni.
+History: this suite was xfail-blocked by unilabsim/mjbatch_uni#33 (VariantPack
+treated the compiler-derived ``body_simple``/``dof_simplenum`` flags as shared
+parameters, rejecting mass-varying same-layout pools).  The fix shipped in
+mjbatch-uni 0.2.3 and the pin moved on 2026-09-21; the xfail is retired and
+these tests must pass outright.
 """
 
 from __future__ import annotations
@@ -39,17 +38,9 @@ def _build_env(tmp_path):
     override = adapter.build_task_env_cfg_override()
     override["tool_pool_num_per_type"] = NUM_PER_TYPE
     override["tool_pool_root"] = str(tmp_path / "pool")
-    try:
-        return registry.make(
-            "SimToolReal", sim_backend="mujoco", env_cfg_override=override, num_envs=NUM_ENVS
-        )
-    except ValueError as exc:
-        if "changes shared field" in str(exc):
-            pytest.xfail(
-                "upstream gap unilabsim/mjbatch_uni#33: VariantPack treats compiler-derived "
-                f"body_simple/dof_simplenum as shared parameters ({exc})"
-            )
-        raise
+    return registry.make(
+        "SimToolReal", sim_backend="mujoco", env_cfg_override=override, num_envs=NUM_ENVS
+    )
 
 
 @pytest.fixture(scope="module")
