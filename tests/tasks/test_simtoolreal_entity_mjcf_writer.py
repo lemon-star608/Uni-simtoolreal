@@ -68,6 +68,55 @@ def test_split_set_compiles_and_carries_home(entity_set):
     assert manifest["entities"]["robot"]["default_keyframe_name"] == "home"
 
 
+def test_diagonalized_inertials_reconstruct_the_same_tensors(entity_set):
+    """diaginertia+iquat spelling == the fullinertia tensor, per body.
+
+    The IsaacSim worker staging rejects the mixed full/diagonal spelling, so
+    the entity robot carries the eigen-decomposed form; the physical tensor
+    must be identical to the raw writer output's (what the compiler reduces
+    fullinertia to).
+    """
+    out, _ = entity_set
+    from simtoolreal_unilab.tasks.simtoolreal.robot_mjcf_writer import build_robot_mjcf
+
+    raw = mujoco.MjModel.from_xml_string(
+        __import__("xml.etree.ElementTree", fromlist=["ET"]).tostring(
+            build_robot_mjcf(), encoding="unicode"
+        )
+    )
+    norm = mujoco.MjModel.from_xml_path(str(out / "robot.xml"))
+    assert raw.nbody == norm.nbody
+
+    def rotmat(q):
+        w, x, y, z = q
+        return np.array(
+            [
+                [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
+                [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
+                [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)],
+            ]
+        )
+
+    for i in range(1, raw.nbody):
+        name = mujoco.mj_id2name(raw, mujoco.mjtObj.mjOBJ_BODY, i)
+        j = mujoco.mj_name2id(norm, mujoco.mjtObj.mjOBJ_BODY, name)
+        assert j >= 0
+        raw_tensor = (
+            rotmat(raw.body_iquat[i]) @ np.diag(raw.body_inertia[i]) @ rotmat(raw.body_iquat[i]).T
+        )
+        norm_tensor = (
+            rotmat(norm.body_iquat[j])
+            @ np.diag(norm.body_inertia[j])
+            @ rotmat(norm.body_iquat[j]).T
+        )
+        # Eigen-solver path difference (LAPACK eigh vs the compiler's
+        # closed-form diagonalization): identical to ~1e-11 on 1e-2-scale
+        # tensors, far below any physical significance.
+        np.testing.assert_allclose(norm_tensor, raw_tensor, rtol=0, atol=1e-10, err_msg=name)
+        assert norm.body_mass[j] == raw.body_mass[i]
+        np.testing.assert_allclose(norm.body_ipos[j], raw.body_ipos[i], rtol=0, atol=0)
+
+
 def test_goalviz_mirror_declaration_matches_m2_shape():
     """The mirror declaration validates against unisim's own rules."""
     from unisim.entities import SceneEntitySpec, validate_entity_declarations

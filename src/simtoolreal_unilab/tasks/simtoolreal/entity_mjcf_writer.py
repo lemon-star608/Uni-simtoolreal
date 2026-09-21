@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -60,6 +61,91 @@ def _write_tree(root: ET.Element, path: Path) -> Path:
     return path
 
 
+def _quat_wxyz_from_rotmat(rot) -> tuple[float, float, float, float]:
+    """Rotation matrix (orthonormal, det=+1) to a wxyz quaternion."""
+    trace = float(rot[0, 0] + rot[1, 1] + rot[2, 2])
+    if trace > 0.0:
+        s = math.sqrt(trace + 1.0) * 2.0
+        quat = (
+            0.25 * s,
+            (rot[2, 1] - rot[1, 2]) / s,
+            (rot[0, 2] - rot[2, 0]) / s,
+            (rot[1, 0] - rot[0, 1]) / s,
+        )
+    elif rot[0, 0] > rot[1, 1] and rot[0, 0] > rot[2, 2]:
+        s = math.sqrt(1.0 + rot[0, 0] - rot[1, 1] - rot[2, 2]) * 2.0
+        quat = (
+            (rot[2, 1] - rot[1, 2]) / s,
+            0.25 * s,
+            (rot[0, 1] + rot[1, 0]) / s,
+            (rot[0, 2] + rot[2, 0]) / s,
+        )
+    elif rot[1, 1] > rot[2, 2]:
+        s = math.sqrt(1.0 + rot[1, 1] - rot[0, 0] - rot[2, 2]) * 2.0
+        quat = (
+            (rot[0, 2] - rot[2, 0]) / s,
+            (rot[0, 1] + rot[1, 0]) / s,
+            0.25 * s,
+            (rot[1, 2] + rot[2, 1]) / s,
+        )
+    else:
+        s = math.sqrt(1.0 + rot[2, 2] - rot[0, 0] - rot[1, 1]) * 2.0
+        quat = (
+            (rot[1, 0] - rot[0, 1]) / s,
+            (rot[0, 2] + rot[2, 0]) / s,
+            (rot[1, 2] + rot[2, 1]) / s,
+            0.25 * s,
+        )
+    norm = math.sqrt(sum(q * q for q in quat))
+    values = tuple(q / norm for q in quat)
+    # Canonical sign: w non-negative (mirrors the compiler's convention).
+    return values if values[0] >= 0.0 else tuple(-q for q in values)
+
+
+def _diagonalize_fullinertia(
+    fullinertia: tuple[float, ...],
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Full inertia tensor (ixx iyy izz ixy ixz iyz) -> (diaginertia, quat wxyz).
+
+    Eigen-decomposition of the symmetric tensor: eigenvalues are the
+    principal moments (diaginertia), eigenvectors the principal-frame
+    rotation.  numpy-only, so the task package keeps its no-physics-engine
+    import boundary (tests/tasks/test_package_boundary.py).
+    """
+    import numpy as np
+
+    ixx, iyy, izz, ixy, ixz, iyz = (float(v) for v in fullinertia)
+    tensor = np.array([[ixx, ixy, ixz], [ixy, iyy, iyz], [ixz, iyz, izz]])
+    values, vectors = np.linalg.eigh(tensor)
+    if np.linalg.det(vectors) < 0.0:
+        vectors[:, -1] = -vectors[:, -1]
+    return tuple(float(v) for v in values), _quat_wxyz_from_rotmat(vectors)
+
+
+def _normalize_inertials(root: ET.Element) -> None:
+    """Rewrite every body's ``<inertial>`` in the diagonal spelling.
+
+    The IsaacSim worker's scene staging (unisim subprocess_ipc
+    scene_materialization ``prepare_worker_scene``) rewrites per-body
+    inertials as ``diaginertia``+``iquat`` without clearing a source
+    ``fullinertia`` attribute, and MjSpec rejects the mixed spelling
+    ("fullinertia and diagonal inertia cannot both be specified") — an
+    upstream staging gap for fullinertia-carrying sources.  Emitting the
+    diagonal form (the eigen-decomposition of the same tensor, which is what
+    the mujoco compiler reduces fullinertia to at build time, so the compiled
+    model is unchanged) keeps one numerics source while satisfying the
+    staging's diagonal-only contract.
+    """
+    for inertial in root.iter("inertial"):
+        full = inertial.get("fullinertia")
+        if full is None:
+            continue
+        diag, quat = _diagonalize_fullinertia(tuple(float(v) for v in full.split()))
+        del inertial.attrib["fullinertia"]
+        inertial.set("diaginertia", _fmt_vec(diag))
+        inertial.set("quat", _fmt_vec(quat))
+
+
 def _build_robot_entity() -> ET.Element:
     """Robot tree + the home keyframe (M2 reads keyframes from sources).
 
@@ -68,6 +154,7 @@ def _build_robot_entity() -> ET.Element:
     in the object home pose at scene level.
     """
     robot = build_robot_mjcf()
+    _normalize_inertials(robot)
     # M-J5: as a composition source the robot must carry the scene's global
     # option block (unisim compose_scene requires agreeing options).
     robot.append(_scene_option_element())

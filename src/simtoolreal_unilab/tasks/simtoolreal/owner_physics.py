@@ -1,14 +1,14 @@
 """Owner-YAML physics values consumed by the MJCF writers (D6).
 
-On the MuJoCo line the MJCF carries gains and friction natively, so the
-frozen values declared by the owner are parsed here and injected at asset
-generation time.  The declaration lives in the IsaacSim leaf's
-``entity_assets`` section (``conf/rlgames_sapg/task/simtoolreal/
-isaacsim.yaml``; M-J2 moved it out of base.yaml because the pinned SceneCfg
-owns no such field) — the values are the task's frozen physics truth shared
-by both lines.  Nothing in this module restates a number: every value is read
-from the owner YAML, and ``tests/tasks/test_simtoolreal_owner_yaml_parity.py``
-pins that YAML against the original repository's frozen tables.
+On the MuJoCo/Isaac MJCF lines the MJCF carries gains and friction natively,
+so the frozen values declared by the owner are parsed here and injected at
+asset generation time.  The declaration lives in the IsaacSim leaf's
+top-level ``owner_physics`` section (``conf/rlgames_sapg/task/simtoolreal/
+isaacsim.yaml``) — task truth data kept out of the B-form scene declaration
+(the pinned SceneEntitySpec owns no such fields).  Nothing in this module
+restates a number: every value is read from the owner YAML, and
+``tests/tasks/test_simtoolreal_owner_yaml_parity.py`` pins that YAML against
+the original repository's frozen tables.
 """
 
 from __future__ import annotations
@@ -64,7 +64,11 @@ _BASE_YAML = OWNER_YAML.with_name("base.yaml")
 def load_owner_physics(path: Path = OWNER_YAML) -> OwnerPhysics:
     """Parse the owner YAML once and return its physics values."""
     conf = OmegaConf.load(path)
-    assets = {entry.name: entry for entry in conf.env.scene.entity_assets}
+    # The frozen values live in the leaf's top-level owner_physics section
+    # (task truth data, moved out of the fork-era entity_assets block when
+    # the leaf became a B-form scene declaration, Isaac/MJCF line).
+    physics = conf.owner_physics
+    assets = {name: physics[name] for name in ("robot", "table", "object")}
     # sim_dt lives in the backend-neutral base.yaml, not the leaf.
     sim_dt = float(OmegaConf.load(_BASE_YAML).env.sim_dt)
 

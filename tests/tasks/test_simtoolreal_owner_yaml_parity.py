@@ -173,23 +173,89 @@ def test_reward_terms(base):
     }
 
 
-# --- scene entity assets (SimToolReal.yaml:47-58) ----------------------------
+# --- scene entity assets: B-form declaration (Isaac/MJCF line) ----------------
 
 
-def test_entity_assets_materialization_and_friction(isaacsim):
+def test_entity_assets_bform_declaration(isaacsim):
+    """The B-form scene: five entities, official SceneEntitySpec field names."""
     assets = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}
-    assert set(assets) == {"robot", "table", "object", "goalviz"}
-    assert assets["robot"]["materialization"] == "articulation"
-    assert assets["robot"]["root_mode"] == "fixed"  # fix_base=True, scene_utils.py:1723
-    assert assets["table"]["materialization"] == "rigid"
+    assert set(assets) == {"robot", "table", "floor", "object", "goalviz"}
+    assert isaacsim["env"]["asset_format"] == "mjcf"
+    assert isaacsim["env"]["scene"]["default_keyframe_name"] == "home"
+
+    robot = assets["robot"]
+    assert robot["kind"] == "articulation"
+    assert robot["root_mode"] == "fixed"  # fix_base=True, scene_utils.py:1723
+    assert robot["self_collision"] is True  # honored by the IsaacSim worker (#262)
+    assert robot["initial_state"] == {
+        # scene_utils.py:1811-1842 (pos at :1821): the iiwa stands 0.8 m behind
+        # the table; the resolver injects the frozen value (ROBOT_SCENE_POS).
+        "position": "${simtoolreal_entity_position:robot}",
+        "quaternion": [1.0, 0.0, 0.0, 0.0],
+    }
+
+    assert assets["table"]["kind"] == "rigid"
     assert assets["table"]["root_mode"] == "kinematic"  # scene_utils.py:1752-1758
-    assert assets["object"]["materialization"] == "rigid"
+    assert assets["floor"]["kind"] == "rigid"
+    assert assets["floor"]["root_mode"] == "kinematic"
+    assert assets["object"]["kind"] == "rigid"
     assert assets["object"]["root_mode"] == "floating"  # dynamic pool, :1701-1713
-    assert assets["goalviz"]["materialization"] == "rigid"
-    assert assets["goalviz"]["root_mode"] == "kinematic"  # scene_utils.py:1714-1719
+
+    # GoalViz twin semantics (scene_utils.py:1714-1719): collision-free mirror
+    # of the object entity, kinematic root.
+    goalviz = assets["goalviz"]
+    assert goalviz["mirror_of"] == "object"
+    assert goalviz["kind"] == "rigid"
+    assert goalviz["root_mode"] == "kinematic"
+    assert goalviz["collision_enabled"] is False
+
+
+def test_entity_selectors_are_entity_qualified(isaacsim):
+    """Entity composition qualifies every model name (compile_scene_layout)."""
+    robot = isaacsim["env"]["scene"]["entities"]["robot"]
+    assert robot["root_body_name"] == "robot/iiwa14_link_0"
+    assert len(robot["joint_names"]) == 29
+    assert all(name.startswith("robot/") for name in robot["joint_names"])
+    assert robot["actuator_names"] == [
+        f"robot/{name.removeprefix('robot/')}_ctrl" for name in robot["joint_names"]
+    ]
+    entities = isaacsim["env"]["scene"]["entities"]
+    assert entities["table"]["root_body_name"] == "table/table"
+    assert entities["object"]["root_body_name"] == "object/object_root"
+    assert entities["goalviz"]["root_body_name"] == "goalviz/object_root"
+
+
+def test_scene_leaves_share_the_bform_declaration(isaacsim):
+    """mujoco.yaml and isaacsim.yaml declare the same composed scene.
+
+    The only deliberate per-backend differences: self_collision is declared
+    on the IsaacSim leaf only (the mujoco compose path is fail-closed on the
+    toggle) and each leaf's YAML anchor name differs.
+    """
+    mujoco = yaml.safe_load((CONF_DIR / "mujoco.yaml").read_text())
+    isa_assets = {
+        spec["name"]: {k: v for k, v in spec.items() if k != "self_collision"}
+        for spec in isaacsim["env"]["scene"]["entity_assets"]
+    }
+    mu_assets = {spec["name"]: spec for spec in mujoco["env"]["scene"]["entity_assets"]}
+    assert isa_assets == mu_assets
+    isa_entities = isaacsim["env"]["scene"]["entities"]
+    mu_entities = mujoco["env"]["scene"]["entities"]
+    assert {name: {k: v for k, v in spec.items()} for name, spec in isa_entities.items()} == {
+        name: dict(spec) for name, spec in mu_entities.items()
+    }
+    assert mujoco["env"]["scene"]["default_keyframe_name"] == "home"
+    assert mujoco["env"]["asset_format"] == "mjcf"
+
+
+# --- owner physics truth (frozen values the MJCF writers consume) -------------
+
+
+def test_owner_physics_friction_tables(isaacsim):
+    physics = isaacsim["owner_physics"]
     # Static per-material frictions (SimToolReal.yaml:55-58 as [s, s, 0.0]).
-    assert assets["robot"]["contact_friction"] == [0.5, 0.5, 0.0]
-    fingertip = assets["robot"]["contact_friction_by_body"]
+    assert physics["robot"]["contact_friction"] == [0.5, 0.5, 0.0]
+    fingertip = physics["robot"]["contact_friction_by_body"]
     assert [entry["body_name"] for entry in fingertip] == [
         "left_index_DP",
         "left_middle_DP",
@@ -198,88 +264,29 @@ def test_entity_assets_materialization_and_friction(isaacsim):
         "left_pinky_DP",
     ]
     assert all(entry["friction"] == [1.5, 1.5, 0.0] for entry in fingertip)  # :56
-    assert assets["table"]["contact_friction"] == [0.5, 0.5, 0.0]  # :58
-    assert assets["object"]["contact_friction"] == [0.5, 0.5, 0.0]  # :57
+    assert physics["table"]["contact_friction"] == [0.5, 0.5, 0.0]
+    assert physics["object"]["contact_friction"] == [0.5, 0.5, 0.0]
 
 
-# --- scene composition declarations (de-hardcoded worker contract) -----------
+# --- PhysX solver knobs (simtoolreal_env_cfg.py:515-535) ----------------------
 
 
-def test_scene_physx_declaration_matches_original_repository(isaacsim):
-    """The original `_default_sim_cfg` PhysxCfg, moved verbatim to the owner.
+def test_isaacsim_solver_knobs_match_original_repository(isaacsim):
+    """The original training's PhysX solver table, through UniLab#1620's channel.
 
-    simtoolreal_env_cfg.py:515-535: solver TGS, iteration clamps 8/8-0/0,
-    bounce threshold 0.2, and the raised GPU contact stream buffers (2^24
-    contacts / 2^23 patches; Isaac Lab's defaults overflow at this task's
-    env counts).  The friction offset/correlation distances equal Isaac
-    Lab's defaults and stay explicit to mirror the source.  The worker keeps
-    Isaac Lab defaults when the scene declares none of this.
+    simtoolreal_env_cfg.py:515-535 pins iteration clamps 8/8-0/0 and bounce
+    threshold 0.2 explicitly; contact/rest offsets and the depenetration cap
+    are the Isaac Lab defaults the original relied on (contact_offset 0.002,
+    rest_offset 0.0, max_depenetration_velocity 1000).  solver_type=TGS, the
+    friction offsets, and the raised GPU contact buffers have no UniSim
+    channel (PhysxSolverConfig covers six knobs) — defaults apply there.
     """
-    assert isaacsim["env"]["scene"]["physx"] == {
-        "solver_type": 1,
-        "min_position_iteration_count": 8,
-        "max_position_iteration_count": 8,
-        "min_velocity_iteration_count": 0,
-        "max_velocity_iteration_count": 0,
-        "bounce_threshold_velocity": 0.2,
-        "friction_offset_threshold": 0.04,
-        "friction_correlation_distance": 0.025,
-        "gpu_max_rigid_contact_count": 2**24,
-        "gpu_max_rigid_patch_count": 2**23,
-    }
-
-
-def test_env_grid_spacing_matches_original_repository(isaacsim):
-    # SimToolReal.yaml:34 / simtoolreal_env_cfg.py:572 (`env_spacing=1.2`);
-    # undeclared scenes keep the worker's native 2.0 m grid.
-    assert isaacsim["env"]["scene"]["env_grid_spacing"] == 1.2
-
-
-def test_robot_spawn_pose_declaration(isaacsim):
-    # scene_utils.py:1811-1842 (pos at :1821): the iiwa stands 0.8 m behind
-    # the table with identity orientation.  The fixed-base root pose has no
-    # other write channel, so this declaration is load-bearing.
-    robot = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}["robot"]
-    assert robot["init_state"] == {
-        "pos": [0.0, 0.8, 0.0],
-        "rot_wxyz": [1.0, 0.0, 0.0, 0.0],
-    }
-
-
-def test_kinematic_role_contracts_are_declared_not_named(isaacsim):
-    """Table/goalviz semantics ride declarations, not entity names.
-
-    The table keeps its converted-USD collision state (scene_utils.py:
-    1752-1758 — undeclared) and the goalviz disables collision with
-    object-style capsule replacement while mirroring the pool target's
-    variants (scene_utils.py:1714-1719); the object pins the capsule
-    replacement it always had (scene_utils.py:1701-1706).
-    """
-    assets = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}
-    assert "collision_enabled" not in assets["table"]
-    assert "replace_cylinders_with_capsules" not in assets["table"]
-    assert assets["goalviz"]["collision_enabled"] is False
-    assert assets["goalviz"]["replace_cylinders_with_capsules"] is True
-    assert assets["goalviz"]["mirrors_fixed_variant_pool"] is True
-    assert assets["object"]["replace_cylinders_with_capsules"] is True
-    assert "mirrors_fixed_variant_pool" not in assets["object"]
-    assert assets["object"]["consumes_fixed_variant_pool"] is True
-
-
-# --- scene ground declaration (Fix-C; scene_utils.py setup_scene step 5) -----
-
-
-def test_scene_declares_default_ground_plane(isaacsim):
-    """The owner YAML turns on the declarative ground with pure defaults.
-
-    An empty mapping means the ``GroundPlaneCfg`` defaults the original
-    task-level scene composition spawned (scene_utils.py setup_scene step 5)
-    and the migration L3 run trained against.  The isaacsim worker spawns its
-    local collision ground only for declared scenes, so this declaration is
-    what keeps the task's trained-identical ground; any value here would be a
-    physics change.
-    """
-    assert isaacsim["env"]["scene"]["ground_plane"] == {}
+    assert isaacsim["env"]["isaacsim_solver_position_iteration_count"] == 8
+    assert isaacsim["env"]["isaacsim_solver_velocity_iteration_count"] == 0
+    assert isaacsim["env"]["isaacsim_bounce_threshold_velocity"] == 0.2
+    assert isaacsim["env"]["isaacsim_contact_offset"] == 0.002
+    assert isaacsim["env"]["isaacsim_rest_offset"] == 0.0
+    assert isaacsim["env"]["isaacsim_max_depenetration_velocity"] == 1000.0
 
 
 # --- tool pool knobs (SimToolReal.yaml:50-52; generate_objects.py:27) --------
@@ -299,7 +306,9 @@ def test_isaacsim_backend_leaf(isaacsim):
     assert isaacsim["training"]["task_name"] == "SimToolReal"
     assert isaacsim["training"]["sim_backend"] == "isaacsim"
     assert isaacsim["algo"]["num_envs"] == 24576  # SimToolReal.yaml:33
+    assert isaacsim["env"]["asset_format"] == "mjcf"  # Isaac/MJCF line
     assert isaacsim["env"]["isaacsim_device_id"] == 0
+    assert isaacsim["env"]["isaacsim_worker_timeout_s"] == 1800.0
 
 
 # --- robot actuator gain overrides (scene_utils.py:59-131) ------------------
@@ -325,11 +334,7 @@ def test_robot_actuator_gain_overrides(isaacsim):
         HAND_JOINT_STIFFNESS,
     )
 
-    robot_assets = [
-        asset for asset in isaacsim["env"]["scene"]["entity_assets"] if asset["name"] == "robot"
-    ]
-    assert len(robot_assets) == 1
-    overrides = robot_assets[0]["actuator_gain_overrides"]
+    overrides = isaacsim["owner_physics"]["robot"]["actuator_gain_overrides"]
     by_joint = {entry["joint_name"]: entry for entry in overrides}
 
     expected: dict[str, dict] = {}

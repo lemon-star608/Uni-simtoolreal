@@ -238,7 +238,7 @@ def test_actuator_order_is_canonical(robot_model):
 def test_actuator_gains_match_owner_yaml(robot_model):
     conf = OmegaConf.load(OWNER_YAML)
     overrides = {
-        entry.joint_name: entry for entry in conf.env.scene.entity_assets[0].actuator_gain_overrides
+        entry.joint_name: entry for entry in conf.owner_physics.robot.actuator_gain_overrides
     }
     assert set(overrides) == set(EXPECTED_JOINTS)
     for a in range(robot_model.nu):

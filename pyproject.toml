@@ -43,7 +43,12 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.sources]
-unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "3a3576aee9d65e670b9819b9d79316c41f4bced6" }
+# TEMPORARY local path dependency (Isaac/MJCF line bring-up): consume the
+# local UniLab checkout carrying the isaacsim_solver_* EnvCfg knobs
+# (Motphys/UniLab#1620, branch feat/isaacsim-solver-kwargs @ cd35ba46).
+# Switch back to the official git pin below once #1620 merges and ships:
+# unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "3a3576aee9d65e670b9819b9d79316c41f4bced6" }
+unilab = { path = "../UniLab", editable = true }
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
 

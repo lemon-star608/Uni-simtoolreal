@@ -1430,7 +1430,7 @@ requires-dist = [
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.8.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "unilab", git = "https://github.com/Motphys/UniLab.git?rev=3a3576aee9d65e670b9819b9d79316c41f4bced6" },
+    { name = "unilab", editable = "../UniLab" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
     { name = "unisim-core", extras = ["mujoco"], specifier = ">=1.7.3" },
 ]
@@ -1641,7 +1641,7 @@ wheels = [
 [[package]]
 name = "unilab"
 version = "1.3.1"
-source = { git = "https://github.com/Motphys/UniLab.git?rev=3a3576aee9d65e670b9819b9d79316c41f4bced6#3a3576aee9d65e670b9819b9d79316c41f4bced6" }
+source = { editable = "../UniLab" }
 dependencies = [
     { name = "etils" },
     { name = "gymnasium" },
@@ -1669,6 +1669,67 @@ dependencies = [
     { name = "unilab-rl" },
     { name = "unisim-core" },
     { name = "wandb" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "drake-uni", marker = "extra == 'drake'", specifier = "==0.1.0" },
+    { name = "etils" },
+    { name = "genesis-world", marker = "extra == 'genesis'", specifier = "==1.3.3" },
+    { name = "gymnasium" },
+    { name = "huggingface-hub", specifier = ">=0.25" },
+    { name = "hydra-core", specifier = ">=1.3" },
+    { name = "imageio" },
+    { name = "imageio-ffmpeg", specifier = ">=0.6.0" },
+    { name = "imgui-bundle", marker = "extra == 'newton'", specifier = ">=1.92.0" },
+    { name = "lark", specifier = ">=1.3.1" },
+    { name = "mediapy" },
+    { name = "mjbatch-uni", marker = "extra == 'mujoco'", specifier = "~=0.2.3" },
+    { name = "mujoco", marker = "extra == 'drake'", specifier = ">=3.5" },
+    { name = "mujoco", marker = "extra == 'mujoco'", specifier = "~=3.11.0" },
+    { name = "mujoco", marker = "extra == 'newton'", specifier = "==3.11.0" },
+    { name = "mujoco-warp", marker = "extra == 'mjwarp'", specifier = "~=3.11.0" },
+    { name = "mujoco-warp", marker = "extra == 'newton'", specifier = "==3.11.0" },
+    { name = "newton", marker = "extra == 'newton'", specifier = "==1.5.1" },
+    { name = "ninja", marker = "sys_platform == 'linux'" },
+    { name = "numba", specifier = ">=0.67" },
+    { name = "numpy" },
+    { name = "onnxruntime", marker = "python_full_version < '3.11'", specifier = "<1.20" },
+    { name = "onnxruntime", marker = "python_full_version >= '3.11'", specifier = ">=1.20" },
+    { name = "packaging" },
+    { name = "prettytable", specifier = ">=3.10" },
+    { name = "pyglet", marker = "extra == 'newton'", specifier = ">=2.1.6,<3" },
+    { name = "rich" },
+    { name = "rsl-rl-lib", specifier = ">=5.0.0" },
+    { name = "setuptools" },
+    { name = "tensorboard", specifier = ">=2.21.0" },
+    { name = "tensordict" },
+    { name = "torch", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux') or (sys_platform != 'linux' and sys_platform != 'win32')", specifier = ">=2.8,<2.12" },
+    { name = "torch", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", specifier = ">=2.9,<2.12", index = "https://download-r2.pytorch.org/whl/cu130" },
+    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=2.8,<2.12", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "torch", marker = "sys_platform == 'win32'", specifier = ">=2.8,<2.12", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "tqdm" },
+    { name = "trimesh", marker = "extra == 'newton'", specifier = ">=3.21.7" },
+    { name = "trimesh", marker = "extra == 'viser'", specifier = ">=3.21.7" },
+    { name = "typing-extensions" },
+    { name = "unilab-rl", specifier = "==1.3.0" },
+    { name = "unisim-core", specifier = ">=1.7.4" },
+    { name = "unisim-core", extras = ["motrix"], marker = "extra == 'motrix'", specifier = ">=1.7.4" },
+    { name = "unisim-core", extras = ["superdex"], marker = "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'superdex'", specifier = ">=1.7.4" },
+    { name = "viser", marker = "extra == 'viser'", specifier = ">=1.0.26" },
+    { name = "wandb" },
+    { name = "warp-lang", marker = "extra == 'mjwarp'", specifier = "==1.16.0" },
+    { name = "warp-lang", marker = "extra == 'newton'", specifier = "==1.16.0" },
+]
+provides-extras = ["drake", "mujoco", "mjwarp", "newton", "motrix", "genesis", "viser", "superdex"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy" },
+    { name = "pyright", specifier = ">=1.1.408" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
 ]
 
 [[package]]
@@ -1721,13 +1782,13 @@ requires-dist = [
 
 [[package]]
 name = "unisim-core"
-version = "1.7.3"
+version = "1.7.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/08/32981796a05eddeea94046d2c0301692250cdb76e149f21d7ff67f841c20/unisim_core-1.7.3.tar.gz", hash = "sha256:84d40e1b86076af73293a558d700eaa9801c64ff9384075fc954cfc94ed8a649", size = 498782, upload-time = "2026-09-20T13:24:05.454Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/0b/ade6efb6d382dc0619d2b4d223919bd2a1bb3d4cedce6459e049a2601dd4/unisim_core-1.7.4.tar.gz", hash = "sha256:aa8fe37d95645ea310a6f63cecf1a8ce035acfc5be31d44a4dfdf47c8d21224a", size = 508761, upload-time = "2026-09-21T07:31:56.563Z" }
 
 [package.optional-dependencies]
 mujoco = [
