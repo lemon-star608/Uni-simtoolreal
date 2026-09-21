@@ -58,21 +58,7 @@ def _build_env(tmp_path):
 def env(tmp_path_factory):
     if not _worker_available():
         pytest.skip("IsaacSim worker runtime not installed (scripts/setup_isaacsim_env.sh)")
-    try:
-        built = _build_env(tmp_path_factory.mktemp("isaacsim_smoke"))
-    except Exception as exc:
-        # Known upstream gap (unisim IsaacSim mapped worker): the host-side
-        # variant record lists every source geom while the MJCF importer
-        # authors CollisionAPI only on colliding geoms, so entities carrying
-        # visual-only (contype=0) geoms fail _author_native_geometry's
-        # native-count check.  strict=True: the suite must XPASS-fail once the
-        # upstream fix lands so the xfail gets removed and the smoke runs.
-        if "native collision geoms, expected" in str(exc):
-            pytest.xfail(
-                "unisim IsaacSim mapped worker rejects visual-only (contype=0) geoms "
-                f"(upstream gap, recorded in simtoolreal_unilab issue #3): {exc}"
-            )
-        raise
+    built = _build_env(tmp_path_factory.mktemp("isaacsim_smoke"))
     yield built
     built.close()
 

@@ -157,7 +157,9 @@ env:
           - robot/left_pinky_PIP_ctrl
           - robot/left_pinky_DIP_ctrl
         body_names: [robot/iiwa14_link_7, robot/left_index_DP, robot/left_middle_DP, robot/left_ring_DP, robot/left_thumb_DP, robot/left_pinky_DP]
-        site_names: [robot/left_thumb_fingertip, robot/left_index_fingertip, robot/left_middle_fingertip, robot/left_ring_fingertip, robot/left_pinky_fingertip]
+        # No site_names here (mujoco.yaml declares the five fingertip sites):
+        # the IsaacSim backend does not implement get_site_ids, and no term
+        # reads the sites on either line.
       table:
         root_body_name: table/table
       object:

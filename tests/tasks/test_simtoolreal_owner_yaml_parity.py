@@ -239,11 +239,22 @@ def test_scene_leaves_share_the_bform_declaration(isaacsim):
     }
     mu_assets = {spec["name"]: spec for spec in mujoco["env"]["scene"]["entity_assets"]}
     assert isa_assets == mu_assets
+    # entities selectors match too, except site_names: the IsaacSim backend
+    # does not implement get_site_ids and no term reads the sites, so only
+    # the mujoco leaf declares them.
     isa_entities = isaacsim["env"]["scene"]["entities"]
     mu_entities = mujoco["env"]["scene"]["entities"]
-    assert {name: {k: v for k, v in spec.items()} for name, spec in isa_entities.items()} == {
-        name: dict(spec) for name, spec in mu_entities.items()
+    isa_normalized = {
+        name: {k: v for k, v in spec.items() if k != "site_names"}
+        for name, spec in isa_entities.items()
     }
+    mu_normalized = {
+        name: {k: v for k, v in spec.items() if k != "site_names"}
+        for name, spec in mu_entities.items()
+    }
+    assert isa_normalized == mu_normalized
+    assert "site_names" not in isa_entities["robot"]
+    assert len(mu_entities["robot"]["site_names"]) == 5
     assert mujoco["env"]["scene"]["default_keyframe_name"] == "home"
     assert mujoco["env"]["asset_format"] == "mjcf"
 

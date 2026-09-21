@@ -49,6 +49,12 @@ explicit = true
 # Switch back to the official git pin below once #1620 merges and ships:
 # unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "3a3576aee9d65e670b9819b9d79316c41f4bced6" }
 unilab = { path = "../UniLab", editable = true }
+# TEMPORARY local path dependency (Isaac/MJCF line bring-up): consume the
+# local unisim checkout carrying the mapped-worker visual-only geom +
+# fullinertia fixes (unilabsim/unisim#279, branch
+# fix/isaacsim-visual-only-geoms @ 4fe8e9b).  Switch back to the official
+# PyPI release once #279 merges and ships.
+unisim-core = { path = "/tmp/unisim_cl", editable = true }
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
 
