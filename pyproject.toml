@@ -17,7 +17,7 @@ dependencies = [
   # Official PyPI release of unisim-core. The [mujoco] extra pulls in the
   # mujoco/mjbatch-uni pair the MuJoCo backend is pinned and tested against;
   # the MJCF asset line's compiler gates (M-J1) run on that same pin.
-  "unisim-core[mujoco]>=1.4.2",
+  "unisim-core[mujoco]>=1.7.3",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
   "torch==2.8.0+cu128 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
@@ -43,7 +43,7 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.sources]
-unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "2e3f30ae3f38e34b515e3ba6cf3db20780471ef6" }
+unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "3a3576aee9d65e670b9819b9d79316c41f4bced6" }
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
 
