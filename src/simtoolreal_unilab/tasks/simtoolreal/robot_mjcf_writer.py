@@ -14,21 +14,21 @@ pure transcriptions:
   ``sharpa_mount``, ``left_hand_C_MC``, the five ``*_elastomer`` pads and the
   five ``*_fingertip`` links.  The five fingertip frames are additionally
   preserved as ``<site>`` elements on their DP ancestor bodies.
-* The SHARPA hand's URDF collision meshes are NOT used.  The collision layer
-  is the Menagerie Sharpa Wave transplant (see
-  ``assets/simtoolreal/mjcf/menagerie_sharpa_wave/SOURCE.md``): 32 palm OBJ
-  pieces (vendored), per-phalanx fitted primitives and fingertip capsules,
-  transcribed below as explicit data tables from the old tree's
-  training-validated ``assets/robots/kuka_sharpa/kuka_sharpa.xml``.  The pinky
-  metacarpal keeps its URDF collision mesh (the old tree's transplant kept it
-  as ``menagerie_collision_left_pinky_MC``).
+* The hand collision layer is the URDF's own collision meshes (the Isaac
+  line's training anchor): per-phalanx ``*_collision`` STLs transcribed from
+  the vendored URDF, with welded elastomer pads composed onto their DP
+  ancestors through the same frame machinery.  (History: this writer briefly
+  carried the old tree's Menagerie Sharpa Wave transplant; it was retired in
+  favor of the URDF collision geometry.  The contact *profile* below —
+  friction slide split, condim/solimp/solref — is unchanged by that swap.)
 * Actuator kp/kv and hand joint armature are parsed from the owner YAML
   (``owner_physics.py``) — no numbers are restated here.
 * Friction v1 mapping (tuning items; user-approved): robot geoms get the
-  owner YAML's robot slide (0.5), the five fingertip capsules the fingertip
-  slide (1.5), torsion/roll keep the MuJoCo defaults.  Known divergence from
-  the old tree, which unified hand collision slide at 1.0; the parity test
-  exempts the sliding-friction field explicitly.
+  owner YAML's robot slide (0.5), geoms on the five fingertip DP bodies (DP
+  mesh + welded elastomer pad) get the fingertip slide (1.5), torsion/roll
+  keep the MuJoCo defaults.  Known divergence from the old tree, which
+  unified hand collision slide at 1.0; the parity test exempts the
+  sliding-friction field explicitly.
 * Hand joint ``frictionloss`` is 0: the old tree's values came from
   ``HAND_JOINT_FRICTION``, which the new repository's ``config.py``
   deliberately retires as dead code (unused by the original repository).
@@ -59,7 +59,6 @@ ROBOT_URDF = (
     ASSET_ROOT / "urdf" / "kuka_sharpa_description" / "iiwa14_left_sharpa_adjusted_restricted.urdf"
 )
 TABLE_URDF = ASSET_ROOT / "urdf" / "table_narrow.urdf"
-MENAGERIE_ROOT = ASSET_ROOT / "mjcf" / "menagerie_sharpa_wave"
 _URDF_MESH_ROOT = ASSET_ROOT / "urdf" / "kuka_sharpa_description"
 
 ROBOT_ROOT_LINK = "iiwa14_link_0"
@@ -83,9 +82,11 @@ _HAND_SOLIMP = "0.9 0.95 0.001 0.5 2.0"
 _HAND_SOLREF = "0.02 1.0"
 
 # ----------------------------------------------------------------------------
-# Mesh asset table: transcribed from the old tree's kuka_sharpa.xml <asset>
-# section (62 entries).  Paths are relative to the vendored URDF directory,
-# except the menagerie palm pieces, which live under mjcf/menagerie_sharpa_wave.
+# Mesh asset table: arm visual+collision meshes, SHARPA visual meshes, and the
+# SHARPA URDF collision meshes (the hand collision authority — the Menagerie
+# transplant layer was retired in favor of the URDF collision geometry, the
+# Isaac line's training anchor).  Paths are relative to the vendored URDF
+# directory.
 # ----------------------------------------------------------------------------
 _MESH_FILES: tuple[tuple[str, str], ...] = (
     *[(f"link_{i}_visual", f"new_iiwa14_meshes/visual/link_{i}.stl") for i in range(8)],
@@ -103,202 +104,19 @@ _MESH_FILES: tuple[tuple[str, str], ...] = (
     ("left_DP_visual", "left_sharpa_meshes/left_DP_visual.STL"),
     ("elastomer_surface", "left_sharpa_meshes/elastomer_surface.STL"),
     ("left_pinky_MC_visual", "left_sharpa_meshes/left_pinky_MC_visual.STL"),
-    ("left_pinky_MC", "left_sharpa_meshes/left_pinky_MC.STL"),
-    *[(f"menagerie_palm{i:03d}", f"menagerie_sharpa_wave/palm/palm{i:03d}.obj") for i in range(32)],
+    # Hand collision meshes (URDF <collision> elements; CMC_VL has none).
+    ("left_hand_C_MC_collision", "left_sharpa_meshes/left_hand_C_MC.STL"),
+    ("left_thumb_MC_collision", "left_sharpa_meshes/left_thumb_MC.STL"),
+    ("left_thumb_PP_collision", "left_sharpa_meshes/left_thumb_PP.STL"),
+    ("left_thumb_DP_collision", "left_sharpa_meshes/left_thumb_DP.STL"),
+    ("thumb_elastomer_collision", "left_sharpa_meshes/thumb_elastomer.STL"),
+    ("left_MCP_VL_collision", "left_sharpa_meshes/MCP_VL.STL"),
+    ("left_PP_collision", "left_sharpa_meshes/left_PP.STL"),
+    ("left_MP_collision", "left_sharpa_meshes/left_MP.STL"),
+    ("left_DP_collision", "left_sharpa_meshes/left_DP.STL"),
+    ("elastomer_collision", "left_sharpa_meshes/elastomer.STL"),
+    ("left_pinky_MC_collision", "left_sharpa_meshes/left_pinky_MC.STL"),
 )
-
-# ----------------------------------------------------------------------------
-# Menagerie collision layer (transcribed from the old tree's kuka_sharpa.xml;
-# provenance and transplant contract in menagerie_sharpa_wave/SOURCE.md).
-# Sizes are MJCF native (cylinder/capsule: radius, half-length).  ``quat=None``
-# means identity.  The palm pieces attach to the left_hand_C_MC frame, which
-# the weld merges into iiwa14_link_7 — the writer composes the frame.
-# ----------------------------------------------------------------------------
-_PALM_MESH_NAMES: tuple[str, ...] = tuple(f"menagerie_palm{i:03d}" for i in range(32))
-
-# (geom name, URDF body, type, size, pos, quat)
-_FIT_GEOMS: tuple[
-    tuple[
-        str,
-        str,
-        str,
-        tuple[float, float],
-        tuple[float, float, float],
-        tuple[float, float, float, float] | None,
-    ],
-    ...,
-] = (
-    (
-        "left_thumb_CMC_VL_fit",
-        "left_thumb_CMC_VL",
-        "cylinder",
-        (0.0120419, 0.00625),
-        (0.000957197, 0.000412167, 1.20218e-10),
-        None,
-    ),
-    (
-        "left_thumb_MC_fit",
-        "left_thumb_MC",
-        "capsule",
-        (0.0207081, 0.0169273),
-        (0.0397656, -0.0106861, -0.0110947),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_thumb_PP_fit",
-        "left_thumb_PP",
-        "capsule",
-        (0.011707, 0.0137066),
-        (0.0237179, -8.06477e-10, 0.0012143),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_index_MCP_VL_fit",
-        "left_index_MCP_VL",
-        "cylinder",
-        (0.0125535, 0.0057),
-        (0.00165159, 0.00045, 1.0897e-10),
-        None,
-    ),
-    (
-        "left_index_PP_fit",
-        "left_index_PP",
-        "capsule",
-        (0.0104766, 0.0172474),
-        (0.0305371, 8.5591e-06, 0.000140714),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_index_MP_fit",
-        "left_index_MP",
-        "capsule",
-        (0.0104174, 0.0147236),
-        (0.0147146, -0.00118535, -4.70523e-07),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_middle_MCP_VL_fit",
-        "left_middle_MCP_VL",
-        "cylinder",
-        (0.0125535, 0.0057),
-        (0.00165159, 0.00045, 1.0897e-10),
-        None,
-    ),
-    (
-        "left_middle_PP_fit",
-        "left_middle_PP",
-        "capsule",
-        (0.00934798, 0.0172474),
-        (0.0305371, 8.5591e-06, 0.000140714),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_middle_MP_fit",
-        "left_middle_MP",
-        "capsule",
-        (0.00940724, 0.0147236),
-        (0.0147146, -0.00118535, -4.70523e-07),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_ring_MCP_VL_fit",
-        "left_ring_MCP_VL",
-        "cylinder",
-        (0.0125535, 0.0057),
-        (0.00165159, 0.00045, 1.0897e-10),
-        None,
-    ),
-    (
-        "left_ring_PP_fit",
-        "left_ring_PP",
-        "capsule",
-        (0.00970157, 0.0172474),
-        (0.0305371, 8.5591e-06, 0.000140714),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_ring_MP_fit",
-        "left_ring_MP",
-        "capsule",
-        (0.0104481, 0.0147236),
-        (0.0147146, -0.00118535, -4.70523e-07),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_pinky_MCP_VL_fit",
-        "left_pinky_MCP_VL",
-        "cylinder",
-        (0.0125535, 0.0057),
-        (0.00165159, 0.00045, 1.0897e-10),
-        None,
-    ),
-    (
-        "left_pinky_PP_fit",
-        "left_pinky_PP",
-        "capsule",
-        (0.0106522, 0.0172474),
-        (0.0305371, 8.5591e-06, 0.000140714),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-    (
-        "left_pinky_MP_fit",
-        "left_pinky_MP",
-        "capsule",
-        (0.00990499, 0.0147236),
-        (0.0147146, -0.00118535, -4.70523e-07),
-        (0.707107, 0.0, 0.707107, 0.0),
-    ),
-)
-
-# Fingertip capsules sit on the DP bodies (the owner YAML's fingertip friction
-# targets the same five bodies).  These get the fingertip slide; every other
-# hand collision geom gets the robot slide (v1 mapping, tuning items).
-_FINGERTIP_CAPSULES: tuple[
-    tuple[
-        str, str, tuple[float, float], tuple[float, float, float], tuple[float, float, float, float]
-    ],
-    ...,
-] = (
-    (
-        "left_thumb_fingertip_collision",
-        "left_thumb_DP",
-        (0.00943065, 0.00677499),
-        (0.0163733, -0.00176519, 2.7474e-08),
-        (0.508797, 0.508797, 0.491045, 0.491045),
-    ),
-    (
-        "left_index_fingertip_collision",
-        "left_index_DP",
-        (0.00806303, 0.00535098),
-        (0.0139214, -0.00086892, -1.32248e-06),
-        (-0.0228873, 0.706736, 0.0228873, 0.706736),
-    ),
-    (
-        "left_middle_fingertip_collision",
-        "left_middle_DP",
-        (0.00806303, 0.00535098),
-        (0.0139214, -0.00086892, -1.32248e-06),
-        (-0.0228873, 0.706736, 0.0228873, 0.706736),
-    ),
-    (
-        "left_ring_fingertip_collision",
-        "left_ring_DP",
-        (0.00806303, 0.00535098),
-        (0.0139214, -0.00086892, -1.32248e-06),
-        (-0.0228873, 0.706736, 0.0228873, 0.706736),
-    ),
-    (
-        "left_pinky_fingertip_collision",
-        "left_pinky_DP",
-        (0.00806303, 0.00535098),
-        (0.0139214, -0.00086892, -1.32248e-06),
-        (-0.0228873, 0.706736, 0.0228873, 0.706736),
-    ),
-)
-
-# The pinky metacarpal collision mesh (URDF asset set, retained by the
-# Menagerie transplant in the old tree).
-_PINKY_MC_COLLISION_MESH = "left_pinky_MC"
 
 # Contact excludes transcribed from the old tree's kuka_sharpa.xml <contact>
 # section (originally derived from the source repo's adjacent-link masks,
@@ -821,8 +639,7 @@ def build_robot_mjcf() -> ET.Element:
     ET.SubElement(mujoco_el, "compiler", {"angle": "radian"})
     asset_el = ET.SubElement(mujoco_el, "asset")
     for name, rel in _MESH_FILES:
-        base = MENAGERIE_ROOT if rel.startswith("menagerie_sharpa_wave/") else _URDF_MESH_ROOT
-        path = base / rel.removeprefix("menagerie_sharpa_wave/")
+        path = _URDF_MESH_ROOT / rel
         if not path.is_file():
             raise FileNotFoundError(f"vendored mesh missing: {path}")
         attrs = {"name": name, "file": str(path)}
@@ -867,73 +684,35 @@ def build_robot_mjcf() -> ET.Element:
             for visual in links[member].visuals:
                 frame = _compose_frame(member_frame, visual.origin_xyz, visual.origin_rpy)
                 _emit_visual_geom(body, f"{member}_visual_geom", visual, frame)
-            if is_hand:
-                # SHARPA URDF collision meshes are deliberately unused; the
-                # Menagerie transplant layer below is the collision authority.
-                continue
             for collision in links[member].collisions:
                 frame = _compose_frame(member_frame, collision.origin_xyz, collision.origin_rpy)
-                _emit_arm_collision_geom(
-                    body, f"{member}_collision_geom", collision, frame, physics.robot_slide_friction
-                )
-
-        # Menagerie transplant collision layer (data tables above).
-        for i, mesh_name in enumerate(_PALM_MESH_NAMES):
-            if "left_hand_C_MC" in members:
-                frame = plan.frame_in_kept["left_hand_C_MC"]
-                _emit_hand_collision_geom(
-                    body,
-                    f"menagerie_collision_palm{i:03d}",
-                    frame,
-                    physics.robot_slide_friction,
-                    type="mesh",
-                    mesh=mesh_name,
-                )
-        for name, geom_link, geom_type, size, pos, quat in _FIT_GEOMS:
-            if geom_link in members:
-                frame = _compose_frame(
-                    plan.frame_in_kept[geom_link], np.array(pos), (0.0, 0.0, 0.0)
-                )
-                if quat is not None:
-                    r, p = frame
-                    frame = (r @ _quat_to_mat(*quat), p)
-                _emit_hand_collision_geom(
-                    body,
-                    name,
-                    frame,
-                    physics.robot_slide_friction,
-                    type=geom_type,
-                    size=_fmt_vec(size),
-                )
-        if _PINKY_MC_COLLISION_MESH and "left_pinky_MC" in members:
-            _emit_hand_collision_geom(
-                body,
-                "menagerie_collision_left_pinky_MC",
-                plan.frame_in_kept["left_pinky_MC"],
-                physics.robot_slide_friction,
-                type="mesh",
-                mesh=_PINKY_MC_COLLISION_MESH,
-            )
-        for name, geom_link, size, pos, quat in _FINGERTIP_CAPSULES:
-            if geom_link in members:
-                slide = (
-                    physics.fingertip_slide_friction
-                    if geom_link in fingertip_slide_bodies
-                    else physics.robot_slide_friction
-                )
-                frame = _compose_frame(
-                    plan.frame_in_kept[geom_link], np.array(pos), (0.0, 0.0, 0.0)
-                )
-                r, p = frame
-                frame = (r @ _quat_to_mat(*quat), p)
-                _emit_hand_collision_geom(
-                    body,
-                    name,
-                    frame,
-                    slide,
-                    type="capsule",
-                    size=_fmt_vec(size),
-                )
+                if is_hand:
+                    # Hand collision = the URDF's own collision meshes (the
+                    # Isaac line's training anchor).  Geoms landing on the five
+                    # DP bodies (DP mesh + welded elastomer pad) carry the
+                    # owner YAML's fingertip slide; everything else carries
+                    # the robot slide.
+                    slide = (
+                        physics.fingertip_slide_friction
+                        if link in fingertip_slide_bodies
+                        else physics.robot_slide_friction
+                    )
+                    _emit_hand_collision_geom(
+                        body,
+                        f"{member}_collision_geom",
+                        frame,
+                        slide,
+                        type="mesh",
+                        mesh=_mesh_asset_name(collision.mesh_file),
+                    )
+                else:
+                    _emit_arm_collision_geom(
+                        body,
+                        f"{member}_collision_geom",
+                        collision,
+                        frame,
+                        physics.robot_slide_friction,
+                    )
 
         # Fingertip frames survive the weld as sites on their DP ancestors.
         for fingertip in FINGERTIP_SITE_LINKS:
@@ -1164,7 +943,6 @@ def write_base_scene_mjcf(path: Path) -> Path:
 
 __all__ = [
     "FINGERTIP_SITE_LINKS",
-    "MENAGERIE_ROOT",
     "ROBOT_SCENE_POS",
     "ROBOT_URDF",
     "TABLE_URDF",

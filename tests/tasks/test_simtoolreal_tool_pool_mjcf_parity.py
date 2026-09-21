@@ -27,7 +27,7 @@ from simtoolreal_unilab.tasks.simtoolreal.tool_pool_mjcf import (
 NUM_PER_TYPE = 100
 SEED = 42
 EXPECTED_POOL_SIZE = 1200
-EXPECTED_CONTRACT = (36, 35, 29, 62)  # nq, nv, nu, nmesh
+EXPECTED_CONTRACT = (36, 35, 29, 40)  # nq, nv, nu, nmesh (40 meshes after the Menagerie retirement)
 
 
 @pytest.fixture(scope="module")

@@ -100,22 +100,26 @@ def test_robot_compile_contract(robot_model, old_model):
         29,
         29,
         29,
-        62,
+        40,
     )
     assert (old_model.nq, old_model.nv, old_model.nu, old_model.nmesh) == (29, 29, 29, 62)
     # 31 bodies = world + 30 kept links (43 URDF links minus the 12 welded
     # fixed links + ... ); 5 fingertip frames survive as sites.
     assert robot_model.nbody == 31
     assert robot_model.nsite == 5
-    assert robot_model.ngeom == old_model.ngeom == 97
+    # 70 geoms = 16 arm (vis+col) + 28 hand visual + 26 hand URDF collision.
+    # (The retired Menagerie layer was 97; the old tree's count stays pinned
+    # on the right-hand side as the historical record.)
+    assert robot_model.ngeom == 70
+    assert old_model.ngeom == 97
     # Total mass is conserved by the weld (parallel-axis composition).
     assert robot_model.body_mass.sum() == pytest.approx(old_model.body_mass.sum(), rel=1e-12)
 
 
 def test_base_scene_compile_contract(base_scene_xml):
     model = mujoco.MjModel.from_xml_path(str(base_scene_xml))
-    assert (model.nq, model.nv, model.nu, model.nmesh) == (29, 29, 29, 62)
-    assert model.ngeom == 99  # robot 97 + floor + table
+    assert (model.nq, model.nv, model.nu, model.nmesh) == (29, 29, 29, 40)
+    assert model.ngeom == 72  # robot 70 + floor + table
     assert model.nkey == 1
     assert model.key_qpos.shape[1] == 29
     assert model.opt.timestep == pytest.approx(1.0 / 120.0)
@@ -337,30 +341,74 @@ def _collision_profiles(model: mujoco.MjModel) -> dict[str, tuple]:
     return profiles
 
 
-def test_collision_profile_matches_old_tree_except_slide_friction(robot_model, old_model):
-    ours = _collision_profiles(robot_model)
-    old = _collision_profiles(old_model)
-    assert set(ours) == set(old)  # 61 collision geoms, identical identity set
-    assert len(ours) == 61
-    fingertip_geom_names = {
-        f"left_{f}_fingertip_collision" for f in ("thumb", "index", "middle", "ring", "pinky")
-    }
-    slide_divergent = []
-    for name in ours:
-        o, t = ours[name], old[name]
-        assert o[:6] == t[:6], f"contact profile drift on {name}: {o[:6]} vs {t[:6]}"
-        # Torsion/roll stay at the MuJoCo defaults on both sides.
-        assert o[6][1:] == t[6][1:] == (0.005, 0.0001)
-        if o[6][0] != t[6][0]:
-            slide_divergent.append(name)
-            # Exemption (v1 mapping): old tree 1.0 uniformly -> owner YAML
-            # values: 0.5 robot-wide, 1.5 on the five fingertip capsules.
-            assert t[6][0] == pytest.approx(1.0)
-            expected = 1.5 if name in fingertip_geom_names else 0.5
-            assert o[6][0] == pytest.approx(expected)
-    # 45 hand collision geoms diverge in slide (40 palm/fit/pinky + 5
-    # fingertips); the 8 arm meshes agree at 0.5.
-    assert len(slide_divergent) == 53
+def test_collision_profile_urdf_mesh_layer(robot_model, urdf_model, robot_xml):
+    """The hand collision layer is the URDF's own collision meshes.
+
+    After the Menagerie retirement (2026-09-21), collision geometry authority
+    is the vendored URDF's <collision> elements: identical mesh bytes as the
+    URDF-compiled model, with the writer's hand contact profile (condim/
+    solimp/solref/group) and the owner-YAML slide split (0.5 robot-wide, 1.5
+    on the five DP weld groups incl. their elastomer pads).
+    """
+
+    # Geometry identity by vertex content: every collision geom in the
+    # URDF-compiled reference must have a byte-equal mesh among OUR collision
+    # geoms (both sides load the same vendored STL files; arm visual/collision
+    # stems collide by name, so content is the robust key).
+    def mesh_verts(model, mesh_id):
+        adr = model.mesh_vertadr[mesh_id]
+        num = model.mesh_vertnum[mesh_id]
+        return np.asarray(model.mesh_vert[adr : adr + num])
+
+    our_collision_verts = []
+    for g in range(robot_model.ngeom):
+        if robot_model.geom_contype[g] == 0 and robot_model.geom_conaffinity[g] == 0:
+            continue
+        mesh_id = robot_model.geom_dataid[g]
+        assert mesh_id >= 0, "all collision geoms are mesh geoms after the swap"
+        our_collision_verts.append(mesh_verts(robot_model, mesh_id))
+    matched = 0
+    for g in range(urdf_model.ngeom):
+        if urdf_model.geom_contype[g] == 0 and urdf_model.geom_conaffinity[g] == 0:
+            continue
+        mesh_id = urdf_model.geom_dataid[g]
+        if mesh_id < 0:
+            continue
+        ref = mesh_verts(urdf_model, mesh_id)
+        assert any(
+            our.shape == ref.shape and np.array_equal(our, ref) for our in our_collision_verts
+        ), mujoco.mj_id2name(urdf_model, mujoco.mjtObj.mjOBJ_MESH, mesh_id)
+        matched += 1
+    assert matched == 34  # 8 arm + 26 hand collision geoms, byte-identical meshes
+
+    # Contact profile + slide placement, per geom.
+    slide_hi = []
+    for g in range(robot_model.ngeom):
+        if robot_model.geom_contype[g] == 0 and robot_model.geom_conaffinity[g] == 0:
+            continue
+        name = mujoco.mj_id2name(robot_model, mujoco.mjtObj.mjOBJ_GEOM, g)
+        body = mujoco.mj_id2name(robot_model, mujoco.mjtObj.mjOBJ_BODY, robot_model.geom_bodyid[g])
+        is_hand = body.startswith("left_")
+        if is_hand:
+            assert tuple(robot_model.geom_solimp[g]) == (0.9, 0.95, 0.001, 0.5, 2.0), name
+            assert tuple(robot_model.geom_solref[g]) == (0.02, 1.0), name
+            assert robot_model.geom_group[g] == 3, name
+            assert robot_model.geom_condim[g] == 3, name
+        assert tuple(robot_model.geom_friction[g][1:]) == (0.005, 0.0001), name
+        slide = robot_model.geom_friction[g][0]
+        if abs(slide - 1.5) < 1e-9:
+            assert body in {
+                "left_thumb_DP",
+                "left_index_DP",
+                "left_middle_DP",
+                "left_ring_DP",
+                "left_pinky_DP",
+            }, (name, body)
+            slide_hi.append(name)
+        else:
+            assert slide == pytest.approx(0.5), name
+    # DP mesh + welded elastomer pad on each of the five DP bodies.
+    assert len(slide_hi) == 10
 
 
 def test_exclude_pairs_exist_and_target_kept_bodies(robot_xml, robot_model, old_model):
@@ -458,3 +506,47 @@ def test_step_smoke_no_nan(robot_model, base_scene_xml, tmp_path):
             assert np.isfinite(data.qpos).all()
             assert np.isfinite(data.qvel).all()
             assert np.isfinite(data.ctrl).all()
+
+
+def test_grip_hold_on_urdf_mesh_collision_layer(base_scene_xml, tmp_path):
+    """A closed fist retains an object under gravity on the URDF-mesh layer.
+
+    Scripted grip probe (baseline from the 2026-09-19 Menagerie-layer probe:
+    escape_dist 0.020, HELD): close the fist at home, insert the object at the
+    palm center, hold 2 s.  The DP-mesh + elastomer contact surfaces (the
+    owner's 1.5-slide fingertip weld groups) must keep it caged.
+    """
+    spec = build_tool_catalog(("hammer",), 1, 42, shuffle=False)[0]
+    composed = compose_scene_mjcf(base_scene_xml, spec, tmp_path / "grip.xml")
+    model = mujoco.MjModel.from_xml_path(str(composed))
+    data = mujoco.MjData(model)
+    mujoco.mj_resetDataKeyframe(
+        model, data, mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
+    )
+    ctrl = np.zeros(model.nu)
+    for j in range(model.njnt):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
+        if name is None or name == "object_root_joint":
+            continue
+        act = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_ctrl")
+        lo, hi = model.jnt_range[j]
+        ctrl[act] = (lo + 0.9 * (hi - lo)) if name.startswith("left_") else data.qpos[j]
+    for _ in range(60):  # close the fist
+        data.ctrl[:] = ctrl
+        mujoco.mj_step(model, data)
+    palm_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "iiwa14_link_7")
+    center = data.xpos[palm_id] + data.xmat[palm_id].reshape(3, 3) @ np.asarray((0.0, -0.02, 0.14))
+    obj_adr = model.jnt_qposadr[
+        mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "object_root_joint")
+    ]
+    data.qpos[obj_adr : obj_adr + 3] = center
+    data.qpos[obj_adr + 3 : obj_adr + 7] = (1.0, 0.0, 0.0, 0.0)
+    data.qvel[:] = 0
+    mujoco.mj_forward(model, data)
+    contacts_at_insert = data.ncon
+    for _ in range(240):  # hold 2 s
+        data.ctrl[:] = ctrl
+        mujoco.mj_step(model, data)
+    escape = np.linalg.norm(data.qpos[obj_adr : obj_adr + 3] - center)
+    assert contacts_at_insert > 0  # the grip is actually touching
+    assert escape < 0.08, f"object escaped the closed fist by {escape:.3f} m"
