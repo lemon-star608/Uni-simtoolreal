@@ -1,11 +1,15 @@
-"""Entity-split MJCF output (B form) — the MuJoCo line's asset set (M-J5).
+"""Entity-split MJCF output (B form) shared by both SimToolReal backends.
 
-The MuJoCo line consumes per-entity sources through the official M2 channel
-(unisim ``entity_assets`` + ``EntityVariantBinding``); the A form (task-side
-composed single models) served as the parity oracle for the M-J5 switch and
-is retired.  This module writes the asset set from the single sources of
-truth (``build_robot_mjcf``, the vendored table URDF, the tool catalog) — no
-second copy of any number.
+Both registered backends consume these per-entity sources through the official
+M2 channel (unisim ``entity_assets`` + ``EntityVariantBinding``): IsaacSim's
+mapped worker composes and converts the entity scene, while MuJoCo composes the
+same sources and compiles its VariantPack.  The A form (task-side composed
+single models) served as the parity oracle for the M-J5 switch and is retired.
+This module writes the asset set from the single sources of truth
+(``build_robot_mjcf``, the vendored table URDF, the tool catalog) — no second
+copy of any number.  GoalViz is deliberately absent: the headless command hub
+owns the authoritative goal and the B-form scene does not materialize a
+duplicate tool mirror.
 
 Output layout (see ``write_entity_set``):
     robot.xml            articulation, fixed base, home keyframe embedded
@@ -29,7 +33,12 @@ import math
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from .config import ARM_DEFAULT_JOINT_POS, JOINT_NAMES_CANONICAL
+from .config import (
+    ARM_DEFAULT_JOINT_POS,
+    ENTITY_ASSETS_MANIFEST_SCHEMA,
+    JOINT_NAMES_CANONICAL,
+    TOOL_POOL_TARGET_ENTITY,
+)
 from .owner_physics import load_owner_physics
 from .robot_mjcf_writer import (
     ROBOT_URDF,
@@ -41,18 +50,6 @@ from .robot_mjcf_writer import (
 )
 from .tool_catalog import build_tool_catalog
 from .tool_mjcf_writer import write_tool_catalog_mjcfs
-
-# The mirror needs no file: M2's ``mirror_of`` inherits the target's source
-# (unisim entities.py:89).  The declaration shape below was read off
-# /tmp/unisim_cl @ 069e3b0 (entities.py:60-100: a mirror must be rigid,
-# kinematic and collision-disabled, and must not carry a source).
-GOALVIZ_MIRROR_DECLARATION = {
-    "name": "goalviz",
-    "mirror_of": "tool",
-    "kind": "rigid",
-    "root_mode": "kinematic",
-    "collision_enabled": False,
-}
 
 
 def _write_tree(root: ET.Element, path: Path) -> Path:
@@ -240,7 +237,7 @@ def write_entity_set(
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
     manifest = {
-        "schema": "simtoolreal_unilab.entity_assets.v1",
+        "schema": ENTITY_ASSETS_MANIFEST_SCHEMA,
         "seed": int(seed),
         "num_per_type": int(num_per_type),
         "tool_count": len(catalog),
@@ -257,8 +254,9 @@ def write_entity_set(
                 # self_collision is not declared on the mujoco leaf: the MJCF
                 # compose path is fail-closed on the toggle and keeps the
                 # source-authored exclusions (robot.xml carries all 35).  The
-                # IsaacSim leaf declares it once the pin crosses #270, along
-                # with gravity_disabled.
+                # The IsaacSim leaf declares it explicitly; the MuJoCo compose
+                # path instead keeps the source-authored excludes and omits the
+                # unsupported toggle.
                 "default_keyframe_name": "home",
             },
             "table": {
@@ -273,13 +271,18 @@ def write_entity_set(
                 "kind": "rigid",
                 "root_mode": "kinematic",
             },
-            "tool": {
+            # Use the production entity name even though the variant sources
+            # are tools: this manifest describes the B-form scene consumed by
+            # the owner YAML.
+            TOOL_POOL_TARGET_ENTITY: {
                 "asset_format": "mjcf",
                 "kind": "rigid",
                 "root_mode": "floating",
-                "variant_binding": True,
+                "variant_binding": {
+                    "target_entity": TOOL_POOL_TARGET_ENTITY,
+                    "layout": "same_layout",
+                },
             },
-            "goalviz": dict(GOALVIZ_MIRROR_DECLARATION),
         },
         "digests": {
             robot_path.name: digest(robot_path),
@@ -314,4 +317,4 @@ def write_bootstrap_entity_set(out_dir: str | Path) -> dict[str, Path]:
     return paths
 
 
-__all__ = ["GOALVIZ_MIRROR_DECLARATION", "write_bootstrap_entity_set", "write_entity_set"]
+__all__ = ["write_bootstrap_entity_set", "write_entity_set"]

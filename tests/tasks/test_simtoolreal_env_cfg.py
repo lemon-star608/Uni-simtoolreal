@@ -206,7 +206,8 @@ def test_mjcf_branch_materializes_entity_pool_without_model_variants(tmp_path):
     assert (root / "table.xml").is_file()
     assert (root / "floor.xml").is_file()
     manifest = json.loads((root / "manifest.json").read_text())
-    assert manifest["schema"] == "simtoolreal_unilab.entity_assets.v1"
+    assert manifest["schema"] == "simtoolreal_unilab.entity_assets.v2"
+    assert set(manifest["entities"]) == {"robot", "table", "floor", "object"}
     assert manifest["tool_files"] == [Path(path).name for path in cfg.tool_pool_files]
 
     catalog = build_tool_catalog(num_per_type=1, seed=cfg.tool_pool_seed, shuffle=True)
@@ -215,9 +216,14 @@ def test_mjcf_branch_materializes_entity_pool_without_model_variants(tmp_path):
         tuple(float(x) for x in spec.object_scale) for spec in catalog
     )
 
-    # Reuse: a second owner over the same root must not rewrite the pool.
+    # Reuse: a v1 manifest is stale and must be rebuilt as the current
+    # four-entity/object-binding shape rather than silently accepted.
+    manifest["schema"] = "simtoolreal_unilab.entity_assets.v1"
+    (root / "manifest.json").write_text(json.dumps(manifest))
     second = _mjcf_cfg(tmp_path)
     second.validate()
+    rebuilt = json.loads((root / "manifest.json").read_text())
+    assert rebuilt["schema"] == "simtoolreal_unilab.entity_assets.v2"
     assert second.tool_pool_files == cfg.tool_pool_files
     assert second.tool_pool_masses == cfg.tool_pool_masses
 

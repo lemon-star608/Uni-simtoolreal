@@ -1,4 +1,4 @@
-"""SimToolReal teacher training on UniLab + UniSim (IsaacSim URDF->USD path).
+"""SimToolReal teacher training on UniLab + UniSim's backend-owned MJCF entities.
 
 Importing this package applies the compatibility layer that extends the
 pinned official UniLab revision with the multi-rigid-root reset routing,

@@ -177,9 +177,9 @@ def test_reward_terms(base):
 
 
 def test_entity_assets_bform_declaration(isaacsim):
-    """The B-form scene: five entities, official SceneEntitySpec field names."""
+    """The B-form scene: four headless entities, official field names."""
     assets = {spec["name"]: spec for spec in isaacsim["env"]["scene"]["entity_assets"]}
-    assert set(assets) == {"robot", "table", "floor", "object", "goalviz"}
+    assert set(assets) == {"robot", "table", "floor", "object"}
     assert isaacsim["env"]["asset_format"] == "mjcf"
     assert isaacsim["env"]["scene"]["default_keyframe_name"] == "home"
 
@@ -201,13 +201,9 @@ def test_entity_assets_bform_declaration(isaacsim):
     assert assets["object"]["kind"] == "rigid"
     assert assets["object"]["root_mode"] == "floating"  # dynamic pool, :1701-1713
 
-    # GoalViz twin semantics (scene_utils.py:1714-1719): collision-free mirror
-    # of the object entity, kinematic root.
-    goalviz = assets["goalviz"]
-    assert goalviz["mirror_of"] == "object"
-    assert goalviz["kind"] == "rigid"
-    assert goalviz["root_mode"] == "kinematic"
-    assert goalviz["collision_enabled"] is False
+    # GoalViz is a visualization-only original-scene artifact.  The headless
+    # B-form intentionally does not materialize a mirrored tool prototype.
+    assert "goalviz" not in assets
 
 
 def test_entity_selectors_are_entity_qualified(isaacsim):
@@ -222,7 +218,7 @@ def test_entity_selectors_are_entity_qualified(isaacsim):
     entities = isaacsim["env"]["scene"]["entities"]
     assert entities["table"]["root_body_name"] == "table/table"
     assert entities["object"]["root_body_name"] == "object/object_root"
-    assert entities["goalviz"]["root_body_name"] == "goalviz/object_root"
+    assert "goalviz" not in entities
 
 
 def test_scene_leaves_share_the_bform_declaration(isaacsim):
@@ -262,8 +258,8 @@ def test_scene_leaves_share_the_bform_declaration(isaacsim):
 # --- owner physics truth (frozen values the MJCF writers consume) -------------
 
 
-def test_owner_physics_friction_tables(isaacsim):
-    physics = isaacsim["owner_physics"]
+def test_owner_physics_friction_tables(base, isaacsim):
+    physics = base["owner_physics"]
     # Static per-material frictions (SimToolReal.yaml:55-58 as [s, s, 0.0]).
     assert physics["robot"]["contact_friction"] == [0.5, 0.5, 0.0]
     fingertip = physics["robot"]["contact_friction_by_body"]
@@ -277,6 +273,7 @@ def test_owner_physics_friction_tables(isaacsim):
     assert all(entry["friction"] == [1.5, 1.5, 0.0] for entry in fingertip)  # :56
     assert physics["table"]["contact_friction"] == [0.5, 0.5, 0.0]
     assert physics["object"]["contact_friction"] == [0.5, 0.5, 0.0]
+    assert "owner_physics" not in isaacsim
 
 
 # --- PhysX solver knobs (simtoolreal_env_cfg.py:515-535) ----------------------
@@ -325,7 +322,7 @@ def test_isaacsim_backend_leaf(isaacsim):
 # --- robot actuator gain overrides (scene_utils.py:59-131) ------------------
 
 
-def test_robot_actuator_gain_overrides(isaacsim):
+def test_robot_actuator_gain_overrides(base):
     """Robot PD gains must reach the INIT overrides or the arm free-falls.
 
     The URDF scan yields no actuator gains, so without an explicit
@@ -345,7 +342,7 @@ def test_robot_actuator_gain_overrides(isaacsim):
         HAND_JOINT_STIFFNESS,
     )
 
-    overrides = isaacsim["owner_physics"]["robot"]["actuator_gain_overrides"]
+    overrides = base["owner_physics"]["robot"]["actuator_gain_overrides"]
     by_joint = {entry["joint_name"]: entry for entry in overrides}
 
     expected: dict[str, dict] = {}

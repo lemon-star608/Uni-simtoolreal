@@ -2,6 +2,8 @@
 
 > Step 0.3 只读探测结果。2026-09-11 建立。本文是任务迁移的证据清单，不表示
 > 下列代码已经迁移或 IsaacSim worker 已经通过运行时探针。
+> 2026-09-22 起第 7 节是当前资产/后端构造口径；前文保留当时的迁移证据与
+> 历史 GoalViz 探针记录，不作为当前场景声明。
 
 ## 0. 范围、来源和判定方法
 
@@ -56,7 +58,7 @@ src/unilab/conf/rlgames_sapg/task/simtoolreal/{base,isaacsim}.yaml
 | `termination_utils.py:10-36` | tolerance curriculum | curriculum/command term | `commands.py` 或 `terminations.py` | 每 interval 按上一 episode successes 平均值缩小 tolerance |
 | `termination_utils.py:39-72` | success 后换目标、fall、hand far、max successes、timeout | termination terms | `terminations.py` | success 不直接结束 episode；成功后清 goal tracker 并置零 episode length |
 | `logging_utils.py:1-33` | reward/termination metrics | recorder term | `events.py` 或 `RecorderTerm` | 不在 backend 里实现任务日志 |
-| `simtoolreal_env_cfg.py:538-595`、`cfg/task/SimToolReal.yaml` | cfg 分组与默认值 | Hydra config | `base.yaml`、`isaacsim.yaml` | task 语义在 base；sim/backend/资产旋钮在 owner |
+| `simtoolreal_env_cfg.py:538-595`、`cfg/task/SimToolReal.yaml` | cfg 分组与默认值 | Hydra config | `base.yaml`、backend leaf | task 语义和 owner physics 在 base；sim/backend 旋钮在 leaf |
 | `utils/generate_objects.py:1-406`、`object_size_distributions.py:1-234` | 12 分布、seed=42、工具 URDF、质量/惯量 | 后端中立 catalog + adapter serializer | `tool_catalog.py`；URDF writer 属 step 1 | 0.3 只登记接口；不在此步实现 writer |
 | `simtoolreal/isaacsimenvs/cfg/train/SimToolRealSAPG.yaml` | PPO/SAPG、asymmetric critic、normalization、bootstrap | algo config | `src/unilab/conf/rlgames_sapg/` | SAPG 基建在 0.1；这里作为语义对拍基准 |
 
@@ -358,15 +360,17 @@ term 直接调用环境 reset。保持通用类不变时，SimToolReal 使用以
 * termination term 计算 success，写入本步 `pending_success`，暂不换 goal 或清除
   reward 所需 tracker；
 * reward terms 读取该快照，完成成功帧 bonus 和其他 reward；
-* reward 之后由 CommandTerm 推进下一目标、清理 per-goal tracker，并提交 GoalViz
-  位姿；真正 done env 仍由通用 reset transaction 处理。
+* reward 之后由 CommandTerm 推进下一目标、清理 per-goal tracker，并更新 hub 中
+  的权威 goal；headless B-form 不提交 GoalViz entity 位姿，真正 done env 仍由
+  通用 reset transaction 处理。
 
 这样可以保持原任务的成功帧奖励和下一目标切换语义，同时不破坏其他任务依赖的
 manager 生命周期。只有最小探针证明现有 CommandManager 没有 reward 后、observation
 前的提交位置时，才考虑增加通用的 post-reward hook；该 hook 必须对其他任务默认
 no-op，不能硬编码 SimToolReal 行为。
 
-1.4b-1 探针结论（`manager_based_rl_env.py:498-539`）：提交点存在——
+1.4b-1 探针结论（`manager_based_rl_env.py:498-539`，GoalViz mirror 仍在场景中时）：
+提交点存在——
 `command_manager.compute` 在 reward 之后、observation 之前执行，且包裹在
 `_reset_state.scoped(...)` 里，§6.5 协议零框架改动落地。但写入通道有语义边界：
 `ResetStateTransaction._prepare_state_write` 对 dirty env 行从**默认** qpos/qvel
@@ -423,13 +427,37 @@ done 行仍会经历通用生命周期的“全量 step observation + reset-row 
 
 ### 6.6 当前实现快照（2026-09-12）
 
-Step 1 teacher 训练前置链已完成：`SimToolRealEnvCfg` 负责 seed=42、12 类×100 的
-1,200-tool URDF pool 与 manifest；manager factory 在 backend materialize 前提交
-`InitRandomizationPlan`；IsaacSim worker 在 round-robin assignment 下只建立 1,200 个
-唯一 prototype，再复制到各环境。`ModelVariantSpec.mass` 作为 owner metadata 随
-INIT 传递，wrench term 使用 assignment 展开的 per-env mass。
+该小节记录 2026-09-12 的 Step 1 快照：当时 `SimToolRealEnvCfg` 负责 seed=42、
+12 类×100 的 1,200-tool URDF pool 与 manifest；manager factory 在 backend
+materialize 前提交 `InitRandomizationPlan`；IsaacSim worker 在 round-robin
+assignment 下只建立 1,200 个唯一 prototype，再复制到各环境。
+`ModelVariantSpec.mass` 作为 owner metadata 随 INIT 传递，wrench term 使用
+assignment 展开的 per-env mass。
 
 真实 Kit 证据包括 D2 root/wrench 6/6、E1 Manager wrench、完整 1,200-tool pool 的
 物化，以及 2048/12288-env 的 1 epoch smoke（均完成 checkpoint load）。正式
 24576-env teacher training 仍是下一步；student camera、contact sensor、depth
 camera 和 engine exception autoreset 保持为后续能力，不阻塞本 teacher gate。
+
+## 7. 当前资产构造与后端路由（2026-09-22）
+
+当前分支不再把 MJCF 视为 MuJoCo 专属路线，也不再在 IsaacSim 运行时调用 URDF
+importer。两个已注册后端共享同一个 B-form 资产真值点：
+
+1. `entity_mjcf_writer.py` 从 `build_robot_mjcf`、vendored table URDF 和工具
+   catalog 写出 `robot.xml`、`table.xml`、`floor.xml` 与 1,200 个 standalone tool
+   MJCF；PD/friction 等 owner physics 在源资产中只写一次。
+2. `SimToolRealEnvCfg.bind_entity_variant` 在 factory 知道 `num_envs` 后，把工具
+   catalog 绑定到 `object` entity，assignment 固定为
+   `arange(num_envs) % variant_count`；质量/尺度表保留在任务侧并按 catalog 顺序
+   展开。
+3. IsaacSim owner leaf 声明 UniSim `entity_assets` 与 object
+   `EntityVariantBinding`，mapped worker 负责 entity compose、MJCF→USD 转换、
+   prototype 物化和 PhysX 步进。root defaults 与该默认 leaf 一致：
+   `SimToolReal` + `sim_backend=isaacsim`。
+4. MuJoCo owner leaf 消费同一套 entity 声明，由 UniSim compose 场景并把
+   same-layout 工具池编译为 VariantPack，再交给 mjbatch CPU runtime。
+5. Headless teacher line 不物化 GoalViz：权威 goal 在 command hub，观测/奖励/
+   termination 都读 hub；因此不会为 1,200 个工具再构造 collision-disabled mirror
+   或第二套 prototype。render/debug 标记以后必须走 visual-only 通道，不能重新
+   引入完整工具实体。

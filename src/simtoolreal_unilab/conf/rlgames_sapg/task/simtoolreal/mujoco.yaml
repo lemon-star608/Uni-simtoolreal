@@ -1,15 +1,14 @@
 # @package _global_
 # SimToolReal MuJoCo backend owner (RL-Games SAPG tree), roadmap M-J5.
 # Inherits the backend-neutral task semantics from base.yaml and declares the
-# MuJoCo-line scene in the entity-split B form: entity_assets (robot/table/
-# floor/object/goalviz) + an entity_variant binding on the object entity
+# MuJoCo-line scene in the entity-split B form: entity_assets
+# (robot/table/floor/object) + an entity_variant binding on the object entity
 # (assembled by SimToolRealEnvCfg.bind_entity_variant at factory time), with
 # composition owned by unisim.  Gains and friction are baked into the assets
-# by the writers (D6).  The goalviz entity is a collision-free mirror of the
-# object (M2 mirror contract); on mujoco the mirror stays static at its reset
-# pose (no mocap write channel on this backend — the command hub remains
-# authoritative, roadmap M-J2 D4 note).  The table is back to a kinematic
-# entity, restoring table z randomization through the entity reset channel.
+# by the writers (D6).  GoalViz is intentionally not materialized in the
+# headless B-form scene; the command hub owns the authoritative goal.  The
+# table is back to a kinematic entity, restoring table z randomization
+# through the entity reset channel.
 defaults:
   - /task/simtoolreal/base
   - _self_
@@ -90,16 +89,6 @@ env:
         root_mode: floating
         initial_state:
           position: ${simtoolreal_entity_position:object}
-          quaternion: [1.0, 0.0, 0.0, 0.0]
-      - name: goalviz
-        # M2 mirror contract: rigid + kinematic + collision-disabled, source
-        # inherited from the mirrored entity.
-        mirror_of: object
-        kind: rigid
-        root_mode: kinematic
-        collision_enabled: false
-        initial_state:
-          position: ${simtoolreal_entity_position:goalviz}
           quaternion: [1.0, 0.0, 0.0, 0.0]
     entities:
       # Entity composition qualifies every model name with the physical entity
@@ -182,6 +171,3 @@ env:
       object:
         root_body_name: object/object_root
         body_names: [object/object_root]
-      goalviz:
-        root_body_name: goalviz/object_root
-        body_names: [goalviz/object_root]

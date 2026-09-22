@@ -34,7 +34,7 @@ from simtoolreal_unilab.tasks.simtoolreal.config import (
     ARM_DEFAULT_JOINT_POS,
     JOINT_NAMES_CANONICAL,
 )
-from simtoolreal_unilab.tasks.simtoolreal.owner_physics import OWNER_YAML
+from simtoolreal_unilab.tasks.simtoolreal.owner_physics import BASE_YAML
 from simtoolreal_unilab.tasks.simtoolreal.robot_mjcf_writer import (
     FINGERTIP_SITE_LINKS,
     write_robot_mjcf,
@@ -236,7 +236,7 @@ def test_actuator_order_is_canonical(robot_model):
 
 
 def test_actuator_gains_match_owner_yaml(robot_model):
-    conf = OmegaConf.load(OWNER_YAML)
+    conf = OmegaConf.load(BASE_YAML)
     overrides = {
         entry.joint_name: entry for entry in conf.owner_physics.robot.actuator_gain_overrides
     }

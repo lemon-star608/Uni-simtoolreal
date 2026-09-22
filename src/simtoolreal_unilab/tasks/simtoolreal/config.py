@@ -61,6 +61,12 @@ NUM_ARM_JOINTS: int = 7
 NUM_FINGERTIPS: int = 5
 NUM_KEYPOINTS: int = 4
 
+TOOL_POOL_TARGET_ENTITY = "object"
+"""Physical scene entity that consumes the tool-only fixed-variant catalog."""
+
+ENTITY_ASSETS_MANIFEST_SCHEMA = "simtoolreal_unilab.entity_assets.v2"
+"""Current B-form entity-pool manifest contract (four physical entities)."""
+
 # Observation geometry constants (obs_utils.py:22-33).
 PALM_CENTER_OFFSET: tuple[float, float, float] = (-0.0, -0.02, 0.16)
 """Policy was trained against the palm center, not the raw wrist body."""

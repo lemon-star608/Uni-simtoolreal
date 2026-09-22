@@ -1,10 +1,11 @@
 # @package _global_
 # Canonical SimToolReal Manager-Based task declaration (RL-Games SAPG owner).
-# Backend-neutral: all task semantics live here; backend leaves carry
-# identity, backend knobs, explicitly disabled terms, and the whole `scene:`
-# block (M-J2: the pinned SceneCfg owns no entity_assets/ground_plane/physx
-# fields, so the IsaacSim-line scene declaration lives in isaacsim.yaml and
-# the MuJoCo line declares its own composed-MJCF scene in mujoco.yaml).
+# Backend-neutral: all task semantics and frozen owner physics truth live
+# here; backend leaves carry identity, backend knobs, explicitly disabled
+# terms, and the whole `scene:` block (M-J2: the pinned SceneCfg owns no
+# entity_assets/ground_plane/physx fields, so the IsaacSim-line scene
+# declaration lives in isaacsim.yaml and the MuJoCo line declares its own
+# composed-MJCF scene in mujoco.yaml).
 #
 # Sources (field-level mirror, see DESIGN.md section 1 and config.py):
 #   simtoolreal/isaacsimenvs/tasks/simtoolreal/simtoolreal_env_cfg.py
@@ -139,6 +140,139 @@ env:
   tool_pool_target_entity: object
   tool_pool_root: null
   tool_pool_enabled: true
+
+# Frozen owner physics truth (task data, not a scene declaration).  The MJCF
+# writers read these through tasks/simtoolreal/owner_physics.py; the owner-YAML
+# parity tests pin every value against the original repository's tables.
+# They used to live in the IsaacSim leaf's fork-era entity_assets section.
+owner_physics:
+  robot:
+    contact_friction: [0.5, 0.5, 0.0]
+    contact_friction_by_body:
+      - body_name: left_index_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_middle_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_ring_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_thumb_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_pinky_DP
+        friction: [1.5, 1.5, 0.0]
+    actuator_gain_overrides:
+      - joint_name: iiwa14_joint_1
+        stiffness: 600.0
+        damping: 27.027026473513512
+      - joint_name: iiwa14_joint_2
+        stiffness: 600.0
+        damping: 27.027026473513512
+      - joint_name: iiwa14_joint_3
+        stiffness: 500.0
+        damping: 24.672186769721083
+      - joint_name: iiwa14_joint_4
+        stiffness: 400.0
+        damping: 22.067474708266914
+      - joint_name: iiwa14_joint_5
+        stiffness: 200.0
+        damping: 9.752538131173853
+      - joint_name: iiwa14_joint_6
+        stiffness: 200.0
+        damping: 9.147747263670984
+      - joint_name: iiwa14_joint_7
+        stiffness: 200.0
+        damping: 9.147747263670984
+      - joint_name: left_1_thumb_CMC_FE
+        stiffness: 6.95
+        damping: 0.28676845
+        armature: 0.0032
+      - joint_name: left_thumb_CMC_AA
+        stiffness: 13.2
+        damping: 0.40845109
+        armature: 0.0032
+      - joint_name: left_thumb_MCP_FE
+        stiffness: 4.76
+        damping: 0.20394083
+        armature: 0.00265
+      - joint_name: left_thumb_MCP_AA
+        stiffness: 6.62
+        damping: 0.24044435
+        armature: 0.00265
+      - joint_name: left_thumb_IP
+        stiffness: 0.9
+        damping: 0.04190723
+        armature: 0.0006
+      - joint_name: left_2_index_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859232
+        armature: 0.00265
+      - joint_name: left_index_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595532
+        armature: 0.00265
+      - joint_name: left_index_PIP
+        stiffness: 0.9
+        damping: 0.04243185
+        armature: 0.0006
+      - joint_name: left_index_DIP
+        stiffness: 0.9
+        damping: 0.03504461
+        armature: 0.00042
+      - joint_name: left_3_middle_MCP_FE
+        stiffness: 4.76
+        damping: 0.2085923
+        armature: 0.00265
+      - joint_name: left_middle_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595532
+        armature: 0.00265
+      - joint_name: left_middle_PIP
+        stiffness: 0.9
+        damping: 0.04243185
+        armature: 0.0006
+      - joint_name: left_middle_DIP
+        stiffness: 0.9
+        damping: 0.03504461
+        armature: 0.00042
+      - joint_name: left_4_ring_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859226
+        armature: 0.00265
+      - joint_name: left_ring_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595528
+        armature: 0.00265
+      - joint_name: left_ring_PIP
+        stiffness: 0.9
+        damping: 0.04243183
+        armature: 0.0006
+      - joint_name: left_ring_DIP
+        stiffness: 0.9
+        damping: 0.0350446
+        armature: 0.00042
+      - joint_name: left_5_pinky_CMC
+        stiffness: 1.38
+        damping: 0.02782345
+        armature: 0.00012
+      - joint_name: left_pinky_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859229
+        armature: 0.00265
+      - joint_name: left_pinky_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595528
+        armature: 0.00265
+      - joint_name: left_pinky_PIP
+        stiffness: 0.9
+        damping: 0.04243183
+        armature: 0.0006
+      - joint_name: left_pinky_DIP
+        stiffness: 0.9
+        damping: 0.0350446
+        armature: 0.00042
+  table:
+    contact_friction: [0.5, 0.5, 0.0]
+  object:
+    contact_friction: [0.5, 0.5, 0.0]
 
 # Seven-term reward set (config.RewardCfg; old-repo reward: section values).
 # Terms return raw values; weights carry the original *_scale factors and

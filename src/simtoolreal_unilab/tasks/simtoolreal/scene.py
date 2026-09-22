@@ -2,7 +2,7 @@
 
 The manager-based factory keeps scene roles in the owner YAML; this module owns
 asset-path resolution and deterministic bootstrap object assets so the cold
-path can scan robot/table/object/goalviz without hardcoding absolute paths.
+path can scan robot/table/object without hardcoding absolute paths.
 The full 1200-file tool pool remains an init-randomization adapter concern.
 
 Resolution order for the assets root:
@@ -80,7 +80,7 @@ def _generated_assets_root() -> Path:
 
 
 def _resolve_generated_asset(name: str) -> str:
-    """Materialize the deterministic bootstrap object/goal asset on demand.
+    """Materialize the deterministic legacy bootstrap object asset on demand.
 
     The full 1200-file variant pool is an init-randomization concern and is
     intentionally kept out of Hydra resolution.  The multi-asset scene still
@@ -88,26 +88,15 @@ def _resolve_generated_asset(name: str) -> str:
     canonical catalog entry for the scene declaration and reserve pool
     assignment for the IsaacSim worker integration step.
     """
-    if name not in {"object.urdf", "goalviz.urdf"}:
-        raise ValueError(
-            "unknown generated SimToolReal asset; expected object.urdf or goalviz.urdf, "
-            f"got {name!r}"
-        )
+    if name != "object.urdf":
+        raise ValueError(f"unknown generated SimToolReal asset; expected object.urdf, got {name!r}")
     root = _generated_assets_root()
     path = root / name
     if path.is_file():
         return str(path)
 
     spec = build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
-    if name == "object.urdf":
-        write_tool_urdf(spec, path)
-    else:
-        # GoalViz has the same geometry and inertial values as the bootstrap
-        # object but a distinct root-link namespace, which is required by the
-        # public multi-asset body map.
-        object_path = root / "object.urdf"
-        write_tool_urdf(spec, object_path)
-        path.write_text(object_path.read_text().replace("object_root", "goalviz_root"))
+    write_tool_urdf(spec, path)
     return str(path)
 
 
@@ -148,7 +137,7 @@ def _resolve_entity_position(name: str) -> list[float]:
     EntityInitialState positions for the B-form scene declaration
     (``mujoco.yaml``): the robot stands 0.8 m behind the table
     (``ROBOT_SCENE_POS``), the table top sits at ``table_reset_z``, and the
-    object/goalviz roots start at the object home pose
+    object root starts at the object home pose
     (``table_reset_z + table_object_z_offset``) — kept on one source.
     """
     from .config import ResetCfg
@@ -161,7 +150,6 @@ def _resolve_entity_position(name: str) -> list[float]:
         "table": [0.0, 0.0, reset.table_reset_z],
         "floor": [0.0, 0.0, 0.0],
         "object": [0.0, 0.0, object_z],
-        "goalviz": [0.0, 0.0, object_z],
     }
     if name not in values:
         raise ValueError(

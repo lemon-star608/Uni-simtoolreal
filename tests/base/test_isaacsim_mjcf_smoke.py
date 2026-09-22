@@ -4,7 +4,7 @@ Small pool (tool_pool_num_per_type=1 -> 12 tool variants) and num_envs=8,
 built through the production wiring (Hydra compose of the isaacsim owner
 leaf -> BackendAdapter override -> registry.make with
 sim_backend="isaacsim").  No mocks: the UniSim IsaacSim worker composes the
-mapped entity scene (B form: robot/table/floor/object/goalviz entity assets
+mapped entity scene (B form: robot/table/floor/object entity assets
 + the object entity variant binding) and steps PhysX on the GPU.
 
 Requires the external worker runtime (scripts/setup_isaacsim_env.sh) and a

@@ -2,13 +2,15 @@
 
 The UniSim adapter owns the wire contract for model variants.  This module is
 the task-owner side of that contract: it builds the deterministic 1200-tool
-catalog, materializes the pool in the configured ``asset_format`` (``urdf``
-for the IsaacSim line — whole-file variants via ``fixed_model_variants``;
-``mjcf`` for the MuJoCo line — entity-split B form, M-J5: the catalog binds
-to the scene's ``object`` entity through ``bind_entity_variant`` once the
-factory's ``num_envs`` is known).  Variant masses live in the task-side
-``tool_pool_masses`` table (D5, catalog order); the object-scale table stays
-on this config for the command hub's expansion.
+catalog and materializes the entity-split MJCF B form shared by both registered
+backends.  The catalog binds to the scene's ``object`` entity through
+``bind_entity_variant`` once the factory's ``num_envs`` is known; IsaacSim then
+consumes the mapped entity scene in its worker, while MuJoCo composes the same
+sources and compiles its VariantPack.  Variant masses live in the task-side
+``tool_pool_masses`` table (D5, catalog order); the object-scale table stays on
+this config for the command hub's expansion.  The legacy whole-model URDF
+branch remains available to focused compatibility tests and is not selected by
+either shipped owner leaf.
 """
 
 from __future__ import annotations
@@ -24,12 +26,13 @@ import numpy as np
 from unilab.base.variants import FixedModelVariantCatalogCfg, FixedModelVariantCfg
 from unilab.envs import ManagerBasedRlEnvCfg
 
+from .config import ENTITY_ASSETS_MANIFEST_SCHEMA, TOOL_POOL_TARGET_ENTITY
 from .tool_catalog import build_tool_catalog
 from .tool_urdf_writer import write_tool_catalog_urdfs
 
 _DEFAULT_NUM_PER_TYPE = 100
 _DEFAULT_SEED = 42
-_DEFAULT_TARGET_ENTITY = "object"
+_DEFAULT_TARGET_ENTITY = TOOL_POOL_TARGET_ENTITY
 _DEFAULT_ASSET_FORMAT = "urdf"
 _VALID_ASSET_FORMATS = ("urdf", "mjcf")
 
@@ -47,13 +50,14 @@ def _entity_pool_root(seed: int, num_per_type: int, configured: str | None) -> P
 def _materialize_mjcf_pool(
     *, seed: int, num_per_type: int, configured_root: str | None
 ) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[tuple[float, float, float], ...]]:
-    """MJCF pool branch (M-J5, B form): entity-split sources, tool variants only.
+    """Shared MJCF pool branch (M-J5, B form): entity-split tool variants.
 
     The pool directory carries the full entity set (``write_entity_set``:
     robot/table/floor + tools/); the variant catalog binds to the ``object``
     entity through ``bind_entity_variant`` instead of the whole-model
-    ``fixed_model_variants`` channel.  Masses/scales stay task-side tables in
-    catalog order (D5), exactly like the URDF branch.
+    ``fixed_model_variants`` channel.  Both shipped owner leaves select this
+    format.  Masses/scales stay task-side tables in catalog order (D5), exactly
+    like the legacy URDF branch.
     """
     from .entity_mjcf_writer import write_entity_set
 
@@ -61,20 +65,29 @@ def _materialize_mjcf_pool(
     root = _entity_pool_root(seed, num_per_type, configured_root)
     manifest_path = root / "manifest.json"
     expected = {
-        "schema": "simtoolreal_unilab.entity_assets.v1",
+        "schema": ENTITY_ASSETS_MANIFEST_SCHEMA,
         "seed": int(seed),
         "num_per_type": int(num_per_type),
         "tool_count": len(catalog),
+        "layout": "same_layout",
     }
     tool_names: tuple[str, ...] | None = None
     if manifest_path.is_file():
         try:
             manifest = json.loads(manifest_path.read_text())
             names = tuple(str(value) for value in manifest["tool_files"])
+            entities = manifest["entities"]
             static = ("robot.xml", "table.xml", "floor.xml")
             if (
                 all(manifest.get(key) == value for key, value in expected.items())
                 and len(names) == len(catalog)
+                and isinstance(entities, dict)
+                and set(entities) == {"robot", "table", "floor", TOOL_POOL_TARGET_ENTITY}
+                and entities[TOOL_POOL_TARGET_ENTITY].get("variant_binding")
+                == {
+                    "target_entity": TOOL_POOL_TARGET_ENTITY,
+                    "layout": "same_layout",
+                }
                 and all((root / name).is_file() for name in static)
                 and all((root / "tools" / name).is_file() for name in names)
             ):
@@ -198,14 +211,15 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
 
     tool_pool_num_per_type: int = _DEFAULT_NUM_PER_TYPE
     tool_pool_seed: int = _DEFAULT_SEED
-    # Name of the scene entity the pool binds to; the owner YAML must declare
-    # ``consumes_fixed_variant_pool: true`` on exactly that entity asset so
-    # the backend binds the plan symmetrically.
+    # Name of the physical scene entity that consumes the tool-only variant
+    # catalog through ``EntityVariantBinding``.
     tool_pool_target_entity: str = _DEFAULT_TARGET_ENTITY
     tool_pool_root: str | None = None
     tool_pool_enabled: bool = True
-    # ``urdf`` (IsaacSim line, default — unchanged behavior) or ``mjcf``
-    # (MuJoCo line, D3): picks which writer materializes the variant pool.
+    # ``mjcf`` is the shared B-form route selected by both shipped owner
+    # leaves; ``urdf`` remains a legacy whole-model compatibility branch.
+    # The dataclass default is unchanged so focused tests can construct that
+    # older branch without Hydra.
     asset_format: str = _DEFAULT_ASSET_FORMAT
 
     # Filled by ``validate()`` — after Hydra/registry overlays settle the pool

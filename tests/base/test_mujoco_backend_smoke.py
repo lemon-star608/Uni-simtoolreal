@@ -4,7 +4,7 @@ Small pool (tool_pool_num_per_type=1 -> 12 tool variants) and num_envs=8,
 built through the production wiring (Hydra compose of the mujoco owner leaf
 -> BackendAdapter override -> registry.make with sim_backend="mujoco").  No
 mocks: the UniSim MuJoCo backend composes the entity scene (B form, M-J5:
-robot/table/floor/object/goalviz entity assets + the object entity variant
+robot/table/floor/object entity assets + the object entity variant
 binding), compiles the variant pack, and steps mjbatch on CPU.
 
 History: this suite was xfail-blocked by unilabsim/mjbatch_uni#33 (VariantPack
@@ -57,6 +57,17 @@ def test_reset_obs_contract(env):
     assert obs["obs"].shape == (NUM_ENVS, 140)  # OBS_FIELD_SIZES pins
     assert obs["critic"].shape == (NUM_ENVS, 162)
     assert all(np.isfinite(value).all() for value in obs.values())
+
+
+def test_headless_scene_has_four_entities(env):
+    """GoalViz is intentionally absent from the production B-form scene."""
+    assert {spec.name for spec in env.cfg.scene.entity_assets} == {
+        "robot",
+        "table",
+        "floor",
+        "object",
+    }
+    assert "goalviz" not in env.cfg.scene.entities
 
 
 def test_reset_joints_land_near_home(env):

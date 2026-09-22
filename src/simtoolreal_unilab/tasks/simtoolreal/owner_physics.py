@@ -2,9 +2,9 @@
 
 On the MuJoCo/Isaac MJCF lines the MJCF carries gains and friction natively,
 so the frozen values declared by the owner are parsed here and injected at
-asset generation time.  The declaration lives in the IsaacSim leaf's
-top-level ``owner_physics`` section (``conf/rlgames_sapg/task/simtoolreal/
-isaacsim.yaml``) — task truth data kept out of the B-form scene declaration
+asset generation time.  The declaration lives in the backend-neutral base
+task config (``conf/rlgames_sapg/task/simtoolreal/base.yaml``) — task truth
+data kept out of either backend leaf and out of the B-form scene declaration
 (the pinned SceneEntitySpec owns no such fields).  Nothing in this module
 restates a number: every value is read from the owner YAML, and
 ``tests/tasks/test_simtoolreal_owner_yaml_parity.py`` pins that YAML against
@@ -19,14 +19,18 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 
-OWNER_YAML = (
+BASE_YAML = (
     Path(__file__).resolve().parents[2]
     / "conf"
     / "rlgames_sapg"
     / "task"
     / "simtoolreal"
-    / "isaacsim.yaml"
+    / "base.yaml"
 )
+
+# Compatibility name for callers that only need the config containing
+# ``owner_physics``.  The MJCF writers intentionally do not read a backend leaf.
+OWNER_YAML = BASE_YAML
 
 # MuJoCo torsional/rolling friction defaults.  The owner YAML only pins the
 # sliding term (its Isaac-side [s, s, 0] triple has no torsion/roll
@@ -57,20 +61,17 @@ class OwnerPhysics:
     sim_dt: float
 
 
-_BASE_YAML = OWNER_YAML.with_name("base.yaml")
-
-
 @lru_cache(maxsize=1)
-def load_owner_physics(path: Path = OWNER_YAML) -> OwnerPhysics:
+def load_owner_physics(path: Path = BASE_YAML) -> OwnerPhysics:
     """Parse the owner YAML once and return its physics values."""
     conf = OmegaConf.load(path)
-    # The frozen values live in the leaf's top-level owner_physics section
-    # (task truth data, moved out of the fork-era entity_assets block when
-    # the leaf became a B-form scene declaration, Isaac/MJCF line).
+    # The frozen values live in the backend-neutral base task config.  This
+    # keeps the MJCF writer usable by either backend without importing an
+    # IsaacSim (or MuJoCo) leaf.
     physics = conf.owner_physics
     assets = {name: physics[name] for name in ("robot", "table", "object")}
     # sim_dt lives in the backend-neutral base.yaml, not the leaf.
-    sim_dt = float(OmegaConf.load(_BASE_YAML).env.sim_dt)
+    sim_dt = float(conf.env.sim_dt)
 
     gains: dict[str, ActuatorGains] = {}
     for entry in assets["robot"].actuator_gain_overrides:
@@ -100,6 +101,7 @@ def load_owner_physics(path: Path = OWNER_YAML) -> OwnerPhysics:
 
 __all__ = [
     "ActuatorGains",
+    "BASE_YAML",
     "OWNER_YAML",
     "OwnerPhysics",
     "ROLLING_FRICTION_DEFAULT",

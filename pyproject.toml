@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "simtoolreal-unilab"
 version = "0.1.0"
-description = "SimToolReal teacher training on UniLab + UniSim through the IsaacSim URDF-to-USD asset path"
+description = "SimToolReal teacher training on UniLab + UniSim with shared MJCF B-form IsaacSim and MuJoCo backends"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = "Apache-2.0"

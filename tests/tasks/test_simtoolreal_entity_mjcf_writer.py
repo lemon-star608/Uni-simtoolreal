@@ -1,10 +1,10 @@
-"""Entity-split (B form) MJCF asset tests.
+"""Entity-split B-form MJCF asset tests.
 
-The B form is the MuJoCo line's asset path (M-J5), consumed through the
-official M2 entity-composition channel (unisim ``entity_assets`` +
+The B form is shared by the MuJoCo and IsaacSim owner leaves, and is consumed
+through the official entity-composition channel (unisim ``entity_assets`` +
 ``EntityVariantBinding``).  These tests pin the split output's compile
-contracts, the catalog value transcription, and the official-path
-integration (unisim ``compose_scene``) including the composed home pose.
+contracts, the catalog value transcription, and the MuJoCo composition
+integration including the composed home pose.
 """
 
 from __future__ import annotations
@@ -17,10 +17,11 @@ import pytest
 
 from simtoolreal_unilab.tasks.simtoolreal.config import (
     ARM_DEFAULT_JOINT_POS,
+    ENTITY_ASSETS_MANIFEST_SCHEMA,
     JOINT_NAMES_CANONICAL,
+    TOOL_POOL_TARGET_ENTITY,
 )
 from simtoolreal_unilab.tasks.simtoolreal.entity_mjcf_writer import (
-    GOALVIZ_MIRROR_DECLARATION,
     write_entity_set,
 )
 from simtoolreal_unilab.tasks.simtoolreal.tool_catalog import build_tool_catalog
@@ -65,7 +66,13 @@ def test_split_set_compiles_and_carries_home(entity_set):
 
     assert manifest["tool_count"] == 12 * NUM_PER_TYPE
     assert manifest["layout"] == "same_layout"
+    assert manifest["schema"] == ENTITY_ASSETS_MANIFEST_SCHEMA
+    assert set(manifest["entities"]) == {"robot", "table", "floor", "object"}
     assert manifest["entities"]["robot"]["default_keyframe_name"] == "home"
+    assert manifest["entities"][TOOL_POOL_TARGET_ENTITY]["variant_binding"] == {
+        "target_entity": TOOL_POOL_TARGET_ENTITY,
+        "layout": "same_layout",
+    }
 
 
 def test_diagonalized_inertials_reconstruct_the_same_tensors(entity_set):
@@ -117,20 +124,11 @@ def test_diagonalized_inertials_reconstruct_the_same_tensors(entity_set):
         np.testing.assert_allclose(norm.body_ipos[j], raw.body_ipos[i], rtol=0, atol=0)
 
 
-def test_goalviz_mirror_declaration_matches_m2_shape():
-    """The mirror declaration validates against unisim's own rules."""
-    from unisim.entities import SceneEntitySpec, validate_entity_declarations
-
-    tool = SceneEntitySpec(
-        name="tool",
-        source=__import__(
-            "unisim.dr.types", fromlist=["ModelSourceDescriptor"]
-        ).ModelSourceDescriptor("tool_000.xml"),
-        kind="rigid",
-        root_mode="floating",
-    )
-    mirror = SceneEntitySpec(**GOALVIZ_MIRROR_DECLARATION)
-    validate_entity_declarations((tool, mirror), None)
+def test_headless_bform_has_no_goalviz_entity(entity_set):
+    """GoalViz is intentionally absent from the headless B-form output."""
+    _, manifest = entity_set
+    assert "goalviz" not in manifest["entities"]
+    assert not any("goalviz" in name for name in manifest["tool_files"])
 
 
 def test_tools_same_layout_and_compile(entity_set):
@@ -203,23 +201,15 @@ def test_composed_scene_home_pose(entity_set):
                 root_mode="kinematic",
             ),
             SceneEntitySpec(
-                name="tool",
+                name="object",
                 source=ModelSourceDescriptor(str(tools[0])),
                 kind="rigid",
                 root_mode="floating",
                 initial_state=EntityInitialState(position=(0.0, 0.0, 0.63)),
             ),
-            SceneEntitySpec(
-                name="goalviz",
-                mirror_of="tool",
-                kind="rigid",
-                root_mode="kinematic",
-                collision_enabled=False,
-                initial_state=EntityInitialState(position=(0.0, 0.0, 0.63)),
-            ),
         ),
         entity_variant=EntityVariantBinding(
-            target_entity="tool",
+            target_entity="object",
             plan=FixedVariantPlan(
                 variants=tuple(ModelSourceDescriptor(str(p)) for p in tools),
                 assignment=np.arange(4, dtype=np.int32) % len(tools),
@@ -233,9 +223,9 @@ def test_composed_scene_home_pose(entity_set):
         b_model = composed.model
         assert (b_model.nq, b_model.nv, b_model.nu) == (36, 35, 29)
         assert b_model.nexclude == 35  # source-authored excludes carried
-        # Mirror present, collision-free.
-        mirror_body = mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, "goalviz/object_root")
-        assert mirror_body >= 1
+        # The headless production shape is exactly four entities.
+        goalviz_body = mujoco.mj_name2id(b_model, mujoco.mjtObj.mjOBJ_BODY, "goalviz/object_root")
+        assert goalviz_body < 0
 
         b_data = mujoco.MjData(b_model)
         mujoco.mj_resetDataKeyframe(
