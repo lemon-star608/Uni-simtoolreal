@@ -29,13 +29,17 @@ This is a downstream task package: install it and use UniLab's shared training t
 - Verified on Linux x86_64, one NVIDIA GPU (RTX 4090), IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 as the worker runtime.
 - No robot video is included yet; a recording of a trained lift episode is the top missing piece for this README.
 
-## First successful run
+## Bring-up setup (temporary)
 
 Requirements: Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and roughly 20 GB of disk for the worker runtime and caches.
 
+Until UniLab #1620 and UniSim #279 merge and ship, this branch uses local
+bring-up checkouts for those two dependencies. Run it from the prepared
+workspace; a standalone clean clone is not expected to resolve until the
+temporary sources return to official releases.
+
 ```bash
-git clone https://github.com/unilabsim/simtoolreal_unilab.git
-cd simtoolreal_unilab
+cd /path/to/prepared/simtoolreal_unilab
 uv sync
 bash scripts/setup_isaacsim_env.sh   # one-time: IsaacSim worker runtime (~15 GB)
 uv run simtoolreal-assets            # verify the vendored assets

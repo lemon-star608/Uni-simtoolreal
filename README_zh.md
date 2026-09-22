@@ -31,13 +31,16 @@
 - 验证环境：Linux x86_64、单张 NVIDIA GPU（RTX 4090）、IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 作为 worker 运行时。
 - 尚未包含机器人视频；一段训练后的提举回合录像本 README 最缺的素材。
 
-## 首次成功运行
+## 临时 bring-up 环境
 
 要求：Linux x86_64、一张支持 CUDA 的 NVIDIA GPU（学习器与 IsaacSim worker 共用）、[uv](https://docs.astral.sh/uv/)、约 20 GB 磁盘（worker 运行时与缓存）。
 
+在 UniLab #1620 与 UniSim #279 合并发布之前，本分支的这两个依赖指向
+本地 bring-up checkout。请先在当前准备好的工作区运行；临时 source 切回
+官方 release 前，不承诺独立 clean clone 可直接解析依赖。
+
 ```bash
-git clone https://github.com/unilabsim/simtoolreal_unilab.git
-cd simtoolreal_unilab
+cd /path/to/prepared/simtoolreal_unilab
 uv sync
 bash scripts/setup_isaacsim_env.sh   # 一次性：安装 IsaacSim worker 运行时（约 15 GB）
 uv run simtoolreal-assets            # 校验随仓库分发的资产

@@ -49,9 +49,16 @@ def _build_env(tmp_path):
     override = adapter.build_task_env_cfg_override()
     override["tool_pool_num_per_type"] = NUM_PER_TYPE
     override["tool_pool_root"] = str(tmp_path / "pool")
-    return registry.make(
+    built = registry.make(
         "SimToolReal", sim_backend="isaacsim", env_cfg_override=override, num_envs=NUM_ENVS
     )
+    assert {spec.name for spec in built.cfg.scene.entity_assets} == {
+        "robot",
+        "table",
+        "floor",
+        "object",
+    }
+    return built
 
 
 @pytest.fixture(scope="module")

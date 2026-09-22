@@ -209,6 +209,7 @@ def test_mjcf_branch_materializes_entity_pool_without_model_variants(tmp_path):
     assert manifest["schema"] == "simtoolreal_unilab.entity_assets.v2"
     assert set(manifest["entities"]) == {"robot", "table", "floor", "object"}
     assert manifest["tool_files"] == [Path(path).name for path in cfg.tool_pool_files]
+    assert len(set(manifest["tool_files"])) == len(manifest["tool_files"])
 
     catalog = build_tool_catalog(num_per_type=1, seed=cfg.tool_pool_seed, shuffle=True)
     assert cfg.tool_pool_masses == tuple(float(spec.mass) for spec in catalog)
@@ -226,6 +227,15 @@ def test_mjcf_branch_materializes_entity_pool_without_model_variants(tmp_path):
     assert rebuilt["schema"] == "simtoolreal_unilab.entity_assets.v2"
     assert second.tool_pool_files == cfg.tool_pool_files
     assert second.tool_pool_masses == cfg.tool_pool_masses
+
+    # Catalog order is part of the cache contract: masses/scales are paired
+    # with tool_files by index. A reordered manifest must be rebuilt, not
+    # silently reused against the current task-side tables.
+    rebuilt["tool_files"] = list(reversed(rebuilt["tool_files"]))
+    (root / "manifest.json").write_text(json.dumps(rebuilt))
+    third = _mjcf_cfg(tmp_path)
+    third.validate()
+    assert third.tool_pool_files == cfg.tool_pool_files
 
 
 def test_bind_entity_variant_builds_round_robin_plan(tmp_path):

@@ -19,6 +19,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass, field
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ from unilab.envs import ManagerBasedRlEnvCfg
 
 from .config import ENTITY_ASSETS_MANIFEST_SCHEMA, TOOL_POOL_TARGET_ENTITY
 from .tool_catalog import build_tool_catalog
+from .tool_mjcf_writer import tool_mjcf_text
 from .tool_urdf_writer import write_tool_catalog_urdfs
 
 _DEFAULT_NUM_PER_TYPE = 100
@@ -77,10 +79,13 @@ def _materialize_mjcf_pool(
             manifest = json.loads(manifest_path.read_text())
             names = tuple(str(value) for value in manifest["tool_files"])
             entities = manifest["entities"]
+            tool_digests = manifest["tool_digests"]
+            static_digests = manifest["digests"]
             static = ("robot.xml", "table.xml", "floor.xml")
             if (
                 all(manifest.get(key) == value for key, value in expected.items())
                 and len(names) == len(catalog)
+                and len(set(names)) == len(names)
                 and isinstance(entities, dict)
                 and set(entities) == {"robot", "table", "floor", TOOL_POOL_TARGET_ENTITY}
                 and entities[TOOL_POOL_TARGET_ENTITY].get("variant_binding")
@@ -88,8 +93,20 @@ def _materialize_mjcf_pool(
                     "target_entity": TOOL_POOL_TARGET_ENTITY,
                     "layout": "same_layout",
                 }
-                and all((root / name).is_file() for name in static)
-                and all((root / "tools" / name).is_file() for name in names)
+                and isinstance(tool_digests, dict)
+                and set(tool_digests) == set(names)
+                and isinstance(static_digests, dict)
+                and set(static_digests) == set(static)
+                and all(
+                    sha256((root / name).read_bytes()).hexdigest() == static_digests[name]
+                    for name in static
+                )
+                and all(
+                    (path := root / "tools" / name).is_file()
+                    and path.read_text() == tool_mjcf_text(spec)
+                    and sha256(path.read_bytes()).hexdigest() == tool_digests[name]
+                    for name, spec in zip(names, catalog, strict=True)
+                )
             ):
                 tool_names = names
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):

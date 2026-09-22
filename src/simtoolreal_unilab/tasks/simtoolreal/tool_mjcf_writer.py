@@ -141,7 +141,7 @@ def _head_geoms(spec: ToolSpec) -> str:
     )
 
 
-def _tool_mjcf_text(spec: ToolSpec) -> str:
+def tool_mjcf_text(spec: ToolSpec) -> str:
     if (spec.head_scale is None) != (spec.head_density is None):
         raise ValueError(
             f"head_scale and head_density must both be set or both None (got "
@@ -188,7 +188,7 @@ def write_tool_mjcf(spec: ToolSpec, path: Path) -> Path:
     composite parallel-axis math of generate_objects.py:206-218 lives in
     ``tool_catalog.build_tool_catalog``).
     """
-    path.write_text(_tool_mjcf_text(spec))
+    path.write_text(tool_mjcf_text(spec))
     return path
 
 
@@ -230,4 +230,4 @@ def write_tool_catalog_mjcfs(
     return paths, scales_norm
 
 
-__all__ = ["write_tool_catalog_mjcfs", "write_tool_mjcf"]
+__all__ = ["tool_mjcf_text", "write_tool_catalog_mjcfs", "write_tool_mjcf"]

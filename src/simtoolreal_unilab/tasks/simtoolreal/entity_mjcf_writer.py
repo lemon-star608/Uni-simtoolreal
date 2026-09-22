@@ -244,6 +244,7 @@ def write_entity_set(
         # Catalog-order tool file names (the variant catalog order the task
         # side's mass/scale tables share).
         "tool_files": [Path(p).name for p in tool_paths],
+        "tool_digests": {Path(p).name: digest(Path(p)) for p in tool_paths},
         "layout": "same_layout",
         "entities": {
             "robot": {
