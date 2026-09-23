@@ -31,9 +31,10 @@ env:
     # — the owner-YAML parity tests pin the two leaves in sync.  The only
     # deliberate differences: self_collision is declared here (the IsaacSim
     # worker honors the toggle; the mujoco compose path is fail-closed on
-    # it), and gravity_disabled is omitted because SceneEntitySpec grows
-    # that field after unisim 1.7.3 (#270 — accepted divergence from the
-    # original repository's disable_gravity robot until the pin crosses).
+    # it), and gravity_disabled is declared here because the MJCF gravcomp
+    # attribute does not survive IsaacLab's MJCF conversion while the IsaacSim
+    # worker does honor the explicit declaration (#270); the MuJoCo line gets
+    # the same semantics natively from the gravcomp baked into robot.xml.
     default_keyframe_name: home
     entity_assets:
       - name: robot
@@ -47,6 +48,10 @@ env:
         initial_state:
           position: ${simtoolreal_entity_position:robot}
           quaternion: [1.0, 0.0, 0.0, 0.0]
+        # Original repository loads the robot with disable_gravity=True
+        # (scene_utils.py:1733-1734); robot.xml bakes gravcomp="1" for the
+        # MuJoCo line, this declaration carries the IsaacSim line.
+        gravity_disabled: true
         # robot.xml carries the 35 authored excludes; the IsaacSim worker
         # re-authors them as USD filtered pairs (#262).
         self_collision: true

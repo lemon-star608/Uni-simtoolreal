@@ -187,6 +187,7 @@ def test_entity_assets_bform_declaration(isaacsim):
     assert robot["kind"] == "articulation"
     assert robot["root_mode"] == "fixed"  # fix_base=True, scene_utils.py:1723
     assert robot["self_collision"] is True  # honored by the IsaacSim worker (#262)
+    assert robot["gravity_disabled"] is True  # honored by the IsaacSim worker (#270)
     assert robot["initial_state"] == {
         # scene_utils.py:1811-1842 (pos at :1821): the iiwa stands 0.8 m behind
         # the table; the resolver injects the frozen value (ROBOT_SCENE_POS).
@@ -226,11 +227,16 @@ def test_scene_leaves_share_the_bform_declaration(isaacsim):
 
     The only deliberate per-backend differences: self_collision is declared
     on the IsaacSim leaf only (the mujoco compose path is fail-closed on the
-    toggle) and each leaf's YAML anchor name differs.
+    toggle), gravity_disabled is declared on the IsaacSim leaf only (the
+    MJCF gravcomp attribute does not survive IsaacLab's MJCF conversion,
+    while the MuJoCo line gets the same semantics natively from robot.xml),
+    and each leaf's YAML anchor name differs.
     """
     mujoco = yaml.safe_load((CONF_DIR / "mujoco.yaml").read_text())
     isa_assets = {
-        spec["name"]: {k: v for k, v in spec.items() if k != "self_collision"}
+        spec["name"]: {
+            k: v for k, v in spec.items() if k not in ("self_collision", "gravity_disabled")
+        }
         for spec in isaacsim["env"]["scene"]["entity_assets"]
     }
     mu_assets = {spec["name"]: spec for spec in mujoco["env"]["scene"]["entity_assets"]}
