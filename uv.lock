@@ -668,17 +668,11 @@ wheels = [
 [[package]]
 name = "mjbatch-uni"
 version = "0.2.3"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/unilabsim/mjbatch_uni.git?rev=4edd4759a1bdfd75bdbb64b68d0613f8901add81#4edd4759a1bdfd75bdbb64b68d0613f8901add81" }
 dependencies = [
     { name = "mujoco" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/4b/25045002da76322f335ca5a2fa537e4cc742ad60013db8df0a90227eb2bf/mjbatch_uni-0.2.3.tar.gz", hash = "sha256:06f2b2eac3cca1f9b6e49590d4e5806bcc0f810751388299152e351e8f2304a5", size = 43682, upload-time = "2026-09-20T05:39:41.038Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/3d/5a0f6d9e280e94f57d805e3fa028fe1c716483ec796260d5735b4bfca11f/mjbatch_uni-0.2.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:81c6fe9dc66c05f1850088f05605688a7dc2274b047f0841a536f48faa9ad0b5", size = 196369, upload-time = "2026-09-20T05:39:31.428Z" },
-    { url = "https://files.pythonhosted.org/packages/ce/b5/d37c4355468455aa7d0aa8240ba1b80eb415efb247a7be12bbef59b56f2e/mjbatch_uni-0.2.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e50d39a3393f7c2bc623a85db3426e64807d001b1bc8e373f6e90c3c973484a5", size = 195998, upload-time = "2026-09-20T05:39:35.847Z" },
-    { url = "https://files.pythonhosted.org/packages/eb/af/aed3093b9b60f2a30ff9be3b67d6f413ecf6835e384c3126dcf27a15add9/mjbatch_uni-0.2.3-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:245854cf34f5e4600e747ef78c4e7986d14aa68a91f34760ae7585dd4dc05b38", size = 195953, upload-time = "2026-09-20T05:39:39.773Z" },
 ]
 
 [[package]]
@@ -1411,6 +1405,7 @@ name = "simtoolreal-unilab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "mjbatch-uni" },
     { name = "tensorboard" },
     { name = "tensorboardx" },
     { name = "torch" },
@@ -1427,12 +1422,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "mjbatch-uni", git = "https://github.com/unilabsim/mjbatch_uni.git?rev=4edd4759a1bdfd75bdbb64b68d0613f8901add81" },
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.8.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "unilab", editable = "../UniLab" },
+    { name = "unilab", git = "https://github.com/Motphys/UniLab.git?rev=838cc03eb62f0a2900c485b3bdf37290b1674c42" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
-    { name = "unisim-core", extras = ["mujoco"], editable = "/tmp/unisim_cl" },
+    { name = "unisim-core", extras = ["mujoco"], git = "https://github.com/unilabsim/unisim.git?rev=dd983f9d4e07983476b14928f5e2f022f3664966" },
 ]
 
 [package.metadata.requires-dev]
@@ -1641,7 +1637,7 @@ wheels = [
 [[package]]
 name = "unilab"
 version = "1.3.2"
-source = { editable = "../UniLab" }
+source = { git = "https://github.com/Motphys/UniLab.git?rev=838cc03eb62f0a2900c485b3bdf37290b1674c42#838cc03eb62f0a2900c485b3bdf37290b1674c42" }
 dependencies = [
     { name = "etils" },
     { name = "gymnasium" },
@@ -1668,68 +1664,6 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unisim-core" },
     { name = "wandb" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "drake-uni", marker = "extra == 'drake'", specifier = "==0.1.0" },
-    { name = "etils" },
-    { name = "genesis-world", marker = "extra == 'genesis'", specifier = "==1.3.3" },
-    { name = "gymnasium" },
-    { name = "huggingface-hub", specifier = ">=0.25" },
-    { name = "hydra-core", specifier = ">=1.3" },
-    { name = "imageio" },
-    { name = "imageio-ffmpeg", specifier = ">=0.6.0" },
-    { name = "imgui-bundle", marker = "extra == 'newton'", specifier = ">=1.92.0" },
-    { name = "lark", specifier = ">=1.3.1" },
-    { name = "mediapy" },
-    { name = "mjbatch-uni", marker = "extra == 'mujoco'", specifier = "~=0.2.3" },
-    { name = "mujoco", marker = "extra == 'drake'", specifier = ">=3.5" },
-    { name = "mujoco", marker = "extra == 'mujoco'", specifier = "~=3.11.0" },
-    { name = "mujoco", marker = "extra == 'newton'", specifier = "==3.11.0" },
-    { name = "mujoco-warp", marker = "extra == 'mjwarp'", specifier = "~=3.11.0" },
-    { name = "mujoco-warp", marker = "extra == 'newton'", specifier = "==3.11.0" },
-    { name = "newton", marker = "extra == 'newton'", specifier = "==1.5.1" },
-    { name = "ninja", marker = "sys_platform == 'linux'" },
-    { name = "numba", specifier = ">=0.67" },
-    { name = "numpy" },
-    { name = "onnxruntime", marker = "python_full_version < '3.11'", specifier = "<1.20" },
-    { name = "onnxruntime", marker = "python_full_version >= '3.11'", specifier = ">=1.20" },
-    { name = "packaging" },
-    { name = "prettytable", specifier = ">=3.10" },
-    { name = "pyglet", marker = "extra == 'newton'", specifier = ">=2.1.6,<3" },
-    { name = "rich" },
-    { name = "rsl-rl-lib", specifier = ">=5.0.0" },
-    { name = "setuptools" },
-    { name = "tensorboard", specifier = ">=2.21.0" },
-    { name = "tensordict" },
-    { name = "torch", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux') or (sys_platform != 'linux' and sys_platform != 'win32')", specifier = ">=2.8,<2.12" },
-    { name = "torch", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", specifier = ">=2.9,<2.12", index = "https://download-r2.pytorch.org/whl/cu130" },
-    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=2.8,<2.12", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "torch", marker = "sys_platform == 'win32'", specifier = ">=2.8,<2.12", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "tqdm" },
-    { name = "trimesh", marker = "extra == 'newton'", specifier = ">=3.21.7" },
-    { name = "trimesh", marker = "extra == 'viser'", specifier = ">=3.21.7" },
-    { name = "typing-extensions" },
-    { name = "unilab-rl", marker = "extra == 'uni-rl'", specifier = "==1.3.2" },
-    { name = "unisim-core", specifier = ">=1.7.4" },
-    { name = "unisim-core", extras = ["motrix"], marker = "extra == 'motrix'", specifier = ">=1.7.4" },
-    { name = "unisim-core", extras = ["superdex"], marker = "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'superdex'", specifier = ">=1.7.4" },
-    { name = "viser", marker = "extra == 'viser'", specifier = ">=1.0.26" },
-    { name = "wandb" },
-    { name = "warp-lang", marker = "extra == 'mjwarp'", specifier = "==1.16.0" },
-    { name = "warp-lang", marker = "extra == 'newton'", specifier = "==1.16.0" },
-]
-provides-extras = ["drake", "mujoco", "mjwarp", "newton", "motrix", "genesis", "viser", "uni-rl", "superdex"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy" },
-    { name = "pyright", specifier = ">=1.1.408" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-    { name = "unilab-rl", specifier = "==1.3.2" },
 ]
 
 [[package]]
@@ -1761,7 +1695,7 @@ requires-dist = [
 [[package]]
 name = "unisim-core"
 version = "1.7.4"
-source = { editable = "/tmp/unisim_cl" }
+source = { git = "https://github.com/unilabsim/unisim.git?rev=dd983f9d4e07983476b14928f5e2f022f3664966#dd983f9d4e07983476b14928f5e2f022f3664966" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -1771,37 +1705,6 @@ dependencies = [
 mujoco = [
     { name = "mjbatch-uni" },
     { name = "mujoco" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "drake-uni", marker = "extra == 'drake'", specifier = "==0.1.0" },
-    { name = "genesis-world", marker = "extra == 'genesis'", specifier = "==1.3.3" },
-    { name = "imgui-bundle", marker = "extra == 'newton'", specifier = ">=1.92.0" },
-    { name = "mjbatch-uni", marker = "extra == 'mujoco'", specifier = "~=0.2.3" },
-    { name = "motrixsim-core", marker = "extra == 'motrix'", specifier = "==0.10.1" },
-    { name = "mujoco", marker = "python_full_version >= '3.12' and python_full_version < '3.14' and extra == 'superdex'", specifier = "~=3.11.0" },
-    { name = "mujoco", marker = "extra == 'mujoco'", specifier = "~=3.11.0" },
-    { name = "mujoco", marker = "extra == 'newton'", specifier = "==3.11.0" },
-    { name = "mujoco", marker = "extra == 'scene-compiler'", specifier = "~=3.11.0" },
-    { name = "mujoco-warp", marker = "extra == 'mjwarp'", specifier = "~=3.11.0" },
-    { name = "mujoco-warp", marker = "extra == 'newton'", specifier = "==3.11.0" },
-    { name = "newton", marker = "extra == 'newton'", specifier = "==1.5.1" },
-    { name = "numpy" },
-    { name = "pyglet", marker = "extra == 'newton'", specifier = ">=2.1.6,<3" },
-    { name = "superdex-physics-uni", marker = "python_full_version >= '3.12' and python_full_version < '3.14' and extra == 'superdex'", specifier = "==1.3.0" },
-    { name = "superdex-robotics-uni", marker = "python_full_version >= '3.12' and python_full_version < '3.14' and extra == 'superdex'", specifier = "==1.3.0" },
-    { name = "warp-lang", marker = "extra == 'mjwarp'", specifier = "==1.16.0" },
-    { name = "warp-lang", marker = "extra == 'newton'", specifier = "==1.16.0" },
-]
-provides-extras = ["scene-compiler", "mujoco", "motrix", "drake", "mjwarp", "genesis", "superdex", "newton", "isaacgym", "isaacsim"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy" },
-    { name = "pyright", specifier = "==1.1.408" },
-    { name = "pytest" },
-    { name = "ruff" },
 ]
 
 [[package]]
