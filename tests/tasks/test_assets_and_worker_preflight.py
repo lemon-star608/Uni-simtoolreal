@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 
 import pytest
 
@@ -83,16 +82,8 @@ def test_worker_preflight_home_layout_passes_through(monkeypatch, tmp_path):
     assert preflight.ensure_worker_runtime() == str(tmp_path)
 
 
-def test_setup_script_exists_and_pins_the_validated_stack():
-    script = Path(__file__).resolve().parents[2] / "scripts" / "setup_isaacsim_env.sh"
-    text = script.read_text()
-    assert script.stat().st_mode & 0o111, "setup script must be executable"
-    # The validated worker stack (see README evidence): IsaacSim 5.1.0,
-    # IsaacLab 2.3.2.post1 wheels, torch 2.7.0 on the cu128 index.
-    for pin in (
-        "ISAACSIM_VERSION:-5.1.0",
-        "ISAACLAB_VERSION:-2.3.2.post1",
-        "TORCH_VERSION:-2.7.0",
-        "TORCH_INDEX:-cu128",
-    ):
-        assert pin in text, pin
+def test_setup_command_points_at_the_official_unilab_installer():
+    # The repository ships no installer of its own: the worker runtime comes
+    # from UniLab's official script (scripts/tools/setup_isaacsim_env.sh in a
+    # UniLab checkout), whose default stack is IsaacSim 5.1 + IsaacLab 2.3.0.
+    assert "scripts/tools/setup_isaacsim_env.sh" in preflight._SETUP_COMMAND
