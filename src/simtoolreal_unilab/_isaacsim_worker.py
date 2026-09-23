@@ -3,7 +3,8 @@
 The IsaacSim SDK cannot ship with this package (its license forbids
 redistribution, it requires Python 3.11, and it carries its own torch
 build), so the worker runtime is installed by UniLab's official installer
-(``scripts/tools/setup_isaacsim_env.sh`` in a UniLab checkout) into a
+(vendored at ``scripts/setup_isaacsim_env.sh`` from UniLab's official
+``scripts/tools/setup_isaacsim_env.sh``) into a
 dedicated worker venv at the unisim-conventional root
 ``~/.cache/unisim/isaacsim/venv``.
 The training/play entries call :func:`ensure_worker_runtime` before any
@@ -32,7 +33,7 @@ CONVENTIONAL_WORKER_PYTHON = (
     Path.home() / ".cache" / "unisim" / "isaacsim" / "venv" / "bin" / "python"
 )
 
-_SETUP_COMMAND = "bash scripts/tools/setup_isaacsim_env.sh  # from a UniLab checkout"
+_SETUP_COMMAND = "bash scripts/setup_isaacsim_env.sh  # vendored from UniLab"
 
 
 def ensure_worker_runtime() -> str:

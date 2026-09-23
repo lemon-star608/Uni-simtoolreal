@@ -85,5 +85,5 @@ def test_worker_preflight_home_layout_passes_through(monkeypatch, tmp_path):
 def test_setup_command_points_at_the_official_unilab_installer():
     # The repository ships no installer of its own: the worker runtime comes
     # from UniLab's official script (scripts/tools/setup_isaacsim_env.sh in a
-    # UniLab checkout), whose default stack is IsaacSim 5.1 + IsaacLab 2.3.0.
-    assert "scripts/tools/setup_isaacsim_env.sh" in preflight._SETUP_COMMAND
+    # points at the vendored installer (scripts/setup_isaacsim_env.sh)
+    assert "scripts/setup_isaacsim_env.sh" in preflight._SETUP_COMMAND

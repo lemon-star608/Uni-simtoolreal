@@ -22,7 +22,7 @@ uv sync
 uv run simtoolreal-assets    # 校验 vendored 资产
 ```
 
-`uv sync` 装不了的一件东西是 IsaacSim worker 运行时（NVIDIA SDK 不再分发）。用 UniLab 官方安装器装一次（UniLab 仓库里的 `scripts/tools/setup_isaacsim_env.sh`，IsaacSim 5.1.0 + IsaacLab 2.3.0，幂等）；`simtoolreal-train`/`simtoolreal-play` 会自动发现。想换别的 IsaacSim 解释器：`export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`。
+`uv sync` 装不了的一件东西是 IsaacSim worker 运行时（NVIDIA SDK 不再分发）。运行一次 `bash scripts/setup_isaacsim_env.sh`（vendor 自 UniLab 官方安装器，IsaacSim 5.1.0 + IsaacLab 2.3.0，幂等）；`simtoolreal-train`/`simtoolreal-play` 会自动发现。想换别的 IsaacSim 解释器：`export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`。
 
 机器人/桌子的源 URDF 随仓库发布在 `assets/simtoolreal/`（上游 MIT，SHA-256 清单），首次使用时一次性序列化为实体 MJCF；1,200 个工具 MJCF 程序化生成并缓存在 `/tmp`（可用 `SIMTOOLREAL_TOOL_POOL_ROOT` 覆盖）。
 

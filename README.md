@@ -22,7 +22,7 @@ uv sync
 uv run simtoolreal-assets    # verify the vendored assets
 ```
 
-One piece cannot ship inside `uv sync`: the IsaacSim worker runtime (NVIDIA's SDK is not redistributed). Install it once with UniLab's official installer (`scripts/tools/setup_isaacsim_env.sh` in a UniLab checkout, IsaacSim 5.1.0 + IsaacLab 2.3.0, idempotent); `simtoolreal-train`/`simtoolreal-play` detect it automatically. Escape hatch for another IsaacSim-capable interpreter: `export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`.
+One piece cannot ship inside `uv sync`: the IsaacSim worker runtime (NVIDIA's SDK is not redistributed). Install it once with `bash scripts/setup_isaacsim_env.sh` (vendored from UniLab's official installer, IsaacSim 5.1.0 + IsaacLab 2.3.0, idempotent); `simtoolreal-train`/`simtoolreal-play` detect it automatically. Escape hatch for another IsaacSim-capable interpreter: `export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`.
 
 Robot/table source URDFs ship under `assets/simtoolreal/` (upstream MIT, SHA-256 manifest) and are serialized once into entity MJCFs at first use; the 1,200-tool MJCF pool is generated procedurally and cached under `/tmp` (override: `SIMTOOLREAL_TOOL_POOL_ROOT`).
 
