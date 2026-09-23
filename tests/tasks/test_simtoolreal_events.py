@@ -89,12 +89,14 @@ class _WrenchObject:
         assert term_name == "simtoolreal_wrench_dr"
 
 
-def _plan(assignment, variants=("a.urdf", "b.urdf")):
-    """Scene-shaped fixed variant plan double for the task-side reader."""
+def _plan(assignment, variants=("a.xml", "b.xml")):
+    """Scene-shaped entity variant binding double for the task-side reader."""
     return SimpleNamespace(
-        fixed_variant_plan=SimpleNamespace(
-            assignment=np.asarray(assignment, dtype=np.int32),
-            variants=variants,
+        entity_variant=SimpleNamespace(
+            plan=SimpleNamespace(
+                assignment=np.asarray(assignment, dtype=np.int32),
+                variants=variants,
+            )
         )
     )
 
@@ -339,10 +341,10 @@ def test_wrench_event_falls_back_to_scalar_without_plan():
     env.scene["object"] = _WrenchObject(
         variant_masses=np.asarray([9.0] * NUM_ENVS, dtype=np.float32)
     )
-    env.cfg = SimpleNamespace(scene=SimpleNamespace(fixed_variant_plan=None))
+    env.cfg = SimpleNamespace(scene=SimpleNamespace(entity_variant=None))
     term = _wrench_term(env)
-    # No scene plan: the term-level scalar default stays authoritative and
-    # the backend readback is not consumed.
+    # No entity variant binding: the term-level scalar default stays
+    # authoritative and the backend readback is not consumed.
     assert term._object_masses is None
 
 

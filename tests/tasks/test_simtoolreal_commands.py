@@ -493,9 +493,11 @@ def test_object_scale_per_env_expands_from_tool_pool_tables():
     env.cfg = SimpleNamespace(
         tool_pool_scales=((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)),
         scene=SimpleNamespace(
-            fixed_variant_plan=SimpleNamespace(
-                assignment=np.asarray([1, 0, 1, 0, 1, 0, 1, 0], dtype=np.int32),
-                variants=("a.urdf", "b.urdf"),
+            entity_variant=SimpleNamespace(
+                plan=SimpleNamespace(
+                    assignment=np.asarray([1, 0, 1, 0, 1, 0, 1, 0], dtype=np.int32),
+                    variants=("a.xml", "b.xml"),
+                )
             )
         ),
     )
@@ -518,9 +520,11 @@ def test_object_scale_per_env_rejects_scale_table_below_pool():
     env.cfg = SimpleNamespace(
         tool_pool_scales=((1.0, 2.0, 3.0),),
         scene=SimpleNamespace(
-            fixed_variant_plan=SimpleNamespace(
-                assignment=np.asarray([0, 1, 0, 1, 0, 1, 0, 1], dtype=np.int32),
-                variants=("a.urdf", "b.urdf"),
+            entity_variant=SimpleNamespace(
+                plan=SimpleNamespace(
+                    assignment=np.asarray([0, 1, 0, 1, 0, 1, 0, 1], dtype=np.int32),
+                    variants=("a.xml", "b.xml"),
+                )
             )
         ),
     )
@@ -533,9 +537,11 @@ def test_object_scale_per_env_rejects_plan_assignment_length_mismatch():
     env.cfg = SimpleNamespace(
         tool_pool_scales=((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)),
         scene=SimpleNamespace(
-            fixed_variant_plan=SimpleNamespace(
-                assignment=np.asarray([0, 1], dtype=np.int32),
-                variants=("a.urdf", "b.urdf"),
+            entity_variant=SimpleNamespace(
+                plan=SimpleNamespace(
+                    assignment=np.asarray([0, 1], dtype=np.int32),
+                    variants=("a.xml", "b.xml"),
+                )
             )
         ),
     )

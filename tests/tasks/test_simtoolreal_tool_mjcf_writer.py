@@ -50,6 +50,52 @@ def test_mjcf_inertial_matches_tool_spec(spec: ToolSpec, tmp_path: Path):
 
 
 @pytest.mark.parametrize("spec", CATALOG, ids=lambda s: f"{s.type}-{s.topology}")
+def test_mjcf_geometry_matches_tool_spec(spec: ToolSpec, tmp_path: Path):
+    """Geom types/sizes/frames equal the catalog ToolSpec values, slot by slot."""
+    model = mujoco.MjModel.from_xml_path(str(write_tool_mjcf(spec, tmp_path / "tool.xml")))
+
+    def _geom(name: str) -> int:
+        geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, name)
+        assert geom_id >= 0
+        return geom_id
+
+    handle_col, handle_vis = _geom("object_handle_col"), _geom("object_handle_vis")
+    if len(spec.handle_scale) == 3:
+        half = tuple(v / 2 for v in spec.handle_scale)
+        for geom_id in (handle_col, handle_vis):
+            assert model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_BOX
+            np.testing.assert_allclose(model.geom_size[geom_id], half, rtol=1e-12, atol=1e-18)
+            np.testing.assert_allclose(model.geom_pos[geom_id], (0.0, 0.0, 0.0), atol=1e-18)
+    else:
+        # Cylinder handles: the collision slot is the capsule the URDF line
+        # trained with (replace_cylinders_with_capsules), the visual slot
+        # keeps the authored cylinder; both carry the -pi/2 y-rotation.
+        height, diameter = spec.handle_scale
+        assert model.geom_type[handle_col] == mujoco.mjtGeom.mjGEOM_CAPSULE
+        assert model.geom_type[handle_vis] == mujoco.mjtGeom.mjGEOM_CYLINDER
+        for geom_id in (handle_col, handle_vis):
+            np.testing.assert_allclose(
+                model.geom_size[geom_id][:2], (diameter / 2, height / 2), rtol=1e-12, atol=1e-18
+            )
+            np.testing.assert_allclose(model.geom_quat[geom_id], _HANDLE_CYL_QUAT, atol=1e-15)
+
+    head_col, head_vis = _geom("object_head_col"), _geom("object_head_vis")
+    if spec.head_scale is None:
+        # Headless placeholder: epsilon-size box at the body origin.
+        for geom_id in (head_col, head_vis):
+            assert model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_BOX
+            assert model.geom_size[geom_id].max() < 1e-5
+            np.testing.assert_allclose(model.geom_pos[geom_id], (0.0, 0.0, 0.0), atol=1e-18)
+    else:
+        half = tuple(v / 2 for v in spec.head_scale)
+        x_offset = spec.handle_scale[0] / 2 + spec.head_scale[0] / 2
+        for geom_id in (head_col, head_vis):
+            assert model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_BOX
+            np.testing.assert_allclose(model.geom_size[geom_id], half, rtol=1e-12, atol=1e-18)
+            np.testing.assert_allclose(model.geom_pos[geom_id], (x_offset, 0.0, 0.0), atol=1e-15)
+
+
+@pytest.mark.parametrize("spec", CATALOG, ids=lambda s: f"{s.type}-{s.topology}")
 def test_mjcf_visual_and_collision_geom_roles(spec: ToolSpec, tmp_path: Path):
     """Fixed four-slot layout (M-J2 same-layout rule); roles by contact bits."""
     model = mujoco.MjModel.from_xml_path(str(write_tool_mjcf(spec, tmp_path / "tool.xml")))
@@ -107,6 +153,25 @@ def test_mjcf_handle_cylinder_orientation(tmp_path: Path):
         model.geom_type[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_handle_col")]
         == mujoco.mjtGeom.mjGEOM_CAPSULE
     )
+
+
+def test_batch_writer_matches_catalog(tmp_path: Path):
+    """Deterministic per-type filenames, catalog scales, per-tool byte identity."""
+    catalog = build_tool_catalog(ALL_TYPES, 3, 42, shuffle=True)
+    mjcf_dir = tmp_path / "pool_mjcf"
+    paths, scales = write_tool_catalog_mjcfs(catalog, mjcf_dir)
+    assert len(paths) == len(catalog) == len(scales)
+    assert scales == [tuple(spec.object_scale) for spec in catalog]
+    type_counts: dict[str, int] = {}
+    for path, spec in zip(paths, catalog):
+        idx = type_counts.get(spec.type, 0)
+        type_counts[spec.type] = idx + 1
+        name = Path(path).name
+        assert name.startswith(f"{idx:03d}_{spec.type}_handle_")
+        assert name.endswith(".xml")
+        # Batch output is byte-identical to the per-tool entry point.
+        single = write_tool_mjcf(spec, tmp_path / "single.xml")
+        assert Path(path).read_bytes() == single.read_bytes()
 
 
 def test_batch_writer_cleans_stale_mjcfs(tmp_path: Path):

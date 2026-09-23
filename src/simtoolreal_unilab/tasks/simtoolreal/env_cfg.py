@@ -120,20 +120,16 @@ def _materialize_mjcf_pool(
 def fixed_variant_plan_assignment(cfg: Any, num_envs: int) -> np.ndarray | None:
     """Return the scene plan's validated per-environment variant assignment.
 
-    Single task-side reader for the immutable assignment the upstream factory
-    guard builds into ``cfg.scene.fixed_variant_plan``.  Returns ``None`` when
-    the scene carries no plan (pool disabled, lightweight fixtures); otherwise
-    fails closed unless the assignment carries exactly one entry per
-    environment within the plan's variant count.
+    Single task-side reader for the immutable assignment bound into
+    ``cfg.scene.entity_variant`` by ``bind_entity_variant``.  Returns ``None``
+    when the scene carries no binding (pool disabled, lightweight fixtures);
+    otherwise fails closed unless the assignment carries exactly one entry
+    per environment within the plan's variant count.
     """
 
     scene = getattr(cfg, "scene", None)
-    plan = getattr(scene, "fixed_variant_plan", None)
-    if plan is None:
-        # B form (M-J5): the pool binds to one entity instead of the whole
-        # scene model; the plan shape/semantics are identical.
-        binding = getattr(scene, "entity_variant", None)
-        plan = binding.plan if binding is not None else None
+    binding = getattr(scene, "entity_variant", None)
+    plan = binding.plan if binding is not None else None
     if plan is None:
         return None
     assignment = np.asarray(plan.assignment)
@@ -230,9 +226,7 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         """
 
         scene = getattr(self, "scene", None)
-        plan_built = getattr(scene, "fixed_variant_plan", None) is not None or (
-            getattr(scene, "entity_variant", None) is not None
-        )
+        plan_built = getattr(scene, "entity_variant", None) is not None
         if not self.tool_pool_enabled:
             if plan_built:
                 raise ValueError(
