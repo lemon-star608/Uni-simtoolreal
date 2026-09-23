@@ -1,0 +1,173 @@
+# @package _global_
+# SimToolReal MuJoCo backend owner (RL-Games SAPG tree), roadmap M-J5.
+# Inherits the backend-neutral task semantics from base.yaml and declares the
+# MuJoCo-line scene in the entity-split B form: entity_assets
+# (robot/table/floor/object) + an entity_variant binding on the object entity
+# (assembled by SimToolRealEnvCfg.bind_entity_variant at factory time), with
+# composition owned by unisim.  Gains and friction are baked into the assets
+# by the writers (D6).  GoalViz is intentionally not materialized in the
+# headless B-form scene; the command hub owns the authoritative goal.  The
+# table is back to a kinematic entity, restoring table z randomization
+# through the entity reset channel.
+defaults:
+  - /task/simtoolreal/base
+  - _self_
+
+training:
+  task_name: SimToolReal
+  sim_backend: mujoco
+
+# MuJoCo-line default scale: 12,288 envs x 1,200 tools, matching the Isaac
+# line's 12,288-env comparison run (CPU single process + mjbatch threads).
+# 12,288 = 6 x 2,048 keeps the SAPG exploration-block invariant
+# (num_actors % expl_coef_block_size == 0 with exactly six blocks), and
+# 12,288 * horizon_length(16) = 196,608 rows = 2 x 98,304 minibatches — the
+# same minibatch size as the Isaac line's production runs.
+algo:
+  num_envs: 12288
+rl_games:
+  params:
+    config:
+      minibatch_size: 98304
+      expl_coef_block_size: 2048
+      central_value_config:
+        minibatch_size: 98304
+
+env:
+  # MuJoCo line: entity-split MJCF sources (entity_mjcf_writer), entity gains/
+  # friction baked into the asset.
+  asset_format: mjcf
+  scene:
+    # The robot entity source embeds the home keyframe (ARM_DEFAULT_JOINT_POS
+    # + hand zeros); the composer merges it and the manager reset starts from
+    # it.  Entity sources resolve deterministically through the task resolver
+    # (scene.py); root poses come from the task's frozen values via the
+    # entity-position resolver (no duplicated numbers).
+    default_keyframe_name: home
+    entity_assets:
+      - name: robot
+        source:
+          model_file: ${simtoolreal_entity_mjcf:robot}
+        asset_format: mjcf
+        kind: articulation
+        root_mode: fixed
+        # Original repository robot spawn pose (scene_utils.py:1811-1842):
+        # the fixed-base iiwa stands 0.8 m behind the table.
+        initial_state:
+          position: ${simtoolreal_entity_position:robot}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+        # self_collision is deliberately undeclared: the MJCF compose path is
+        # fail-closed on the toggle (mjcf_compiler keeps source-authored
+        # exclusions instead), and robot.xml already carries the 35 authored
+        # excludes.  The IsaacSim leaf declares it once the pin crosses #270.
+      - name: table
+        source:
+          model_file: ${simtoolreal_entity_mjcf:table}
+        asset_format: mjcf
+        kind: rigid
+        root_mode: kinematic
+        initial_state:
+          position: ${simtoolreal_entity_position:table}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+      - name: floor
+        source:
+          model_file: ${simtoolreal_entity_mjcf:floor}
+        asset_format: mjcf
+        kind: rigid
+        root_mode: kinematic
+        initial_state:
+          position: ${simtoolreal_entity_position:floor}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+      - name: object
+        # Bootstrap source only: the cold-path anchor.  Each env's real tool
+        # identity comes from the entity variant binding assembled by the env
+        # config (bind_entity_variant; round-robin over the 1200-file pool).
+        source:
+          model_file: ${simtoolreal_entity_mjcf:object}
+        asset_format: mjcf
+        kind: rigid
+        root_mode: floating
+        initial_state:
+          position: ${simtoolreal_entity_position:object}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+    entities:
+      # Entity composition qualifies every model name with the physical entity
+      # prefix (unisim compile_scene_layout); the selectors below use the
+      # qualified form.  Manager terms resolve their canonical truth-table
+      # names against these declarations (config.match_entity_names).
+      robot:
+        root_body_name: robot/iiwa14_link_0
+        joint_names: &simtoolreal_mjcf_joints
+          - robot/iiwa14_joint_1
+          - robot/iiwa14_joint_2
+          - robot/iiwa14_joint_3
+          - robot/iiwa14_joint_4
+          - robot/iiwa14_joint_5
+          - robot/iiwa14_joint_6
+          - robot/iiwa14_joint_7
+          - robot/left_1_thumb_CMC_FE
+          - robot/left_thumb_CMC_AA
+          - robot/left_thumb_MCP_FE
+          - robot/left_thumb_MCP_AA
+          - robot/left_thumb_IP
+          - robot/left_2_index_MCP_FE
+          - robot/left_index_MCP_AA
+          - robot/left_index_PIP
+          - robot/left_index_DIP
+          - robot/left_3_middle_MCP_FE
+          - robot/left_middle_MCP_AA
+          - robot/left_middle_PIP
+          - robot/left_middle_DIP
+          - robot/left_4_ring_MCP_FE
+          - robot/left_ring_MCP_AA
+          - robot/left_ring_PIP
+          - robot/left_ring_DIP
+          - robot/left_5_pinky_CMC
+          - robot/left_pinky_MCP_FE
+          - robot/left_pinky_MCP_AA
+          - robot/left_pinky_PIP
+          - robot/left_pinky_DIP
+        # The MJCF carries one <position> actuator per canonical joint, named
+        # after the joint with a _ctrl suffix (robot_mjcf_writer).
+        actuator_names:
+          - robot/iiwa14_joint_1_ctrl
+          - robot/iiwa14_joint_2_ctrl
+          - robot/iiwa14_joint_3_ctrl
+          - robot/iiwa14_joint_4_ctrl
+          - robot/iiwa14_joint_5_ctrl
+          - robot/iiwa14_joint_6_ctrl
+          - robot/iiwa14_joint_7_ctrl
+          - robot/left_1_thumb_CMC_FE_ctrl
+          - robot/left_thumb_CMC_AA_ctrl
+          - robot/left_thumb_MCP_FE_ctrl
+          - robot/left_thumb_MCP_AA_ctrl
+          - robot/left_thumb_IP_ctrl
+          - robot/left_2_index_MCP_FE_ctrl
+          - robot/left_index_MCP_AA_ctrl
+          - robot/left_index_PIP_ctrl
+          - robot/left_index_DIP_ctrl
+          - robot/left_3_middle_MCP_FE_ctrl
+          - robot/left_middle_MCP_AA_ctrl
+          - robot/left_middle_PIP_ctrl
+          - robot/left_middle_DIP_ctrl
+          - robot/left_4_ring_MCP_FE_ctrl
+          - robot/left_ring_MCP_AA_ctrl
+          - robot/left_ring_PIP_ctrl
+          - robot/left_ring_DIP_ctrl
+          - robot/left_5_pinky_CMC_ctrl
+          - robot/left_pinky_MCP_FE_ctrl
+          - robot/left_pinky_MCP_AA_ctrl
+          - robot/left_pinky_PIP_ctrl
+          - robot/left_pinky_DIP_ctrl
+        # Palm + the five DP fingertip links (fingertip observations read the
+        # DP bodies with FINGERTIP_OFFSET, exactly like the Isaac line — the
+        # MJCF weld keeps those bodies and frames, M-J2 terms audit).
+        body_names: [robot/iiwa14_link_7, robot/left_index_DP, robot/left_middle_DP, robot/left_ring_DP, robot/left_thumb_DP, robot/left_pinky_DP]
+        # Fingertip frames survive the MJCF weld as sites (M-J1 decision);
+        # declared for completeness — no term reads them yet.
+        site_names: [robot/left_thumb_fingertip, robot/left_index_fingertip, robot/left_middle_fingertip, robot/left_ring_fingertip, robot/left_pinky_fingertip]
+      table:
+        root_body_name: table/table
+      object:
+        root_body_name: object/object_root
+        body_names: [object/object_root]

@@ -1,8 +1,15 @@
 # @package _global_
-# SimToolReal IsaacSim backend owner (RL-Games SAPG tree): backend identity,
-# isaacsim_* knobs, and the algo/env sizing.  SAPG hyperparameters are the
-# conf/rlgames_sapg/config.yaml defaults (transcribed from the original repo's
-# SimToolRealSAPG.yaml); this leaf carries only the task-specific deviations.
+# SimToolReal IsaacSim backend owner (RL-Games SAPG tree), Isaac/MJCF line.
+# Inherits the backend-neutral task semantics from base.yaml and declares the
+# same B-form entity scene as the MuJoCo line (M-J5): entity_assets
+# (robot/table/floor/object) + an entity_variant binding on the
+# object entity, composed by unisim's IsaacSim worker (mapped scene, MJCF
+# sources only).  Gains and friction are baked into the assets by the
+# writers (D6) from the backend-neutral ``owner_physics`` section inherited
+# from base.yaml.  GoalViz is intentionally not materialized in the headless
+# B-form scene; the command hub owns the authoritative goal.  The table is
+# kinematic and its z randomization runs through the entity reset channel,
+# same as mujoco.
 defaults:
   - /task/simtoolreal/base
   - _self_
@@ -15,10 +22,172 @@ algo:
   num_envs: 24576
 
 env:
+  # Isaac/MJCF line: the same entity-split MJCF sources the MuJoCo line
+  # consumes (entity_mjcf_writer), composed by the IsaacSim worker.
+  asset_format: mjcf
+  scene:
+    # Keep this block structurally identical to mujoco.yaml's (the
+    # entity-qualified names, the resolver-based sources and initial states)
+    # — the owner-YAML parity tests pin the two leaves in sync.  The only
+    # deliberate differences: self_collision is declared here (the IsaacSim
+    # worker honors the toggle; the mujoco compose path is fail-closed on
+    # it), and gravity_disabled is declared here because the MJCF gravcomp
+    # attribute does not survive IsaacLab's MJCF conversion while the IsaacSim
+    # worker does honor the explicit declaration (#270); the MuJoCo line gets
+    # the same semantics natively from the gravcomp baked into robot.xml.
+    default_keyframe_name: home
+    entity_assets:
+      - name: robot
+        source:
+          model_file: ${simtoolreal_entity_mjcf:robot}
+        asset_format: mjcf
+        kind: articulation
+        root_mode: fixed
+        # Original repository robot spawn pose (scene_utils.py:1811-1842):
+        # the fixed-base iiwa stands 0.8 m behind the table.
+        initial_state:
+          position: ${simtoolreal_entity_position:robot}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+        # Original repository loads the robot with disable_gravity=True
+        # (scene_utils.py:1733-1734); robot.xml bakes gravcomp="1" for the
+        # MuJoCo line, this declaration carries the IsaacSim line.
+        gravity_disabled: true
+        # robot.xml carries the 35 authored excludes; the IsaacSim worker
+        # re-authors them as USD filtered pairs (#262).
+        self_collision: true
+      - name: table
+        source:
+          model_file: ${simtoolreal_entity_mjcf:table}
+        asset_format: mjcf
+        kind: rigid
+        root_mode: kinematic
+        initial_state:
+          position: ${simtoolreal_entity_position:table}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+      - name: floor
+        source:
+          model_file: ${simtoolreal_entity_mjcf:floor}
+        asset_format: mjcf
+        kind: rigid
+        root_mode: kinematic
+        initial_state:
+          position: ${simtoolreal_entity_position:floor}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+      - name: object
+        # Bootstrap source only: the cold-path anchor.  Each env's real tool
+        # identity comes from the entity variant binding assembled by the env
+        # config (bind_entity_variant; round-robin over the 1200-file pool).
+        source:
+          model_file: ${simtoolreal_entity_mjcf:object}
+        asset_format: mjcf
+        kind: rigid
+        root_mode: floating
+        initial_state:
+          position: ${simtoolreal_entity_position:object}
+          quaternion: [1.0, 0.0, 0.0, 0.0]
+    entities:
+      # Entity composition qualifies every model name with the physical entity
+      # prefix (unisim compile_scene_layout); identical to mujoco.yaml.
+      robot:
+        root_body_name: robot/iiwa14_link_0
+        joint_names: &simtoolreal_isaacsim_mjcf_joints
+          - robot/iiwa14_joint_1
+          - robot/iiwa14_joint_2
+          - robot/iiwa14_joint_3
+          - robot/iiwa14_joint_4
+          - robot/iiwa14_joint_5
+          - robot/iiwa14_joint_6
+          - robot/iiwa14_joint_7
+          - robot/left_1_thumb_CMC_FE
+          - robot/left_thumb_CMC_AA
+          - robot/left_thumb_MCP_FE
+          - robot/left_thumb_MCP_AA
+          - robot/left_thumb_IP
+          - robot/left_2_index_MCP_FE
+          - robot/left_index_MCP_AA
+          - robot/left_index_PIP
+          - robot/left_index_DIP
+          - robot/left_3_middle_MCP_FE
+          - robot/left_middle_MCP_AA
+          - robot/left_middle_PIP
+          - robot/left_middle_DIP
+          - robot/left_4_ring_MCP_FE
+          - robot/left_ring_MCP_AA
+          - robot/left_ring_PIP
+          - robot/left_ring_DIP
+          - robot/left_5_pinky_CMC
+          - robot/left_pinky_MCP_FE
+          - robot/left_pinky_MCP_AA
+          - robot/left_pinky_PIP
+          - robot/left_pinky_DIP
+        actuator_names:
+          - robot/iiwa14_joint_1_ctrl
+          - robot/iiwa14_joint_2_ctrl
+          - robot/iiwa14_joint_3_ctrl
+          - robot/iiwa14_joint_4_ctrl
+          - robot/iiwa14_joint_5_ctrl
+          - robot/iiwa14_joint_6_ctrl
+          - robot/iiwa14_joint_7_ctrl
+          - robot/left_1_thumb_CMC_FE_ctrl
+          - robot/left_thumb_CMC_AA_ctrl
+          - robot/left_thumb_MCP_FE_ctrl
+          - robot/left_thumb_MCP_AA_ctrl
+          - robot/left_thumb_IP_ctrl
+          - robot/left_2_index_MCP_FE_ctrl
+          - robot/left_index_MCP_AA_ctrl
+          - robot/left_index_PIP_ctrl
+          - robot/left_index_DIP_ctrl
+          - robot/left_3_middle_MCP_FE_ctrl
+          - robot/left_middle_MCP_AA_ctrl
+          - robot/left_middle_PIP_ctrl
+          - robot/left_middle_DIP_ctrl
+          - robot/left_4_ring_MCP_FE_ctrl
+          - robot/left_ring_MCP_AA_ctrl
+          - robot/left_ring_PIP_ctrl
+          - robot/left_ring_DIP_ctrl
+          - robot/left_5_pinky_CMC_ctrl
+          - robot/left_pinky_MCP_FE_ctrl
+          - robot/left_pinky_MCP_AA_ctrl
+          - robot/left_pinky_PIP_ctrl
+          - robot/left_pinky_DIP_ctrl
+        body_names: [robot/iiwa14_link_7, robot/left_index_DP, robot/left_middle_DP, robot/left_ring_DP, robot/left_thumb_DP, robot/left_pinky_DP]
+        # No site_names here (mujoco.yaml declares the five fingertip sites):
+        # the IsaacSim backend does not implement get_site_ids, and no term
+        # reads the sites on either line.
+      table:
+        root_body_name: table/table
+      object:
+        root_body_name: object/object_root
+        body_names: [object/object_root]
   isaacsim_device_id: 0
   # Large 1200-tool pools spend most of their cold-start time in IsaacSim
   # clone/materialization; keep the worker handshake generous for training.
   isaacsim_worker_timeout_s: 1800.0
-  # D2 Kit acceptance passed: enable the task's world-frame rigid-root wrench
-  # event.  The base owner now supplies the 1200-variant mass table and init
-  # assignment before this worker materializes.
+  # The original training's PhysX solver table (_default_sim_cfg,
+  # simtoolreal_env_cfg.py:515-535), routed through UniSim's bounded,
+  # readback-validated PhysxSolverConfig (UniLab#1620).  position/velocity
+  # iterations and the bounce threshold are the explicitly tuned values;
+  # contact/rest offsets and the depenetration velocity cap are the IsaacLab
+  # defaults the original relied on implicitly, pinned explicitly here.
+  isaacsim_solver_position_iteration_count: 8
+  isaacsim_solver_velocity_iteration_count: 0
+  isaacsim_bounce_threshold_velocity: 0.2
+  isaacsim_contact_offset: 0.002
+  isaacsim_rest_offset: 0.0
+  isaacsim_max_depenetration_velocity: 1000.0
+  # GPU rigid contact/patch stream buffer capacities from the original
+  # training's _default_sim_cfg (simtoolreal_env_cfg.py:515-535), which pins
+  # 2^24/2^23 with the note "Lab defaults overflow: Patch buffer overflow
+  # detected kills training".  Routed through UniSim's PhysxSolverConfig
+  # (unilabsim/unisim#292); PhysX carb settings, so the worker reports the
+  # authored value instead of a USD readback.
+  isaacsim_gpu_max_rigid_contact_count: 16777216
+  isaacsim_gpu_max_rigid_patch_count: 8388608
+  # Retired declarations, kept as the record of where they went:
+  # - physx solver_type=TGS / friction offsets: outside UniSim's solver knob
+  #   set (no channel; defaults apply).
+  # - ground_plane: the floor is an explicit entity (M2 adds no implicit
+  #   ground).
+  # - env_grid_spacing 1.2: the mapped worker hardcodes GridCloner spacing
+  #   2.0; env-local observations subtract origins, so only world-frame
+  #   layout differs (accepted divergence).

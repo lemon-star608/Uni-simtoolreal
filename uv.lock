@@ -169,6 +169,13 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5a/3d/589663aeeacd59bb2f3e8596bfd3e81cf0fb18d70bb433199041f469771b/etils-1.14.0-py3-none-any.whl", hash = "sha256:b5df7341f54dbe1405a4450b2741207b4a8c279780402b45f87202b94dfc52b4", size = 172934, upload-time = "2026-03-04T17:41:35.01Z" },
 ]
 
+[package.optional-dependencies]
+epath = [
+    { name = "fsspec" },
+    { name = "typing-extensions" },
+    { name = "zipp" },
+]
+
 [[package]]
 name = "executing"
 version = "2.2.1"
@@ -250,6 +257,16 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e0/db/3ca813cbacb23ab6fe46ff38a9b5ef8e73e970c8051f2ce903aacafe0446/gitpython-3.1.62.tar.gz", hash = "sha256:1791de66309bc0c7cfca40bf8d2e3de7ca091cbf94e6051be1ad0722c61062af", size = 231728, upload-time = "2026-09-07T02:57:21.155Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d6/0b/29d7965215f8ef830a7ca1f42997fe13e5693d85e9edb18f938d063ef5f2/gitpython-3.1.62-py3-none-any.whl", hash = "sha256:7002251225e10e29d2e1f49e6532613fe5d5d9f0b6f1f02997a52b38fe56899e", size = 222753, upload-time = "2026-09-07T02:57:19.762Z" },
+]
+
+[[package]]
+name = "glfw"
+version = "2.10.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/62/096058bcb4b4fb28f7ecd28fb048f07969d90b243c417af5f6d09d45a0c2/glfw-2.10.2.tar.gz", hash = "sha256:5d2cf97c66bc42a6b583be0e307eae5a3945438322e2ed0c5e4f14dc251d693d", size = 36307, upload-time = "2026-07-21T14:42:36.732Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/44/37aeed50c581c76e1c5bb83b696a06f98f8ecc979ed8564dde3eef908e8b/glfw-2.10.2-py2.py3-none-manylinux2014_x86_64.whl", hash = "sha256:82daf1f87b2a48815637dc6f6720d4a55a57ba1d3683322dc20dc28065754f97", size = 246951, upload-time = "2026-07-21T14:42:29.107Z" },
+    { url = "https://files.pythonhosted.org/packages/69/84/1b98671314ea5f40397586b6cd14db913de3196333be558fdc177e61708f/glfw-2.10.2-py2.py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:b860de3ca0686182483f98f3ddd12e660acf25b3e0d521450ec9a3f999f72a65", size = 248490, upload-time = "2026-07-21T14:42:32.377Z" },
 ]
 
 [[package]]
@@ -649,6 +666,22 @@ wheels = [
 ]
 
 [[package]]
+name = "mjbatch-uni"
+version = "0.2.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mujoco" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c8/4b/25045002da76322f335ca5a2fa537e4cc742ad60013db8df0a90227eb2bf/mjbatch_uni-0.2.3.tar.gz", hash = "sha256:06f2b2eac3cca1f9b6e49590d4e5806bcc0f810751388299152e351e8f2304a5", size = 43682, upload-time = "2026-09-20T05:39:41.038Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/3d/5a0f6d9e280e94f57d805e3fa028fe1c716483ec796260d5735b4bfca11f/mjbatch_uni-0.2.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:81c6fe9dc66c05f1850088f05605688a7dc2274b047f0841a536f48faa9ad0b5", size = 196369, upload-time = "2026-09-20T05:39:31.428Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/b5/d37c4355468455aa7d0aa8240ba1b80eb415efb247a7be12bbef59b56f2e/mjbatch_uni-0.2.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e50d39a3393f7c2bc623a85db3426e64807d001b1bc8e373f6e90c3c973484a5", size = 195998, upload-time = "2026-09-20T05:39:35.847Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/af/aed3093b9b60f2a30ff9be3b67d6f413ecf6835e384c3126dcf27a15add9/mjbatch_uni-0.2.3-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:245854cf34f5e4600e747ef78c4e7986d14aa68a91f34760ae7585dd4dc05b38", size = 195953, upload-time = "2026-09-20T05:39:39.773Z" },
+]
+
+[[package]]
 name = "ml-dtypes"
 version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -670,6 +703,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e0/47/dd32fa426cc72114383ac549964eecb20ecfd886d1e5ccf5340b55b02f57/mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f", size = 508106, upload-time = "2023-03-07T16:47:11.061Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c", size = 536198, upload-time = "2023-03-07T16:47:09.197Z" },
+]
+
+[[package]]
+name = "mujoco"
+version = "3.11.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "absl-py" },
+    { name = "etils", extra = ["epath"] },
+    { name = "glfw" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pyopengl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3b/2d/290f3f4062eec1c0d5246de0a75f1b18b59a1961081f49ddc97333fc8263/mujoco-3.11.0.tar.gz", hash = "sha256:390856102af9547dfd87cb2791eb105a3d2e00a37323fe9a12ed17e512aff1a6", size = 1139880, upload-time = "2026-07-28T01:23:32.252Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/3d/3c933a7a8e7f00e12260ad175195b8bbc36fd3aa62068f00db36351a2147/mujoco-3.11.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:16f94f05745225aaafb68016cbd2a1617f4af6b4bfca6c97d22c7b14e598d1f1", size = 18751041, upload-time = "2026-07-28T01:22:38.149Z" },
+    { url = "https://files.pythonhosted.org/packages/41/d6/7b79f5d8fbd019658a3b5feb6ffd09c1e727eaf93f518685d3cc105a28f5/mujoco-3.11.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f40214fefc8c2fe0002a3c8abadf30de7a3330634f3c45cc29b407b40a0173fc", size = 18868030, upload-time = "2026-07-28T01:22:50.494Z" },
+    { url = "https://files.pythonhosted.org/packages/90/2e/843071e21831fa5ef4029de6874789f9fd32f340d42fced383757c484bdd/mujoco-3.11.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3379c36b508474127b08e51e77942c493c2f1d7215b425e3b95de08dcba662e0", size = 18868301, upload-time = "2026-07-28T01:23:03.054Z" },
 ]
 
 [[package]]
@@ -1221,6 +1273,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyopengl"
+version = "3.1.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/16/912b7225d56284859cd9a672827f18be43f8012f8b7b932bc4bd959a298e/pyopengl-3.1.10.tar.gz", hash = "sha256:c4a02d6866b54eb119c8e9b3fb04fa835a95ab802dd96607ab4cdb0012df8335", size = 1915580, upload-time = "2025-08-18T02:33:01.76Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/e4/1ba6f44e491c4eece978685230dde56b14d51a0365bc1b774ddaa94d14cd/pyopengl-3.1.10-py3-none-any.whl", hash = "sha256:794a943daced39300879e4e47bd94525280685f42dbb5a998d336cfff151d74f", size = 3194996, upload-time = "2025-08-18T02:32:59.902Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1355,7 +1416,7 @@ dependencies = [
     { name = "torch" },
     { name = "unilab" },
     { name = "unilab-simtoolreal-rl-games" },
-    { name = "unisim-core" },
+    { name = "unisim-core", extra = ["mujoco"] },
 ]
 
 [package.dev-dependencies]
@@ -1369,9 +1430,9 @@ requires-dist = [
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.8.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "unilab", git = "https://github.com/Motphys/UniLab.git?rev=e1fcb824" },
+    { name = "unilab", editable = "../UniLab" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
-    { name = "unisim-core", git = "https://github.com/lemon-star608/unisim.git?branch=feat%2Fisaacsim-urdf-multi-entity" },
+    { name = "unisim-core", extras = ["mujoco"], editable = "/tmp/unisim_cl" },
 ]
 
 [package.metadata.requires-dev]
@@ -1579,8 +1640,8 @@ wheels = [
 
 [[package]]
 name = "unilab"
-version = "1.3.0"
-source = { git = "https://github.com/Motphys/UniLab.git?rev=e1fcb824#e1fcb82471ac33b318b75d9dd6af3e856f536401" }
+version = "1.3.2"
+source = { editable = "../UniLab" }
 dependencies = [
     { name = "etils" },
     { name = "gymnasium" },
@@ -1605,31 +1666,70 @@ dependencies = [
     { name = "torch" },
     { name = "tqdm" },
     { name = "typing-extensions" },
-    { name = "unilab-rl" },
     { name = "unisim-core" },
     { name = "wandb" },
 ]
 
-[[package]]
-name = "unilab-rl"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "hydra-core" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "omegaconf" },
+[package.metadata]
+requires-dist = [
+    { name = "drake-uni", marker = "extra == 'drake'", specifier = "==0.1.0" },
+    { name = "etils" },
+    { name = "genesis-world", marker = "extra == 'genesis'", specifier = "==1.3.3" },
+    { name = "gymnasium" },
+    { name = "huggingface-hub", specifier = ">=0.25" },
+    { name = "hydra-core", specifier = ">=1.3" },
+    { name = "imageio" },
+    { name = "imageio-ffmpeg", specifier = ">=0.6.0" },
+    { name = "imgui-bundle", marker = "extra == 'newton'", specifier = ">=1.92.0" },
+    { name = "lark", specifier = ">=1.3.1" },
+    { name = "mediapy" },
+    { name = "mjbatch-uni", marker = "extra == 'mujoco'", specifier = "~=0.2.3" },
+    { name = "mujoco", marker = "extra == 'drake'", specifier = ">=3.5" },
+    { name = "mujoco", marker = "extra == 'mujoco'", specifier = "~=3.11.0" },
+    { name = "mujoco", marker = "extra == 'newton'", specifier = "==3.11.0" },
+    { name = "mujoco-warp", marker = "extra == 'mjwarp'", specifier = "~=3.11.0" },
+    { name = "mujoco-warp", marker = "extra == 'newton'", specifier = "==3.11.0" },
+    { name = "newton", marker = "extra == 'newton'", specifier = "==1.5.1" },
+    { name = "ninja", marker = "sys_platform == 'linux'" },
+    { name = "numba", specifier = ">=0.67" },
+    { name = "numpy" },
+    { name = "onnxruntime", marker = "python_full_version < '3.11'", specifier = "<1.20" },
+    { name = "onnxruntime", marker = "python_full_version >= '3.11'", specifier = ">=1.20" },
     { name = "packaging" },
+    { name = "prettytable", specifier = ">=3.10" },
+    { name = "pyglet", marker = "extra == 'newton'", specifier = ">=2.1.6,<3" },
     { name = "rich" },
-    { name = "rsl-rl-lib" },
-    { name = "tensorboard" },
+    { name = "rsl-rl-lib", specifier = ">=5.0.0" },
+    { name = "setuptools" },
+    { name = "tensorboard", specifier = ">=2.21.0" },
     { name = "tensordict" },
-    { name = "torch" },
+    { name = "torch", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux') or (sys_platform != 'linux' and sys_platform != 'win32')", specifier = ">=2.8,<2.12" },
+    { name = "torch", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", specifier = ">=2.9,<2.12", index = "https://download-r2.pytorch.org/whl/cu130" },
+    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=2.8,<2.12", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "torch", marker = "sys_platform == 'win32'", specifier = ">=2.8,<2.12", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "tqdm" },
+    { name = "trimesh", marker = "extra == 'newton'", specifier = ">=3.21.7" },
+    { name = "trimesh", marker = "extra == 'viser'", specifier = ">=3.21.7" },
+    { name = "typing-extensions" },
+    { name = "unilab-rl", marker = "extra == 'uni-rl'", specifier = "==1.3.2" },
+    { name = "unisim-core", specifier = ">=1.7.4" },
+    { name = "unisim-core", extras = ["motrix"], marker = "extra == 'motrix'", specifier = ">=1.7.4" },
+    { name = "unisim-core", extras = ["superdex"], marker = "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'superdex'", specifier = ">=1.7.4" },
+    { name = "viser", marker = "extra == 'viser'", specifier = ">=1.0.26" },
     { name = "wandb" },
+    { name = "warp-lang", marker = "extra == 'mjwarp'", specifier = "==1.16.0" },
+    { name = "warp-lang", marker = "extra == 'newton'", specifier = "==1.16.0" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/9d/7a646bc044cadb48cbd1d0c58832faf59e037a45f22432cff2a7ad5a7b01/unilab_rl-1.2.0.tar.gz", hash = "sha256:bb8b1c713b961ea4b24ea72c39d443e057531e71882fa058502af947b98768da", size = 148289, upload-time = "2026-09-10T05:20:52.549Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/67/0ea1fb5f0c9a7e8604b0415b018deb3286024191a84d357f1b3221d2a41d/unilab_rl-1.2.0-py3-none-any.whl", hash = "sha256:617317dcca581d1af2daec36d50de7214067dd34f5d85a4f02d7cd38de1df611", size = 183372, upload-time = "2026-09-10T05:20:51.254Z" },
+provides-extras = ["drake", "mujoco", "mjwarp", "newton", "motrix", "genesis", "viser", "uni-rl", "superdex"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy" },
+    { name = "pyright", specifier = ">=1.1.408" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "unilab-rl", specifier = "==1.3.2" },
 ]
 
 [[package]]
@@ -1660,11 +1760,48 @@ requires-dist = [
 
 [[package]]
 name = "unisim-core"
-version = "1.4.1"
-source = { git = "https://github.com/lemon-star608/unisim.git?branch=feat%2Fisaacsim-urdf-multi-entity#20ff5c065bd34211bf945094ca756423f45d89ae" }
+version = "1.7.4"
+source = { editable = "/tmp/unisim_cl" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+
+[package.optional-dependencies]
+mujoco = [
+    { name = "mjbatch-uni" },
+    { name = "mujoco" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "drake-uni", marker = "extra == 'drake'", specifier = "==0.1.0" },
+    { name = "genesis-world", marker = "extra == 'genesis'", specifier = "==1.3.3" },
+    { name = "imgui-bundle", marker = "extra == 'newton'", specifier = ">=1.92.0" },
+    { name = "mjbatch-uni", marker = "extra == 'mujoco'", specifier = "~=0.2.3" },
+    { name = "motrixsim-core", marker = "extra == 'motrix'", specifier = "==0.10.1" },
+    { name = "mujoco", marker = "python_full_version >= '3.12' and python_full_version < '3.14' and extra == 'superdex'", specifier = "~=3.11.0" },
+    { name = "mujoco", marker = "extra == 'mujoco'", specifier = "~=3.11.0" },
+    { name = "mujoco", marker = "extra == 'newton'", specifier = "==3.11.0" },
+    { name = "mujoco", marker = "extra == 'scene-compiler'", specifier = "~=3.11.0" },
+    { name = "mujoco-warp", marker = "extra == 'mjwarp'", specifier = "~=3.11.0" },
+    { name = "mujoco-warp", marker = "extra == 'newton'", specifier = "==3.11.0" },
+    { name = "newton", marker = "extra == 'newton'", specifier = "==1.5.1" },
+    { name = "numpy" },
+    { name = "pyglet", marker = "extra == 'newton'", specifier = ">=2.1.6,<3" },
+    { name = "superdex-physics-uni", marker = "python_full_version >= '3.12' and python_full_version < '3.14' and extra == 'superdex'", specifier = "==1.3.0" },
+    { name = "superdex-robotics-uni", marker = "python_full_version >= '3.12' and python_full_version < '3.14' and extra == 'superdex'", specifier = "==1.3.0" },
+    { name = "warp-lang", marker = "extra == 'mjwarp'", specifier = "==1.16.0" },
+    { name = "warp-lang", marker = "extra == 'newton'", specifier = "==1.16.0" },
+]
+provides-extras = ["scene-compiler", "mujoco", "motrix", "drake", "mjwarp", "genesis", "superdex", "newton", "isaacgym", "isaacsim"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy" },
+    { name = "pyright", specifier = "==1.1.408" },
+    { name = "pytest" },
+    { name = "ruff" },
 ]
 
 [[package]]

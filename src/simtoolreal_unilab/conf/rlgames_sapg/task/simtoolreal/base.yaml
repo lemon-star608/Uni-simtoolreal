@@ -1,7 +1,11 @@
 # @package _global_
 # Canonical SimToolReal Manager-Based task declaration (RL-Games SAPG owner).
-# Backend-neutral: all task semantics live here; backend leaves carry only
-# identity, backend knobs, and explicitly disabled terms.
+# Backend-neutral: all task semantics and frozen owner physics truth live
+# here; backend leaves carry identity, backend knobs, explicitly disabled
+# terms, and the whole `scene:` block (M-J2: the pinned SceneCfg owns no
+# entity_assets/ground_plane/physx fields, so the IsaacSim-line scene
+# declaration lives in isaacsim.yaml and the MuJoCo line declares its own
+# composed-MJCF scene in mujoco.yaml).
 #
 # Sources (field-level mirror, see DESIGN.md section 1 and config.py):
 #   simtoolreal/isaacsimenvs/tasks/simtoolreal/simtoolreal_env_cfg.py
@@ -9,301 +13,6 @@
 # Step-1 assemblies are in place: the terms below are the real
 # observation/reward/termination/event ports, not zero-frame placeholders.
 env:
-  scene:
-    # Robot/table/object/goalviz URDFs are resolved through the task resolver
-    # (see scene.py).  The object and goalviz files remain deterministic
-    # bootstrap assets for the cold-path metadata contract; the object role is
-    # replaced per environment by the init-lifecycle 1200-file tool pool below.
-    model_file: ${simtoolreal_asset:urdf/kuka_sharpa_description/iiwa14_left_sharpa_adjusted_restricted.urdf}
-    # Declarative world-level ground (Fix-C).  Empty mapping = the
-    # GroundPlaneCfg defaults (friction (0.5, 0.5, 0.0), restitution 0.0,
-    # size 200 m) the original task-level scene composition spawned
-    # (scene_utils.py setup_scene step 5) and the migration L3 run trained
-    # with.  The isaacsim worker now spawns its local collision ground only
-    # for declared scenes, so this declaration is what keeps the task's
-    # trained-identical ground; backends whose model files already include a
-    # ground ignore it.
-    ground_plane: {}
-    # Original repository env grid spacing (`env_spacing=1.2`,
-    # SimToolReal.yaml:34 / simtoolreal_env_cfg.py:572).  Layout only, but
-    # world-frame environment origins derive from it, so the trained-identical
-    # value is declared explicitly; undeclared scenes keep the worker's
-    # native 2.0 m grid.
-    env_grid_spacing: 1.2
-    # Scene-level PhysX configuration, the literal port of the original
-    # `_default_sim_cfg` PhysxCfg (simtoolreal_env_cfg.py:515-535): solver
-    # TGS, iteration clamps 8/8-0/0, bounce threshold 0.2, and the raised
-    # GPU contact stream buffers (2^24 contacts / 2^23 patches — Isaac Lab's
-    # defaults report patch buffer overflows at this task's env counts).
-    # The friction offset/correlation distances equal Isaac Lab's defaults
-    # and stay explicit to mirror the source.  Undeclared scenes keep Isaac
-    # Lab defaults.
-    physx:
-      solver_type: 1
-      min_position_iteration_count: 8
-      max_position_iteration_count: 8
-      min_velocity_iteration_count: 0
-      max_velocity_iteration_count: 0
-      bounce_threshold_velocity: 0.2
-      friction_offset_threshold: 0.04
-      friction_correlation_distance: 0.025
-      gpu_max_rigid_contact_count: 16777216
-      gpu_max_rigid_patch_count: 8388608
-    entities:
-      robot:
-        # Fixed-base articulation root (scene_utils.py:1721-1725, fix_base=True).
-        root_body_name: iiwa14_link_0
-        joint_names:
-          - iiwa14_joint_1
-          - iiwa14_joint_2
-          - iiwa14_joint_3
-          - iiwa14_joint_4
-          - iiwa14_joint_5
-          - iiwa14_joint_6
-          - iiwa14_joint_7
-          - left_1_thumb_CMC_FE
-          - left_thumb_CMC_AA
-          - left_thumb_MCP_FE
-          - left_thumb_MCP_AA
-          - left_thumb_IP
-          - left_2_index_MCP_FE
-          - left_index_MCP_AA
-          - left_index_PIP
-          - left_index_DIP
-          - left_3_middle_MCP_FE
-          - left_middle_MCP_AA
-          - left_middle_PIP
-          - left_middle_DIP
-          - left_4_ring_MCP_FE
-          - left_ring_MCP_AA
-          - left_ring_PIP
-          - left_ring_DIP
-          - left_5_pinky_CMC
-          - left_pinky_MCP_FE
-          - left_pinky_MCP_AA
-          - left_pinky_PIP
-          - left_pinky_DIP
-        body_names: [iiwa14_link_7, left_index_DP, left_middle_DP, left_ring_DP, left_thumb_DP, left_pinky_DP]
-        # URDF path: the backend synthesizes one position actuator per movable
-        # joint, named after the joint (subprocess_ipc URDF scan branch).
-        actuator_names:
-          - iiwa14_joint_1
-          - iiwa14_joint_2
-          - iiwa14_joint_3
-          - iiwa14_joint_4
-          - iiwa14_joint_5
-          - iiwa14_joint_6
-          - iiwa14_joint_7
-          - left_1_thumb_CMC_FE
-          - left_thumb_CMC_AA
-          - left_thumb_MCP_FE
-          - left_thumb_MCP_AA
-          - left_thumb_IP
-          - left_2_index_MCP_FE
-          - left_index_MCP_AA
-          - left_index_PIP
-          - left_index_DIP
-          - left_3_middle_MCP_FE
-          - left_middle_MCP_AA
-          - left_middle_PIP
-          - left_middle_DIP
-          - left_4_ring_MCP_FE
-          - left_ring_MCP_AA
-          - left_ring_PIP
-          - left_ring_DIP
-          - left_5_pinky_CMC
-          - left_pinky_MCP_FE
-          - left_pinky_MCP_AA
-          - left_pinky_PIP
-          - left_pinky_DIP
-      table:
-        root_body_name: box
-      object:
-        root_body_name: object_root
-        body_names: [object_root]
-      goalviz:
-        root_body_name: goalviz_root
-        body_names: [goalviz_root]
-    entity_assets:
-      - name: robot
-        model_file: ${simtoolreal_asset:urdf/kuka_sharpa_description/iiwa14_left_sharpa_adjusted_restricted.urdf}
-        asset_format: urdf
-        materialization: articulation
-        root_mode: fixed
-        # Original repository robot spawn pose (scene_utils.py:1811-1842, pos
-        # at :1821): the fixed-base iiwa stands 0.8 m behind the table with
-        # identity orientation.  The root pose has no other write channel, so
-        # this declaration is what keeps the trained-identical spawn; an
-        # undeclared articulation spawns at the env origin (inside the table).
-        init_state:
-          pos: [0.0, 0.8, 0.0]
-          rot_wxyz: [1.0, 0.0, 0.0, 0.0]
-        contact_friction: [0.5, 0.5, 0.0]
-        contact_friction_by_body:
-          - body_name: left_index_DP
-            friction: [1.5, 1.5, 0.0]
-          - body_name: left_middle_DP
-            friction: [1.5, 1.5, 0.0]
-          - body_name: left_ring_DP
-            friction: [1.5, 1.5, 0.0]
-          - body_name: left_thumb_DP
-            friction: [1.5, 1.5, 0.0]
-          - body_name: left_pinky_DP
-            friction: [1.5, 1.5, 0.0]
-        # Robot PD gains + hand armature, the typed mirror of the original
-        # ImplicitActuator tables (scene_utils.py:59-131: ARM_JOINT_STIFFNESS,
-        # ARM_JOINT_DAMPING, HAND_JOINT_STIFFNESS, HAND_JOINT_DAMPING,
-        # HAND_JOINT_ARMATURE).  URDF-scanned joints carry no gains, so without
-        # these overrides every joint drives with zero stiffness/damping and
-        # the arm free-falls under gravity (probe: probe_reset_lift_latch.py,
-        # 2026-09-14).  Values must stay identical to the original tables;
-        # test_simtoolreal_owner_yaml_parity.py pins them.
-        actuator_gain_overrides:
-        - joint_name: iiwa14_joint_1
-          stiffness: 600.0
-          damping: 27.027026473513512
-        - joint_name: iiwa14_joint_2
-          stiffness: 600.0
-          damping: 27.027026473513512
-        - joint_name: iiwa14_joint_3
-          stiffness: 500.0
-          damping: 24.672186769721083
-        - joint_name: iiwa14_joint_4
-          stiffness: 400.0
-          damping: 22.067474708266914
-        - joint_name: iiwa14_joint_5
-          stiffness: 200.0
-          damping: 9.752538131173853
-        - joint_name: iiwa14_joint_6
-          stiffness: 200.0
-          damping: 9.147747263670984
-        - joint_name: iiwa14_joint_7
-          stiffness: 200.0
-          damping: 9.147747263670984
-        - joint_name: left_1_thumb_CMC_FE
-          stiffness: 6.95
-          damping: 0.28676845
-          armature: 0.0032
-        - joint_name: left_thumb_CMC_AA
-          stiffness: 13.2
-          damping: 0.40845109
-          armature: 0.0032
-        - joint_name: left_thumb_MCP_FE
-          stiffness: 4.76
-          damping: 0.20394083
-          armature: 0.00265
-        - joint_name: left_thumb_MCP_AA
-          stiffness: 6.62
-          damping: 0.24044435
-          armature: 0.00265
-        - joint_name: left_thumb_IP
-          stiffness: 0.9
-          damping: 0.04190723
-          armature: 0.0006
-        - joint_name: left_2_index_MCP_FE
-          stiffness: 4.76
-          damping: 0.20859232
-          armature: 0.00265
-        - joint_name: left_index_MCP_AA
-          stiffness: 6.62
-          damping: 0.24595532
-          armature: 0.00265
-        - joint_name: left_index_PIP
-          stiffness: 0.9
-          damping: 0.04243185
-          armature: 0.0006
-        - joint_name: left_index_DIP
-          stiffness: 0.9
-          damping: 0.03504461
-          armature: 0.00042
-        - joint_name: left_3_middle_MCP_FE
-          stiffness: 4.76
-          damping: 0.2085923
-          armature: 0.00265
-        - joint_name: left_middle_MCP_AA
-          stiffness: 6.62
-          damping: 0.24595532
-          armature: 0.00265
-        - joint_name: left_middle_PIP
-          stiffness: 0.9
-          damping: 0.04243185
-          armature: 0.0006
-        - joint_name: left_middle_DIP
-          stiffness: 0.9
-          damping: 0.03504461
-          armature: 0.00042
-        - joint_name: left_4_ring_MCP_FE
-          stiffness: 4.76
-          damping: 0.20859226
-          armature: 0.00265
-        - joint_name: left_ring_MCP_AA
-          stiffness: 6.62
-          damping: 0.24595528
-          armature: 0.00265
-        - joint_name: left_ring_PIP
-          stiffness: 0.9
-          damping: 0.04243183
-          armature: 0.0006
-        - joint_name: left_ring_DIP
-          stiffness: 0.9
-          damping: 0.0350446
-          armature: 0.00042
-        - joint_name: left_5_pinky_CMC
-          stiffness: 1.38
-          damping: 0.02782345
-          armature: 0.00012
-        - joint_name: left_pinky_MCP_FE
-          stiffness: 4.76
-          damping: 0.20859229
-          armature: 0.00265
-        - joint_name: left_pinky_MCP_AA
-          stiffness: 6.62
-          damping: 0.24595528
-          armature: 0.00265
-        - joint_name: left_pinky_PIP
-          stiffness: 0.9
-          damping: 0.04243183
-          armature: 0.0006
-        - joint_name: left_pinky_DIP
-          stiffness: 0.9
-          damping: 0.0350446
-          armature: 0.00042
-      - name: table
-        model_file: ${simtoolreal_asset:urdf/table_narrow.urdf}
-        asset_format: urdf
-        materialization: rigid
-        root_mode: kinematic
-        # Table conversion keeps the converter's cylinder behavior
-        # (scene_utils.py:1752) and the converted-USD collision state
-        # (scene_utils.py:1752-1758) — both are the undeclared defaults.
-        contact_friction: [0.5, 0.5, 0.0]
-      - name: object
-        model_file: ${simtoolreal_asset:generated/object.urdf}
-        asset_format: urdf
-        materialization: rigid
-        root_mode: floating
-        # The object contract converts with capsule replacement
-        # (scene_utils.py:1701-1706); floating rigid is the undeclared
-        # default, declared here to pin the trained-identical behavior.
-        replace_cylinders_with_capsules: true
-        contact_friction: [0.5, 0.5, 0.0]
-        # Binds this entity to the task's fixed variant pool
-        # (env.tool_pool_target_entity); the backend validates the plan
-        # binding symmetrically on the cold path.  The pool variants convert
-        # with this entity's declared converter profile.
-        consumes_fixed_variant_pool: true
-      - name: goalviz
-        model_file: ${simtoolreal_asset:generated/goalviz.urdf}
-        asset_format: urdf
-        materialization: rigid
-        root_mode: kinematic
-        # Goalviz contract (scene_utils.py:1714-1719): collision disabled
-        # (non-physical visual twin) and object-style capsule replacement;
-        # the per-env copies mirror the pool target's variants instead of
-        # using this single bootstrap asset.
-        collision_enabled: false
-        replace_cylinders_with_capsules: true
-        mirrors_fixed_variant_pool: true
   # sim_dt = 1/120, ctrl_dt = 1/60 (decimation 2), 600 policy steps = 10 s.
   sim_dt: 0.008333333333333333
   ctrl_dt: 0.016666666666666666
@@ -431,6 +140,139 @@ env:
   tool_pool_target_entity: object
   tool_pool_root: null
   tool_pool_enabled: true
+
+# Frozen owner physics truth (task data, not a scene declaration).  The MJCF
+# writers read these through tasks/simtoolreal/owner_physics.py; the owner-YAML
+# parity tests pin every value against the original repository's tables.
+# They used to live in the IsaacSim leaf's fork-era entity_assets section.
+owner_physics:
+  robot:
+    contact_friction: [0.5, 0.5, 0.0]
+    contact_friction_by_body:
+      - body_name: left_index_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_middle_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_ring_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_thumb_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_pinky_DP
+        friction: [1.5, 1.5, 0.0]
+    actuator_gain_overrides:
+      - joint_name: iiwa14_joint_1
+        stiffness: 600.0
+        damping: 27.027026473513512
+      - joint_name: iiwa14_joint_2
+        stiffness: 600.0
+        damping: 27.027026473513512
+      - joint_name: iiwa14_joint_3
+        stiffness: 500.0
+        damping: 24.672186769721083
+      - joint_name: iiwa14_joint_4
+        stiffness: 400.0
+        damping: 22.067474708266914
+      - joint_name: iiwa14_joint_5
+        stiffness: 200.0
+        damping: 9.752538131173853
+      - joint_name: iiwa14_joint_6
+        stiffness: 200.0
+        damping: 9.147747263670984
+      - joint_name: iiwa14_joint_7
+        stiffness: 200.0
+        damping: 9.147747263670984
+      - joint_name: left_1_thumb_CMC_FE
+        stiffness: 6.95
+        damping: 0.28676845
+        armature: 0.0032
+      - joint_name: left_thumb_CMC_AA
+        stiffness: 13.2
+        damping: 0.40845109
+        armature: 0.0032
+      - joint_name: left_thumb_MCP_FE
+        stiffness: 4.76
+        damping: 0.20394083
+        armature: 0.00265
+      - joint_name: left_thumb_MCP_AA
+        stiffness: 6.62
+        damping: 0.24044435
+        armature: 0.00265
+      - joint_name: left_thumb_IP
+        stiffness: 0.9
+        damping: 0.04190723
+        armature: 0.0006
+      - joint_name: left_2_index_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859232
+        armature: 0.00265
+      - joint_name: left_index_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595532
+        armature: 0.00265
+      - joint_name: left_index_PIP
+        stiffness: 0.9
+        damping: 0.04243185
+        armature: 0.0006
+      - joint_name: left_index_DIP
+        stiffness: 0.9
+        damping: 0.03504461
+        armature: 0.00042
+      - joint_name: left_3_middle_MCP_FE
+        stiffness: 4.76
+        damping: 0.2085923
+        armature: 0.00265
+      - joint_name: left_middle_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595532
+        armature: 0.00265
+      - joint_name: left_middle_PIP
+        stiffness: 0.9
+        damping: 0.04243185
+        armature: 0.0006
+      - joint_name: left_middle_DIP
+        stiffness: 0.9
+        damping: 0.03504461
+        armature: 0.00042
+      - joint_name: left_4_ring_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859226
+        armature: 0.00265
+      - joint_name: left_ring_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595528
+        armature: 0.00265
+      - joint_name: left_ring_PIP
+        stiffness: 0.9
+        damping: 0.04243183
+        armature: 0.0006
+      - joint_name: left_ring_DIP
+        stiffness: 0.9
+        damping: 0.0350446
+        armature: 0.00042
+      - joint_name: left_5_pinky_CMC
+        stiffness: 1.38
+        damping: 0.02782345
+        armature: 0.00012
+      - joint_name: left_pinky_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859229
+        armature: 0.00265
+      - joint_name: left_pinky_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595528
+        armature: 0.00265
+      - joint_name: left_pinky_PIP
+        stiffness: 0.9
+        damping: 0.04243183
+        armature: 0.0006
+      - joint_name: left_pinky_DIP
+        stiffness: 0.9
+        damping: 0.0350446
+        armature: 0.00042
+  table:
+    contact_friction: [0.5, 0.5, 0.0]
+  object:
+    contact_friction: [0.5, 0.5, 0.0]
 
 # Seven-term reward set (config.RewardCfg; old-repo reward: section values).
 # Terms return raw values; weights carry the original *_scale factors and

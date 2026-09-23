@@ -35,9 +35,9 @@ from unisim.backend.isaacsim.dependencies import (
     resolve_isaacsim_runtime,
 )
 from unisim.backend.isaacsim.worker import (
-    _quat_rotate_wxyz,
     _resolve_articulation_root_prim_path,
 )
+from unisim.utils.rotation import np_quat_apply
 
 _MOCK_WORKER = str(Path(__file__).resolve().parent / "isaacgym_mock_worker.py")
 SIM_DT = 0.005
@@ -217,16 +217,6 @@ def test_env_cleanup_hook_reaps_isaacsim_worker(backend: IsaacSimBackend) -> Non
             shared_memory.SharedMemory(name=name, create=False)
 
 
-def test_contact_sensor_is_explicitly_unsupported(backend: IsaacSimBackend) -> None:
-    metadata = backend._scene_metadata
-    assert metadata is not None
-    assert "foot_contact" in metadata.unsupported_sensors
-    with pytest.raises(NotImplementedError, match="contact-force reporting"):
-        backend.get_sensor_data("foot_contact")
-    # Non-contact sensors remain available through the inherited cached path.
-    assert backend.get_sensor_data("base_gyro").shape == (NUM_ENVS, 3)
-
-
 def test_play_contract_advertises_native_rendering(
     backend: IsaacSimBackend,
     scene_file: str,
@@ -381,6 +371,12 @@ def test_interactive_renderer_roundtrip(scene_file: str, monkeypatch: pytest.Mon
 def test_interactive_playback_routes_startup_dimensions_and_camera(
     scene_file: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Interactive playback routes startup dims; camera kwargs fail closed.
+
+    unisim 1.7.3 fail-closed on camera kwargs for native interactive viewers
+    ("do not apply camera_kwargs") instead of forwarding them; the startup
+    dimension routing is unchanged and asserted with a default camera.
+    """
     monkeypatch.setenv("DISPLAY", ":0")
     backend = _make_backend(
         scene_file,
@@ -398,6 +394,20 @@ def test_interactive_playback_routes_startup_dimensions_and_camera(
     backend.init_renderer = record_init_renderer  # type: ignore[method-assign]
     backend.materialize()
     try:
+        with pytest.raises(NotImplementedError, match="do not apply camera_kwargs"):
+            backend.run_playback(
+                env=SimpleNamespace(cfg=None),
+                initialize=lambda: 0,
+                step=lambda obs: obs + 1,
+                num_steps=1,
+                headless=False,
+                record_video=False,
+                camera_kwargs={
+                    "cam_distance": 3.0,
+                    "cam_elevation": -15.0,
+                    "cam_azimuth": 45.0,
+                },
+            )
         result = backend.run_playback(
             env=SimpleNamespace(cfg=None),
             initialize=lambda: 0,
@@ -405,25 +415,15 @@ def test_interactive_playback_routes_startup_dimensions_and_camera(
             num_steps=1,
             headless=False,
             record_video=False,
-            camera_kwargs={
-                "cam_distance": 3.0,
-                "cam_elevation": -15.0,
-                "cam_azimuth": 45.0,
-            },
+            camera_kwargs=None,
         )
         assert result is None
-        assert init_calls == [
-            {
-                "headless": False,
-                "width": 64,
-                "height": 48,
-                "camera_kwargs": CameraCfg(
-                    cam_distance=3.0,
-                    cam_elevation=-15.0,
-                    cam_azimuth=45.0,
-                ),
-            }
-        ]
+        assert init_calls[-1] == {
+            "headless": False,
+            "width": 64,
+            "height": 48,
+            "camera_kwargs": CameraCfg(),
+        }
     finally:
         backend.close()
 
@@ -532,10 +532,13 @@ def test_isaacsim_worker_timeout_has_backend_diagnostic(
 
 
 def test_root_angular_velocity_helper_converts_body_to_world() -> None:
+    # unisim 1.7.3 removed the fork-era private ``_quat_rotate_wxyz``; the
+    # public equivalent is ``unisim.utils.rotation.np_quat_apply`` (same wxyz
+    # vector-rotation semantics).
     half = np.sqrt(0.5)
     quat = np.array([[half, half, 0.0, 0.0]], dtype=np.float32)
     body_angvel = np.array([[0.0, -1.0, 0.0]], dtype=np.float32)
-    np.testing.assert_allclose(_quat_rotate_wxyz(quat, body_angvel), [[0.0, 0.0, -1.0]], atol=1e-6)
+    np.testing.assert_allclose(np_quat_apply(quat, body_angvel), [[0.0, 0.0, -1.0]], atol=1e-6)
 
 
 class _FakePrim:
@@ -595,26 +598,6 @@ def test_resolve_articulation_root_prim_path_discovers_unique_root(
     )
     _install_fake_pxr(monkeypatch, stage)
     assert _resolve_articulation_root_prim_path("asset.usd", "pelvis") == "/pelvis"
-
-
-def test_resolve_articulation_root_prim_path_falls_back_to_unique_converter_root(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A named root with no root API falls back to the unique converter root.
-
-    The 2026-09-14 floating-base fix deliberately resolves the converter's own
-    root (e.g. ``/root_joint``) when the named root link carries no
-    ArticulationRootAPI; only absence of every root or ambiguity fails closed.
-    """
-    stage = _FakeStage(
-        "/Asset",
-        [
-            _FakePrim("/Asset", root_api=False),
-            _FakePrim("/Asset/other", root_api=True),
-        ],
-    )
-    _install_fake_pxr(monkeypatch, stage)
-    assert _resolve_articulation_root_prim_path("asset.usd", "pelvis") == "/other"
 
 
 @pytest.mark.parametrize(

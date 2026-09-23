@@ -5,19 +5,19 @@ build-backend = "uv_build"
 [project]
 name = "simtoolreal-unilab"
 version = "0.1.0"
-description = "SimToolReal teacher training on UniLab + UniSim through the IsaacSim URDF-to-USD asset path"
+description = "SimToolReal teacher training on UniLab + UniSim with shared MJCF B-form IsaacSim and MuJoCo backends"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
-  # Official UniLab main at the exact commit this task was developed against;
-  # the multi-rigid-root reset routing and entity facades this package needs
-  # are supplied by simtoolreal_unilab._compat on top of the pinned revision.
+  # Official UniLab main at the latest commit (MuJoCo line pin discipline:
+  # track upstream main, let _compat guards report drift).
   "unilab",
-  # Fork branch carrying the IsaacSim scene-composition contract (PR
-  # unilabsim/unisim#79). Switch back to the PyPI release once merged.
-  "unisim-core",
+  # Official PyPI release of unisim-core. The [mujoco] extra pulls in the
+  # mujoco/mjbatch-uni pair the MuJoCo backend is pinned and tested against;
+  # the MJCF asset line's compiler gates (M-J1) run on that same pin.
+  "unisim-core[mujoco]>=1.7.3",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
   "torch==2.8.0+cu128 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
@@ -43,8 +43,18 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.sources]
-unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "e1fcb824" }
-unisim-core = { git = "https://github.com/lemon-star608/unisim.git", branch = "feat/isaacsim-urdf-multi-entity" }
+# TEMPORARY local path dependency (Isaac/MJCF line bring-up): consume the
+# local UniLab checkout carrying the isaacsim_solver_* EnvCfg knobs
+# (Motphys/UniLab#1620, branch feat/isaacsim-solver-kwargs @ cd35ba46).
+# Switch back to the official git pin below once #1620 merges and ships:
+# unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "3a3576aee9d65e670b9819b9d79316c41f4bced6" }
+unilab = { path = "../UniLab", editable = true }
+# TEMPORARY local path dependency (Isaac/MJCF line bring-up): consume the
+# local unisim checkout carrying the mapped-worker visual-only geom +
+# fullinertia fixes (unilabsim/unisim#279, branch
+# fix/isaacsim-visual-only-geoms @ 4fe8e9b).  Switch back to the official
+# PyPI release once #279 merges and ships.
+unisim-core = { path = "/tmp/unisim_cl", editable = true }
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
 

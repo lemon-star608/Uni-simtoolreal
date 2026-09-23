@@ -17,7 +17,14 @@ import numpy as np
 from unilab.base.entity import Entity
 from unilab.managers.manager_base import ManagerTermBase, ManagerTermBaseCfg
 
-from .config import ARM_DEFAULT_JOINT_POS, ARM_JOINT_NAMES, HAND_JOINT_NAMES, ResetCfg
+from .config import (
+    ARM_DEFAULT_JOINT_POS,
+    ARM_JOINT_NAMES,
+    HAND_JOINT_NAMES,
+    ResetCfg,
+    declared_names,
+    match_entity_names,
+)
 from .env_cfg import fixed_variant_plan_assignment
 
 
@@ -39,6 +46,23 @@ def _entity(scene: Mapping[str, Any], name: str) -> Entity | None:
         return cast(Entity, scene[name])
     except (KeyError, TypeError):
         return None
+
+
+def _declared_root_mode(env: Any, name: str) -> str | None:
+    """The entity's declared root mode (``entity_assets``), None when absent.
+
+    Entity-composed scenes reject root-velocity writes on kinematic entities
+    (unisim scene_layout validate_reset) — a kinematic root has no velocity
+    state, so skipping the zero write is semantics-preserving on both lines.
+    """
+    scene = getattr(getattr(env, "cfg", None), "scene", None)
+    for spec in getattr(scene, "entity_assets", ()) or ():
+        spec_name = (
+            getattr(spec, "name", None) if not isinstance(spec, Mapping) else spec.get("name")
+        )
+        if spec_name == name:
+            return spec.get("root_mode") if isinstance(spec, Mapping) else spec.root_mode
+    return None
 
 
 def _unit_quaternions(rng: np.random.Generator, count: int) -> np.ndarray:
@@ -75,6 +99,7 @@ class SimToolRealReset(ManagerTermBase):
         super().__init__(env)
         self._robot = cast(Entity, env.scene["robot"])
         names = list(ARM_JOINT_NAMES) + list(HAND_JOINT_NAMES)
+        names = match_entity_names(declared_names(self._robot, "joint"), names, label="joint")
         self._joint_ids, _ = self._robot.find_joints(names, preserve_order=True)
         default = [ARM_DEFAULT_JOINT_POS[name] for name in ARM_JOINT_NAMES]
         default += [0.0] * len(HAND_JOINT_NAMES)
@@ -159,16 +184,26 @@ class SimToolRealReset(ManagerTermBase):
         if self._table is None and self._object is None:
             return
         count = ids.size
-        table_z = self._table_reset_z + env.rng.uniform(
-            -self._table_reset_z_range, self._table_reset_z_range, size=count
-        ).astype(np.float32)
-        if self._table is not None:
+        if self._table is None:
+            # Scenes without a table entity (legacy fixtures) keep the table
+            # z fixed at table_reset_z and skip the noise draw.
+            table_z = np.full(count, self._table_reset_z, dtype=np.float32)
+        else:
+            # M-J5: the table is a kinematic entity again on both lines, so
+            # the z randomization (ResetCfg.table_reset_z ± range) is back on
+            # the MuJoCo line through the entity reset channel.
+            table_z = self._table_reset_z + env.rng.uniform(
+                -self._table_reset_z_range, self._table_reset_z_range, size=count
+            ).astype(np.float32)
             table_pose = np.array(self._table.read_reset_root_pose(ids), copy=True)
             table_pose[:, 2] = table_z
             self._table.write_root_link_pose_to_sim(table_pose, env_ids=ids)
-            self._table.write_root_link_velocity_to_sim(
-                np.zeros((count, 6), dtype=np.float32), env_ids=ids
-            )
+            if _declared_root_mode(env, "table") != "kinematic":
+                # Kinematic roots carry no velocity state; the zero write is a
+                # no-op the entity-composed scene contract rejects outright.
+                self._table.write_root_link_velocity_to_sim(
+                    np.zeros((count, 6), dtype=np.float32), env_ids=ids
+                )
 
         if self._object is None:
             return
@@ -235,29 +270,39 @@ class SimToolRealWrenchEvent(ManagerTermBase):
         if not np.isfinite(self._object_mass) or self._object_mass < 0.0:
             raise ValueError("object_mass must be finite and non-negative")
         self._object_masses: np.ndarray | None = None
-        # The worker measures each environment's variant mass from the baked
-        # asset and exposes it through the Entity facade readback; the
-        # immutable per-environment assignment comes from the scene's fixed
-        # variant plan.  An explicit term-level object_mass remains available
-        # for lightweight fixtures and other backends.  A scene without the
-        # object entity keeps the scalar fallback: the term never dispatches
-        # without it.
+        # Variant mass priority (D5): the task-side catalog mass table filled
+        # by SimToolRealEnvCfg.validate (both asset formats) is authoritative;
+        # the backend readback facade (IsaacSim line legacy) is the fallback,
+        # and an explicit term-level object_mass remains for lightweight
+        # fixtures.  A scene without the object entity keeps the scalar
+        # fallback: the term never dispatches without it.
         if "object_mass" not in params:
             assignments = fixed_variant_plan_assignment(
                 getattr(env, "cfg", None), int(env.num_envs)
             )
-            if assignments is not None and self._object is not None:
-                masses = np.asarray(self._object.fixed_variant_mass, dtype=np.float32)
-                if masses.ndim != 1 or not np.isfinite(masses).all() or np.any(masses < 0.0):
+            table = tuple(getattr(getattr(env, "cfg", None), "tool_pool_masses", ()) or ())
+            if assignments is not None and table:
+                if len(table) < int(assignments.max()) + 1:
                     raise ValueError(
-                        "fixed variant mass readback must be finite non-negative 1-D values"
+                        "task-side tool pool mass table is shorter than the variant "
+                        f"assignment requires: {len(table)} vs {int(assignments.max()) + 1}"
                     )
-                if masses.shape[0] != env.num_envs:
-                    raise ValueError(
-                        "fixed variant mass readback must have one entry per environment; "
-                        f"got {masses.shape[0]}, expected {env.num_envs}"
-                    )
-                self._object_masses = masses
+                masses = np.asarray(table, dtype=np.float32)[assignments]
+                self._object_masses = np.asarray(masses, dtype=np.float32)
+            elif assignments is not None and self._object is not None:
+                readback = getattr(self._object, "fixed_variant_mass", None)
+                if readback is not None:
+                    masses = np.asarray(readback, dtype=np.float32)
+                    if masses.ndim != 1 or not np.isfinite(masses).all() or np.any(masses < 0.0):
+                        raise ValueError(
+                            "fixed variant mass readback must be finite non-negative 1-D values"
+                        )
+                    if masses.shape[0] != env.num_envs:
+                        raise ValueError(
+                            "fixed variant mass readback must have one entry per environment; "
+                            f"got {masses.shape[0]}, expected {env.num_envs}"
+                        )
+                    self._object_masses = masses
         body_names = params.get("body_names", ("object_root",))
         self._local_body_ids = self._backend_body_ids = np.empty(0, dtype=np.int32)
         if self._object is not None:
@@ -266,6 +311,11 @@ class SimToolRealWrenchEvent(ManagerTermBase):
             # selectors, so resolve the names once on the cold path; the tiny
             # fallback keeps lightweight test doubles compatible.
             requested = (body_names,) if isinstance(body_names, str) else body_names
+            # Entity-composed scenes qualify body names (``object/object_root``);
+            # match the canonical names against the entity declaration.
+            requested = match_entity_names(
+                declared_names(self._object, "body"), requested, label="body"
+            )
             resolver = getattr(self._object, "find_bodies", None)
             if resolver is not None and all(isinstance(name, str) for name in requested):
                 requested = resolver(requested, preserve_order=True)[0]

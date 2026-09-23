@@ -60,6 +60,8 @@ from .config import (
     JOINT_NAMES_CANONICAL,
     KEYPOINT_CORNERS,
     NUM_ARM_JOINTS,
+    declared_names,
+    match_entity_names,
 )
 from .observations import (
     _cached_fingertip_distances,
@@ -144,7 +146,12 @@ class FingertipDistanceDelta(ManagerTermBase):
         self._threshold = float(cfg.params.get("bonus_threshold", _LIFTING_BONUS_THRESHOLD))
         self._object = cast(Entity, env.scene["object"])
         self._robot = cast(Entity, env.scene["robot"])
-        ids, _ = self._robot.find_bodies(list(FINGERTIP_LINK_NAMES), preserve_order=True)
+        ids, _ = self._robot.find_bodies(
+            match_entity_names(
+                declared_names(self._robot, "body"), FINGERTIP_LINK_NAMES, label="body"
+            ),
+            preserve_order=True,
+        )
         self._fingertip_ids = np.asarray(ids, dtype=np.intp)
 
     def __call__(self, env, **params) -> np.ndarray:
@@ -216,7 +223,12 @@ class _JointVelocityPenalty(ManagerTermBase):
         super().__init__(env)
         _check_params(cfg, frozenset())
         self._robot = cast(Entity, env.scene["robot"])
-        ids, _ = self._robot.find_joints(list(self._joint_names), preserve_order=True)
+        ids, _ = self._robot.find_joints(
+            match_entity_names(
+                declared_names(self._robot, "joint"), self._joint_names, label="joint"
+            ),
+            preserve_order=True,
+        )
         self._joint_ids = np.asarray(ids, dtype=np.intp)
 
     def __call__(self, env, **params) -> np.ndarray:

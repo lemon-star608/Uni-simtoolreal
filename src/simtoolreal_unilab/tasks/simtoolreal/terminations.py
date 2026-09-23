@@ -55,7 +55,7 @@ from unilab.base.entity import Entity
 from unilab.managers.manager_base import ManagerTermBase, ManagerTermBaseCfg
 
 from .commands import goal_command
-from .config import FINGERTIP_LINK_NAMES, KEYPOINT_CORNERS
+from .config import FINGERTIP_LINK_NAMES, KEYPOINT_CORNERS, declared_names, match_entity_names
 from .observations import (
     _cached_fingertip_distances,
     _cached_keypoint_max_dist,
@@ -147,7 +147,12 @@ class HandFar(ManagerTermBase):
         self._distance = float(cfg.params.get("hand_far_distance", _HAND_FAR_DISTANCE))
         self._object = cast(Entity, env.scene["object"])
         self._robot = cast(Entity, env.scene["robot"])
-        ids, _ = self._robot.find_bodies(list(FINGERTIP_LINK_NAMES), preserve_order=True)
+        ids, _ = self._robot.find_bodies(
+            match_entity_names(
+                declared_names(self._robot, "body"), FINGERTIP_LINK_NAMES, label="body"
+            ),
+            preserve_order=True,
+        )
         self._fingertip_ids = np.asarray(ids, dtype=np.intp)
 
     def __call__(self, env, **params) -> np.ndarray:

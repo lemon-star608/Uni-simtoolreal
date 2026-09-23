@@ -43,6 +43,7 @@ _ALLOWED_STDLIB = {
     "random",
     "tempfile",
     "warnings",
+    "xml",  # ElementTree: the MJCF writers' transcription parser (no physics engine)
 }
 
 
@@ -101,8 +102,12 @@ def test_task_package_boundary() -> None:
 
 
 def test_compat_layer_is_applied() -> None:
-    from unilab.base.entity import Entity
-    from unilab.base.reset_state import ResetStateTransaction
+    """The surviving _compat modules (managers/envs/config_adapter) applied."""
+    from unilab.managers import CommandManager, ObservationManager, RewardManager
 
-    assert hasattr(ResetStateTransaction, "bind_root_state")
-    assert hasattr(Entity, "fixed_variant_mass")
+    assert hasattr(RewardManager, "step_reward_vectors")
+    assert hasattr(CommandManager, "log_extras")
+    # _compat/managers.py's compute_group is exec'd from a source string (no
+    # inspect.getsource); its code object references the compute_rows fast
+    # path, which upstream main's implementation does not have.
+    assert "compute_rows" in ObservationManager.compute_group.__code__.co_consts

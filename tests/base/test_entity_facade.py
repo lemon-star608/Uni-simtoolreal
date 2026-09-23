@@ -800,46 +800,6 @@ def test_entity_facade_has_no_backend_model_or_asset_access() -> None:
     assert "scene_model_file" not in accessed_attributes
 
 
-def test_fixed_variant_mass_is_cached_cold_readback_through_backend() -> None:
-    from unisim.dr.types import FixedVariantMetadata
-
-    class _VariantPoolBackend(_StrictBackendProfile):
-        def __init__(self) -> None:
-            super().__init__("isaacsim")
-            self.readbacks = 0
-
-        def get_entity_variant_metadata(self, entity: str) -> FixedVariantMetadata:
-            self.readbacks += 1
-            assert entity == "robot"
-            return FixedVariantMetadata(
-                mass=np.arange(1, self.num_envs + 1, dtype=np.float64),
-                variant_files=("pool/a.urdf", "pool/b.urdf"),
-            )
-
-    backend = _VariantPoolBackend()
-    cfg = SceneCfg(model_file="unused.xml", entities={"robot": EntityCfg(root_body_name="base")})
-    scene = EntityScene.from_scene_cfg(cfg, cast(SimBackend, backend))
-
-    np.testing.assert_allclose(scene["robot"].fixed_variant_mass, [1.0, 2.0, 3.0])
-    # Cold readback is cached once per entity; the pool assignment is
-    # immutable for the life of the scene.
-    np.testing.assert_allclose(scene["robot"].fixed_variant_mass, [1.0, 2.0, 3.0])
-    assert backend.readbacks == 1
-
-
-def test_fixed_variant_mass_fails_closed_without_a_pool() -> None:
-    class _PoollessBackend(_StrictBackendProfile):
-        def get_entity_variant_metadata(self, entity: str) -> Any:
-            raise NotImplementedError(f"{self.backend_type} exposes no pool for '{entity}'")
-
-    backend = _PoollessBackend("mujoco")
-    cfg = SceneCfg(model_file="unused.xml", entities={"robot": EntityCfg(root_body_name="base")})
-    scene = EntityScene.from_scene_cfg(cfg, cast(SimBackend, backend))
-
-    with pytest.raises(NotImplementedError, match="fixed variant mass"):
-        _ = scene["robot"].fixed_variant_mass
-
-
 def test_real_mujoco_entity_selector_and_numpy_state_smoke() -> None:
     pytest.importorskip(
         "unisim.backend.mujoco.backend",

@@ -48,23 +48,15 @@ Registered deviations (DESIGN.md section 3.5 convention):
 - Random streams come from ``env.rng`` (NumPy Generator) instead of torch:
   same distributions (uniform positions, standard-normal quaternions and
   axes), different stream.
-- GoalViz commit: the ``goalviz`` entity is wired by the scene assembly
-  (step 1.4s), and commits go through the env-owned ``ResetStateTransaction``
-  — whose staging semantics are full-row: ``_prepare_state_write`` seeds dirty
-  env rows from the *default* qpos/qvel and ``commit`` uploads whole rows via
-  ``SimBackend.set_state`` (reset_state.py:1305-1330, 914-945).  That is
-  correct on the reset path (the reset event stages robot/object state into
-  the same rows) but wrong mid-episode, where the original
-  ``write_root_pose_to_sim`` moves only the GoalViz body.  This term
-  therefore commits GoalViz poses on the reset path only; the success-driven
-  mid-episode advance updates the hub ``goal`` buffer and skips the sim write
-  until a partial-row channel (e.g. a mocap binding) exists.  Because the
-  sim write is deferred, the hub ``goal`` buffer is the authoritative current
-  goal and every goal reader — the delta walk here, the success criterion,
-  and the observation keypoint assembly — reads it (reaudit fix P3a).  The
-  GoalViz mirror is therefore a reset-path visualization artifact only.
-  Without the ``goalviz`` entity the name lookup degrades to the same
-  hub-only bookkeeping.
+- GoalViz commit: the headless B-form scene deliberately has no ``goalviz``
+  entity.  It is visualization-only and does not participate in training;
+  materializing a full mirrored tool prototype pool would double the worker's
+  mapped-scene cold path without affecting observations, rewards, resets, or
+  goal advancement.  The hub ``goal`` buffer is therefore the authoritative
+  current goal, and every goal reader — the delta walk here, the success
+  criterion, and the observation keypoint assembly — reads it (reaudit fix
+  P3a).  The historical optional entity hook remains solely for focused
+  unit-test scenes that exercise the reset-path compatibility branch.
 """
 
 from __future__ import annotations
@@ -78,7 +70,7 @@ from unilab.base.entity import Entity
 from unilab.managers import CommandTerm, CommandTermCfg
 from unilab.utils.rotation import np_quat_from_angle_axis, np_quat_mul
 
-from .config import FINGERTIP_LINK_NAMES, PALM_BODY_NAME
+from .config import FINGERTIP_LINK_NAMES, PALM_BODY_NAME, declared_names, match_entity_names
 from .env_cfg import fixed_variant_plan_assignment
 
 # Goal pose layout: env-local position (3) + wxyz quaternion (4).
@@ -190,9 +182,20 @@ class SimToolRealCommand(CommandTerm):
         # Cold path: resolve the bodies the success criterion reads
         # (obs_utils.py:153-205 computes palm/fingertip/keypoint geometry).
         self.robot = cast(Entity, env.scene["robot"])
-        self.palm_id = int(self.robot.find_bodies([PALM_BODY_NAME])[0][0])
+        self.palm_id = int(
+            self.robot.find_bodies(
+                match_entity_names(
+                    declared_names(self.robot, "body"), [PALM_BODY_NAME], label="body"
+                )
+            )[0][0]
+        )
         self.fingertip_ids = np.asarray(
-            self.robot.find_bodies(list(FINGERTIP_LINK_NAMES), preserve_order=True)[0],
+            self.robot.find_bodies(
+                match_entity_names(
+                    declared_names(self.robot, "body"), FINGERTIP_LINK_NAMES, label="body"
+                ),
+                preserve_order=True,
+            )[0],
             dtype=np.int32,
         )
         # GoalViz mirror entity (reset_utils.py:304-369).  The scene assembly
@@ -382,10 +385,12 @@ class SimToolRealCommand(CommandTerm):
         self._commit_goalviz(env_ids)
 
     def _commit_goalviz(self, env_ids: np.ndarray) -> None:
-        """Write the env-local goal pose to the GoalViz root (reset_utils.py:368-369)."""
+        """Write the env-local goal pose when a compatibility-only GoalViz exists."""
         if self._goalviz is None or not self._in_reset:
-            # Hub-only bookkeeping: pre-1.4s the entity is absent; mid-episode
-            # the reset transaction's full-row default staging would reset the
+            # Headless B-form bookkeeping is intentionally hub-only; the
+            # optional entity exists only in focused unit-test scenes.
+            # Mid-episode compatibility writes are also skipped because the
+            # reset transaction's full-row default staging would reset the
             # robot/object state of succeeded envs (module docstring).
             return
         pose = np.array(self.goal[env_ids], copy=True)

@@ -16,6 +16,7 @@ pins the owner YAML against the original repository's frozen values
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Sequence
 
 # ----------------------------------------------------------------------------
 # Canonical robot layout (scene_utils.py:34-57)
@@ -59,6 +60,12 @@ NUM_JOINTS: int = 29
 NUM_ARM_JOINTS: int = 7
 NUM_FINGERTIPS: int = 5
 NUM_KEYPOINTS: int = 4
+
+TOOL_POOL_TARGET_ENTITY = "object"
+"""Physical scene entity that consumes the tool-only fixed-variant catalog."""
+
+ENTITY_ASSETS_MANIFEST_SCHEMA = "simtoolreal_unilab.entity_assets.v2"
+"""Current B-form entity-pool manifest contract (four physical entities)."""
 
 # Observation geometry constants (obs_utils.py:22-33).
 PALM_CENTER_OFFSET: tuple[float, float, float] = (-0.0, -0.02, 0.16)
@@ -387,6 +394,57 @@ class SimToolRealTaskCfg:
     domain_randomization: DomainRandomizationCfg = field(default_factory=DomainRandomizationCfg)
 
 
+def match_entity_names(
+    declared: Sequence[str] | None,
+    canonical: Sequence[str],
+    *,
+    label: str,
+) -> list[str]:
+    """Map canonical truth-table names onto an entity's declared names.
+
+    The frozen tables in this module use bare source names
+    (``iiwa14_joint_1``, ``object_root``).  Entity-composed scenes qualify
+    every name with the physical-entity prefix (``robot/iiwa14_joint_1``,
+    unisim ``compile_scene_layout``), while the IsaacSim line declares the
+    bare names — so manager terms resolve selectors against the entity's
+    *declared* names, matching on the final path segment.  ``declared=None``
+    (undeclared selectors, lightweight fixtures) passes the canonical names
+    through unchanged.
+    """
+    if declared is None:
+        return list(canonical)
+    by_stem: dict[str, str] = {}
+    for name in declared:
+        stem = name.rsplit("/", 1)[-1]
+        if stem in by_stem:
+            raise ValueError(
+                f"{label} selector stems are ambiguous in the entity declaration: "
+                f"{by_stem[stem]!r} vs {name!r}"
+            )
+        by_stem[stem] = name
+    missing = [name for name in canonical if name not in by_stem]
+    if missing:
+        raise ValueError(
+            f"{label} selectors {missing} are not covered by the entity declaration "
+            f"{list(declared)}"
+        )
+    return [by_stem[name] for name in canonical]
+
+
+def declared_names(entity: object, kind: str) -> tuple[str, ...] | None:
+    """An entity's declared namespace (``joint``/``body``/``actuator``).
+
+    ``None`` when the namespace is undeclared: the facade raises
+    ``NotImplementedError`` for undeclared namespaces, and lightweight test
+    doubles may not carry the attribute at all.
+    """
+    try:
+        value = getattr(entity, f"{kind}_names", None)
+    except NotImplementedError:
+        return None
+    return None if value is None else tuple(value)
+
+
 __all__ = [
     "ARM_DEFAULT_JOINT_POS",
     "ARM_JOINT_DAMPING",
@@ -414,4 +472,6 @@ __all__ = [
     "RewardCfg",
     "SimToolRealTaskCfg",
     "TerminationCfg",
+    "declared_names",
+    "match_entity_names",
 ]
