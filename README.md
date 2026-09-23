@@ -33,7 +33,7 @@ This is a downstream task package: install it and use UniLab's shared training t
 
 Requirements: Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and roughly 20 GB of disk for the worker runtime and caches.
 
-The UniLab/UniSim/mjbatch-uni dependencies are pinned to upstream git revisions in `pyproject.toml`; a clean clone resolves them without extra checkouts.
+The UniLab dependency is pinned to an upstream git revision in `pyproject.toml` (unisim-core and mjbatch-uni are official PyPI releases); a clean clone resolves everything without extra checkouts.
 
 ```bash
 cd /path/to/simtoolreal_unilab
@@ -124,11 +124,11 @@ TensorBoard and checkpoints land in the same `logs/rlgames_sapg/SimToolReal/<run
 
 ## Compatibility layer (developers)
 
-The task needs a few behaviors upstream UniLab does not ship yet (the manager logging views for L3 label parity, the env-side merge of those extras into the step log, and env-side seed propagation for run-to-run reproducibility). `simtoolreal_unilab._compat` ports those method bodies onto the pinned official UniLab revision at import time and fails loudly if the pin drifts; each patch is removed as soon as upstream grows the behavior natively. Dependency pins (all upstream git revisions, resolved by `uv sync`):
+The task needs a few behaviors upstream UniLab does not ship yet (the manager logging views for L3 label parity, the env-side merge of those extras into the step log, and env-side seed propagation for run-to-run reproducibility). `simtoolreal_unilab._compat` ports those method bodies onto the pinned official UniLab revision at import time and fails loudly if the pin drifts; each patch is removed as soon as upstream grows the behavior natively. Dependency pins (resolved by `uv sync`):
 
-- `unilab` — official main @ `838cc03e`, carrying the IsaacSim solver-knob channel and GPU contact-buffer knobs ([Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620), [#1636](https://github.com/Motphys/UniLab/pull/1636)); switch to a PyPI release once one ships containing them.
-- `unisim-core` — official main @ `dd983f9d`, carrying the merged adapter fixes ([unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279) and follow-ups); switch to the PyPI release once one ships containing them.
-- `mjbatch-uni` — the streaming VariantPackBuilder branch ([unilabsim/mjbatch_uni#38](https://github.com/unilabsim/mjbatch_uni/pull/38)); the MuJoCo variant executors fail closed without it.
+- `unilab` — official main @ `838cc03e` (git rev pin), carrying the IsaacSim solver-knob channel and GPU contact-buffer knobs ([Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620), [#1636](https://github.com/Motphys/UniLab/pull/1636)); switch to a PyPI release once one ships containing them.
+- `unisim-core` — official PyPI release `>=1.7.5`, which carries the merged adapter fixes ([unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279) through #294).
+- `mjbatch-uni` — official PyPI release `>=0.2.4` (streaming VariantPackBuilder, [unilabsim/mjbatch_uni#38](https://github.com/unilabsim/mjbatch_uni/pull/38)); the MuJoCo variant executors fail closed without it.
 
 The vendored RL-Games runtime under `third_party/simtoolreal_rl_games` is SHA-gated; never edit its files. Provenance is anchored by the per-file SHA256 manifest plus the recorded upstream source commit — no local Git objects are required. Run `make check` / `make test` before pushing.
 

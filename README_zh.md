@@ -35,7 +35,7 @@
 
 要求：Linux x86_64、一张支持 CUDA 的 NVIDIA GPU（学习器与 IsaacSim worker 共用）、[uv](https://docs.astral.sh/uv/)、约 20 GB 磁盘（worker 运行时与缓存）。
 
-UniLab/UniSim/mjbatch-uni 依赖在 `pyproject.toml` 中钉到上游 git 修订；clean clone 即可解析，无需额外 checkout。
+UniLab 依赖在 `pyproject.toml` 中钉到上游 git 修订（unisim-core 与 mjbatch-uni 为官方 PyPI 发行版）；clean clone 即可解析全部依赖，无需额外 checkout。
 
 ```bash
 cd /path/to/simtoolreal_unilab
@@ -126,11 +126,11 @@ TensorBoard 与 checkpoint 使用同样的 `logs/rlgames_sapg/SimToolReal/<run>/
 
 ## 兼容层（面向开发者）
 
-本任务需要的若干行为上游 UniLab 尚未提供（L3 标签对齐所需的 manager 日志视图、把这些 extras 合并进 step 日志的 env 侧补丁、以及保证 run 间可复现的 env 侧 seed 传播）。`simtoolreal_unilab._compat` 在 import 时把这些方法体移植到 pinned 的官方 UniLab 修订上，pin 漂移会立刻报错；上游一旦原生长出对应行为，相应补丁即移除。依赖钉定（均为上游 git 修订，由 `uv sync` 解析）：
+本任务需要的若干行为上游 UniLab 尚未提供（L3 标签对齐所需的 manager 日志视图、把这些 extras 合并进 step 日志的 env 侧补丁、以及保证 run 间可复现的 env 侧 seed 传播）。`simtoolreal_unilab._compat` 在 import 时把这些方法体移植到 pinned 的官方 UniLab 修订上，pin 漂移会立刻报错；上游一旦原生长出对应行为，相应补丁即移除。依赖钉定（由 `uv sync` 解析）：
 
-- `unilab`——官方 main @ `838cc03e`，携带 IsaacSim solver 参数通道与 GPU contact buffer 旋钮（[Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620)、[#1636](https://github.com/Motphys/UniLab/pull/1636)）；有包含它们的 PyPI 发行版后切回。
-- `unisim-core`——官方 main @ `dd983f9d`，携带已合并的 adapter 修复（[unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279) 及后续）；有包含它们的 PyPI 发行版后切回。
-- `mjbatch-uni`——streaming VariantPackBuilder 分支（[unilabsim/mjbatch_uni#38](https://github.com/unilabsim/mjbatch_uni/pull/38)）；没有它 MuJoCo variant executor 会 fail-closed。
+- `unilab`——官方 main @ `838cc03e`（git rev pin），携带 IsaacSim solver 参数通道与 GPU contact buffer 旋钮（[Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620)、[#1636](https://github.com/Motphys/UniLab/pull/1636)）；有包含它们的 PyPI 发行版后切回。
+- `unisim-core`——官方 PyPI 发行版 `>=1.7.5`，已携带合并的 adapter 修复（[unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279) 至 #294）。
+- `mjbatch-uni`——官方 PyPI 发行版 `>=0.2.4`（streaming VariantPackBuilder，[unilabsim/mjbatch_uni#38](https://github.com/unilabsim/mjbatch_uni/pull/38)）；没有它 MuJoCo variant executor 会 fail-closed。
 
 `third_party/simtoolreal_rl_games` 下的 vendored RL-Games 运行时经 SHA 门禁；不要改动其文件。其 pristine 源对象由 `vendor-pristine` 分支承载，保证审计在任何 clone 中可用——clone 时请 fetch 全部分支。push 前运行 `make check` / `make test`。
 
