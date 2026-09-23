@@ -1,16 +1,17 @@
 """MJCF serialization for the SimToolReal tool catalog.
 
-Counterpart of ``tool_urdf_writer.py`` for the MuJoCo line (roadmap M-J1,
-decision D2): the same ``ToolSpec`` samples become single-body MJCF files
-instead of URDF files.  Geometry mapping follows the MJCF knowledge recorded
-in the old tree's ``unilab/envs/manipulation/simtoolreal/tool_assets.py``
-(cylinders emit as capsules with a -pi/2 y-rotation, visual/collision geom
-pairs, ``%.17g`` floats), re-expressed as whole-file template generation —
-no string surgery on a host scene.  Mass/inertia come straight from
+Written as the MJCF counterpart of the retired URDF writer (roadmap M-J1,
+decision D2; the URDF runtime line is frozen at tag ``urdf-anchor``): the
+same ``ToolSpec`` samples become single-body MJCF files instead of URDF
+files.  Geometry mapping follows the MJCF knowledge recorded in the old
+tree's ``unilab/envs/manipulation/simtoolreal/tool_assets.py`` (cylinders
+emit as capsules with a -pi/2 y-rotation, visual/collision geom pairs,
+``%.17g`` floats), re-expressed as whole-file template generation — no
+string surgery on a host scene.  Mass/inertia come straight from
 ``ToolSpec`` (``tool_catalog._compute_mass_and_inertia``, the same pure
-function the URDF writer uses), so the compiled ``body_mass``/``body_inertia``
-match the URDF line value-for-value.  Inline comments cite the original
-``generate_objects.py`` line numbers, as in ``tool_urdf_writer.py``.
+function the URDF writer used), so the compiled ``body_mass``/
+``body_inertia`` match the URDF line value-for-value.  Inline comments
+cite the original ``generate_objects.py`` line numbers.
 
 M-J2 same-layout rule: the UniSim MuJoCo batch executor requires every fixed
 variant to share one public layout (same entity names and counts; per-variant
@@ -181,12 +182,12 @@ def _tool_filename(spec: ToolSpec, idx: int) -> str:
 def write_tool_mjcf(spec: ToolSpec, path: Path) -> Path:
     """Serialize one ``ToolSpec`` to a standalone MJCF file.
 
-    Same validation contract as ``write_tool_urdf`` (generate_objects.py:
-    262-285): headless specs emit placeholder head slots (module docstring's
-    same-layout rule); headed specs emit the handle+head composite.  The
-    ``<inertial>`` fields are the ToolSpec's own mass/com/diaginertia (the
-    composite parallel-axis math of generate_objects.py:206-218 lives in
-    ``tool_catalog.build_tool_catalog``).
+    Same validation contract as the retired URDF writer's
+    (generate_objects.py:262-285): headless specs emit placeholder head
+    slots (module docstring's same-layout rule); headed specs emit the
+    handle+head composite.  The ``<inertial>`` fields are the ToolSpec's
+    own mass/com/diaginertia (the composite parallel-axis math of
+    generate_objects.py:206-218 lives in ``tool_catalog.build_tool_catalog``).
     """
     path.write_text(tool_mjcf_text(spec))
     return path
@@ -199,7 +200,7 @@ def write_tool_catalog_mjcfs(
 ) -> tuple[list[str], list[tuple[float, float, float]]]:
     """Write one MJCF per catalog entry into ``out_dir``.
 
-    Batch counterpart of ``write_tool_catalog_urdfs`` (generate_objects.py:
+    Batch counterpart of the retired URDF batch writer (generate_objects.py:
     302-399 minus sampling): same filename template with an ``.xml`` suffix,
     same stale-file cleanup (for ``.xml``), same return contract — file paths
     paired with handle scales normalized by ``object_base_size``.

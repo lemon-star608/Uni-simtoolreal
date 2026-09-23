@@ -4,6 +4,11 @@
 > Source of truth: `mujoco-migration-roadmap.md` §2 in the workspace root.
 > These decisions govern the MuJoCo/MJCF migration line only; the IsaacSim
 > line on `main` is frozen and untouched.
+>
+> 2026-09-23: historical record. The MJCF dual-backend line has since become
+> `main`, the pins below are superseded by `pyproject.toml`
+> (`tool.uv.sources`), and the legacy IsaacSim URDF line it refers to is
+> retired (frozen at tag `urdf-anchor`).
 
 | # | Decision | Rationale |
 |---|---|---|

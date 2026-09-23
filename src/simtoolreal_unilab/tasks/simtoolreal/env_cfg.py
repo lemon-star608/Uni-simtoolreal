@@ -54,8 +54,7 @@ def _materialize_mjcf_pool(
     robot/table/floor + tools/); the variant catalog binds to the ``object``
     entity through ``bind_entity_variant`` instead of the whole-model
     ``fixed_model_variants`` channel.  Both shipped owner leaves select this
-    format.  Masses/scales stay task-side tables in catalog order (D5), exactly
-    like the legacy URDF branch.
+    format.  Masses/scales stay task-side tables in catalog order (D5).
     """
     from .entity_mjcf_writer import write_entity_set
 
