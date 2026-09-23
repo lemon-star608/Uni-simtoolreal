@@ -291,9 +291,11 @@ def test_isaacsim_solver_knobs_match_original_repository(isaacsim):
     simtoolreal_env_cfg.py:515-535 pins iteration clamps 8/8-0/0 and bounce
     threshold 0.2 explicitly; contact/rest offsets and the depenetration cap
     are the Isaac Lab defaults the original relied on (contact_offset 0.002,
-    rest_offset 0.0, max_depenetration_velocity 1000).  solver_type=TGS, the
-    friction offsets, and the raised GPU contact buffers have no UniSim
-    channel (PhysxSolverConfig covers six knobs) — defaults apply there.
+    rest_offset 0.0, max_depenetration_velocity 1000).  The GPU contact
+    buffers ride unilabsim/unisim#292's authored-report knobs at the original
+    2^24/2^23 ("Lab defaults overflow: Patch buffer overflow detected kills
+    training").  solver_type=TGS and the friction offsets still have no
+    UniSim channel — defaults apply there.
     """
     assert isaacsim["env"]["isaacsim_solver_position_iteration_count"] == 8
     assert isaacsim["env"]["isaacsim_solver_velocity_iteration_count"] == 0
@@ -301,6 +303,8 @@ def test_isaacsim_solver_knobs_match_original_repository(isaacsim):
     assert isaacsim["env"]["isaacsim_contact_offset"] == 0.002
     assert isaacsim["env"]["isaacsim_rest_offset"] == 0.0
     assert isaacsim["env"]["isaacsim_max_depenetration_velocity"] == 1000.0
+    assert isaacsim["env"]["isaacsim_gpu_max_rigid_contact_count"] == 2**24
+    assert isaacsim["env"]["isaacsim_gpu_max_rigid_patch_count"] == 2**23
 
 
 # --- tool pool knobs (SimToolReal.yaml:50-52; generate_objects.py:27) --------

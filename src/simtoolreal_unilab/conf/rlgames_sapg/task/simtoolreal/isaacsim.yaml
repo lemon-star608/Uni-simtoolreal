@@ -175,10 +175,17 @@ env:
   isaacsim_contact_offset: 0.002
   isaacsim_rest_offset: 0.0
   isaacsim_max_depenetration_velocity: 1000.0
+  # GPU rigid contact/patch stream buffer capacities from the original
+  # training's _default_sim_cfg (simtoolreal_env_cfg.py:515-535), which pins
+  # 2^24/2^23 with the note "Lab defaults overflow: Patch buffer overflow
+  # detected kills training".  Routed through UniSim's PhysxSolverConfig
+  # (unilabsim/unisim#292); PhysX carb settings, so the worker reports the
+  # authored value instead of a USD readback.
+  isaacsim_gpu_max_rigid_contact_count: 16777216
+  isaacsim_gpu_max_rigid_patch_count: 8388608
   # Retired declarations, kept as the record of where they went:
-  # - physx solver_type=TGS / friction offsets / GPU contact buffers: outside
-  #   UniSim's solver knob set (no channel; defaults apply — verify contact
-  #   buffer sufficiency at training scale, M-J3 watch item).
+  # - physx solver_type=TGS / friction offsets: outside UniSim's solver knob
+  #   set (no channel; defaults apply).
   # - ground_plane: the floor is an explicit entity (M2 adds no implicit
   #   ground).
   # - env_grid_spacing 1.2: the mapped worker hardcodes GridCloner spacing
