@@ -2,10 +2,10 @@
 
 The assets distributed with the package (``simtoolreal_unilab/assets``)
 carry a SHA-256 manifest so a corrupted or partial clone fails at
-``simtoolreal-assets`` instead of deep inside the URDF converter, and the
-scene resolver prefers them over any sibling checkout.  The worker
-preflight auto-detects the conventional ``setup_isaacsim_env.sh``
-installation so training needs no shell configuration.
+``simtoolreal-assets`` instead of deep inside the MJCF transcription
+chain.  The worker preflight auto-detects the conventional
+``setup_isaacsim_env.sh`` installation so training needs no shell
+configuration.
 """
 
 from __future__ import annotations
@@ -29,28 +29,6 @@ def test_vendored_assets_verify_against_the_manifest():
     manifest = json.loads((ASSET_ROOT / "manifest.json").read_text())
     assert manifest["source"].startswith("https://github.com/tylerlum/simtoolreal")
     assert (ASSET_ROOT / "LICENSE-upstream-simtoolreal").is_file()
-
-
-def test_scene_resolver_prefers_vendored_assets(monkeypatch, tmp_path):
-    # Resolution order: SIMTOOLREAL_ASSETS_ROOT override first, then the
-    # vendored package assets, then a sibling checkout.  A sibling directory
-    # next to a fake workspace must never shadow the vendored tree.
-    from simtoolreal_unilab.tasks.simtoolreal.scene import resolve_assets_root
-
-    monkeypatch.delenv("SIMTOOLREAL_ASSETS_ROOT", raising=False)
-    assert resolve_assets_root() == ASSET_ROOT
-
-    override = tmp_path / "override-assets"
-    (override / "urdf").mkdir(parents=True)
-    (override / "urdf" / "table_narrow.urdf").write_text("<robot/>")
-    monkeypatch.setenv("SIMTOOLREAL_ASSETS_ROOT", str(override))
-    # The override wins only when it carries the robot asset; a partial
-    # override falls through to the vendored tree instead of dangling.
-    assert resolve_assets_root() == ASSET_ROOT
-    robot_rel = "urdf/kuka_sharpa_description/iiwa14_left_sharpa_adjusted_restricted.urdf"
-    (override / robot_rel).parent.mkdir(parents=True, exist_ok=True)
-    (override / robot_rel).write_text("<robot/>")
-    assert resolve_assets_root() == override
 
 
 def test_worker_preflight_autodetects_the_conventional_install(monkeypatch, tmp_path):

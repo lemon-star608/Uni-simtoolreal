@@ -25,7 +25,7 @@ def _make_env_with_entity_binding(cfg, num_envs: int = 1, backend_type: str = "m
     ``fixed_variant_plan`` the same way, but no upstream hook exists for
     ``entity_variant`` — this wrapper is that hook, task-side).  Both B-form
     lines (mujoco since M-J5, isaacsim since the Isaac/MJCF bring-up) register
-    through it; it is a no-op for URDF-format configs.
+    through it.
     """
     if isinstance(cfg, SimToolRealEnvCfg):
         cfg.bind_entity_variant(num_envs)

@@ -41,7 +41,6 @@ from .config import (
 )
 from .owner_physics import load_owner_physics
 from .robot_mjcf_writer import (
-    ROBOT_URDF,
     TABLE_URDF,
     _fmt,
     _fmt_vec,

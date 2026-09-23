@@ -106,9 +106,10 @@ def run_playback(
     """Restore the native player and run it through the UniLab playback shell."""
     root_dir = Path.cwd() if root_dir is None else root_dir
     # Task imports register OmegaConf resolvers (notably SimToolReal's
-    # ``simtoolreal_asset``) as a cold-path side effect.  Playback validates
-    # the saved sim2sim contract before constructing the environment, so the
-    # registry must be loaded before any config subtree is resolved.
+    # ``simtoolreal_entity_mjcf``) as a cold-path side effect.  Playback
+    # validates the saved sim2sim contract before constructing the
+    # environment, so the registry must be loaded before any config subtree
+    # is resolved.
     ensure_registry()
     preflight_config(cfg)
     if verify_dependency:
