@@ -8,9 +8,7 @@ backends.  The catalog binds to the scene's ``object`` entity through
 consumes the mapped entity scene in its worker, while MuJoCo composes the same
 sources and compiles its VariantPack.  Variant masses live in the task-side
 ``tool_pool_masses`` table (D5, catalog order); the object-scale table stays on
-this config for the command hub's expansion.  The legacy whole-model URDF
-branch remains available to focused compatibility tests and is not selected by
-either shipped owner leaf.
+this config for the command hub's expansion.
 """
 
 from __future__ import annotations
@@ -24,19 +22,17 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from unilab.base.variants import FixedModelVariantCatalogCfg, FixedModelVariantCfg
 from unilab.envs import ManagerBasedRlEnvCfg
 
 from .config import ENTITY_ASSETS_MANIFEST_SCHEMA, TOOL_POOL_TARGET_ENTITY
 from .tool_catalog import build_tool_catalog
 from .tool_mjcf_writer import tool_mjcf_text
-from .tool_urdf_writer import write_tool_catalog_urdfs
 
 _DEFAULT_NUM_PER_TYPE = 100
 _DEFAULT_SEED = 42
 _DEFAULT_TARGET_ENTITY = TOOL_POOL_TARGET_ENTITY
-_DEFAULT_ASSET_FORMAT = "urdf"
-_VALID_ASSET_FORMATS = ("urdf", "mjcf")
+_DEFAULT_ASSET_FORMAT = "mjcf"
+_VALID_ASSET_FORMATS = ("mjcf",)
 
 
 def _entity_pool_root(seed: int, num_per_type: int, configured: str | None) -> Path:
@@ -58,8 +54,7 @@ def _materialize_mjcf_pool(
     robot/table/floor + tools/); the variant catalog binds to the ``object``
     entity through ``bind_entity_variant`` instead of the whole-model
     ``fixed_model_variants`` channel.  Both shipped owner leaves select this
-    format.  Masses/scales stay task-side tables in catalog order (D5), exactly
-    like the legacy URDF branch.
+    format.  Masses/scales stay task-side tables in catalog order (D5).
     """
     from .entity_mjcf_writer import write_entity_set
 
@@ -121,93 +116,19 @@ def _materialize_mjcf_pool(
     return paths, masses, scales
 
 
-def _pool_root(seed: int, num_per_type: int, configured: str | None) -> Path:
-    if configured is not None and str(configured).strip():
-        root = Path(str(configured)).expanduser()
-    else:
-        env_root = os.environ.get("SIMTOOLREAL_TOOL_POOL_ROOT", "").strip()
-        base = Path(env_root).expanduser() if env_root else Path(tempfile.gettempdir())
-        root = base / "simtoolreal_tool_pool"
-    return root / f"seed_{seed}_n{num_per_type}"
-
-
-def _materialize_pool(
-    *, seed: int, num_per_type: int, configured_root: str | None
-) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[tuple[float, float, float], ...]]:
-    """Write or reuse the deterministic URDF pool with its mass/scale tables."""
-
-    catalog = build_tool_catalog(
-        num_per_type=num_per_type,
-        seed=seed,
-        shuffle=True,
-    )
-    root = _pool_root(seed, num_per_type, configured_root)
-    manifest_path = root / "manifest.json"
-    expected = {
-        "seed": int(seed),
-        "num_per_type": int(num_per_type),
-        "count": len(catalog),
-    }
-    if manifest_path.is_file():
-        try:
-            manifest = json.loads(manifest_path.read_text())
-            names = tuple(str(value) for value in manifest["files"])
-            masses = tuple(float(value) for value in manifest["masses"])
-            scales = tuple(
-                tuple(float(component) for component in scale) for scale in manifest["scales"]
-            )
-            scales_complete = len(scales) == len(catalog) and all(
-                len(scale) == 3 for scale in scales
-            )
-            if manifest.get("spec") == expected and len(names) == len(catalog):
-                paths = tuple(root / name for name in names)
-                if (
-                    all(path.is_file() for path in paths)
-                    and len(masses) == len(catalog)
-                    and scales_complete
-                ):
-                    return paths, masses, scales
-        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-            # A partial or stale pool is rebuilt below.  The worker never sees
-            # this directory until the manifest and every source file exist.
-            pass
-
-    root.mkdir(parents=True, exist_ok=True)
-    paths, _ = write_tool_catalog_urdfs(catalog, root)
-    path_tuple = tuple(Path(path).resolve() for path in paths)
-    masses = tuple(float(spec.mass) for spec in catalog)
-    scales = tuple(tuple(float(x) for x in spec.object_scale) for spec in catalog)
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "spec": expected,
-                "files": [path.name for path in path_tuple],
-                "masses": masses,
-                "scales": scales,
-            },
-            indent=2,
-        )
-    )
-    return path_tuple, masses, scales
-
-
 def fixed_variant_plan_assignment(cfg: Any, num_envs: int) -> np.ndarray | None:
     """Return the scene plan's validated per-environment variant assignment.
 
-    Single task-side reader for the immutable assignment the upstream factory
-    guard builds into ``cfg.scene.fixed_variant_plan``.  Returns ``None`` when
-    the scene carries no plan (pool disabled, lightweight fixtures); otherwise
-    fails closed unless the assignment carries exactly one entry per
-    environment within the plan's variant count.
+    Single task-side reader for the immutable assignment bound into
+    ``cfg.scene.entity_variant`` by ``bind_entity_variant``.  Returns ``None``
+    when the scene carries no binding (pool disabled, lightweight fixtures);
+    otherwise fails closed unless the assignment carries exactly one entry
+    per environment within the plan's variant count.
     """
 
     scene = getattr(cfg, "scene", None)
-    plan = getattr(scene, "fixed_variant_plan", None)
-    if plan is None:
-        # B form (M-J5): the pool binds to one entity instead of the whole
-        # scene model; the plan shape/semantics are identical.
-        binding = getattr(scene, "entity_variant", None)
-        plan = binding.plan if binding is not None else None
+    binding = getattr(scene, "entity_variant", None)
+    plan = binding.plan if binding is not None else None
     if plan is None:
         return None
     assignment = np.asarray(plan.assignment)
@@ -234,9 +155,7 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     tool_pool_root: str | None = None
     tool_pool_enabled: bool = True
     # ``mjcf`` is the shared B-form route selected by both shipped owner
-    # leaves; ``urdf`` remains a legacy whole-model compatibility branch.
-    # The dataclass default is unchanged so focused tests can construct that
-    # older branch without Hydra.
+    # leaves; it is the only supported asset format.
     asset_format: str = _DEFAULT_ASSET_FORMAT
 
     # Filled by ``validate()`` — after Hydra/registry overlays settle the pool
@@ -293,9 +212,8 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
 
         Idempotent per pool-knob set: repeated ``validate()`` calls (registry,
         factory, env construction) reuse the already materialized catalog, and
-        knob changes applied before the factory guard builds the scene plan
+        knob changes applied before the factory builds the variant plan
         rebuild from the new values.  Once the variant plan exists —
-        ``cfg.scene.fixed_variant_plan`` (URDF branch, factory guard) or
         ``cfg.scene.entity_variant`` (MJCF B form, ``bind_entity_variant``) —
         it is immutable: a knob change that would rebuild the catalog — or
         disabling the pool — fails closed instead of silently
@@ -303,14 +221,11 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         would leave the command hub's object-scale expansion indexing a stale
         table, and a disable would leave the backend materializing the pool
         the task just dropped).  With the pool disabled the catalog is
-        ``None`` so the upstream guard leaves ``cfg.scene.fixed_variant_plan``
-        unset.
+        ``None`` so the upstream guard leaves the scene variant plan unset.
         """
 
         scene = getattr(self, "scene", None)
-        plan_built = getattr(scene, "fixed_variant_plan", None) is not None or (
-            getattr(scene, "entity_variant", None) is not None
-        )
+        plan_built = getattr(scene, "entity_variant", None) is not None
         if not self.tool_pool_enabled:
             if plan_built:
                 raise ValueError(
@@ -343,29 +258,17 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
                 "construct a fresh config for a different pool"
             )
 
-        materialize = _materialize_mjcf_pool if self.asset_format == "mjcf" else _materialize_pool
-        paths, masses, scales = materialize(
+        paths, masses, scales = _materialize_mjcf_pool(
             seed=int(self.tool_pool_seed),
             num_per_type=int(self.tool_pool_num_per_type),
             configured_root=self.tool_pool_root,
         )
         if not paths:
             raise RuntimeError(f"SimToolReal tool pool materialized no {self.asset_format} files")
-        if self.asset_format == "mjcf":
-            # B form (M-J5): the catalog binds to the scene's object entity
-            # via ``bind_entity_variant`` once the factory's num_envs is
-            # known; the whole-model variant channel stays empty.
-            self.fixed_model_variants = None
-        else:
-            # Variant names are the deterministic pool file ids (the manifest
-            # file names without suffix, unique by their per-type ordinal);
-            # the default round-robin assignment needs no explicit names.
-            self.fixed_model_variants = FixedModelVariantCatalogCfg(
-                variants=tuple(
-                    FixedModelVariantCfg(name=path.stem, source_model_file=str(path))
-                    for path in paths
-                )
-            )
+        # B form (M-J5): the catalog binds to the scene's object entity
+        # via ``bind_entity_variant`` once the factory's num_envs is
+        # known; the whole-model variant channel stays empty.
+        self.fixed_model_variants = None
         self.tool_pool_scales = tuple(scales)
         self.tool_pool_files = tuple(str(path) for path in paths)
         # Task-side variant mass table (D5): same catalog order as the files.
@@ -379,11 +282,11 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         the env factory call site knows — so the task's mujoco factory
         wrapper calls this right before ``make_manager_based_rl_env``.  The
         assignment is the same round-robin the whole-model guard would build
-        (``arange(num_envs) % len(catalog)``).  No-op for the URDF branch and
-        for a disabled pool; idempotent per num_envs; a conflicting rebind
-        fails closed (the plan is immutable once built).
+        (``arange(num_envs) % len(catalog)``).  No-op for a disabled pool;
+        idempotent per num_envs; a conflicting rebind fails closed (the plan
+        is immutable once built).
         """
-        if not self.tool_pool_enabled or self.asset_format != "mjcf":
+        if not self.tool_pool_enabled:
             return
         if isinstance(num_envs, bool) or not isinstance(num_envs, int) or num_envs <= 0:
             raise ValueError(f"num_envs must be a positive integer, got {num_envs!r}")

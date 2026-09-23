@@ -5,8 +5,8 @@ repository under ``assets/simtoolreal/`` so a fresh clone needs no second
 checkout; the upstream repository stays the source of truth (see
 ``assets/simtoolreal/LICENSE-upstream-simtoolreal`` and the manifest's
 per-file ``source``/``license`` provenance).  The 1200-tool pool is not an
-asset: it is generated procedurally at first use by
-``tasks/simtoolreal/tool_urdf_writer.py``.
+asset: it is generated procedurally at first use as entity-split MJCF by
+``tasks/simtoolreal/entity_mjcf_writer.py``.
 """
 
 from __future__ import annotations

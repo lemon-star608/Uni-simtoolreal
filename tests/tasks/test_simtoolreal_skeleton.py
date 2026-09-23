@@ -6,7 +6,6 @@ import numpy as np
 from unilab.base import registry
 
 from simtoolreal_unilab.tasks.simtoolreal import config as simtoolreal_config
-from simtoolreal_unilab.tasks.simtoolreal.scene import resolve_asset
 
 
 def test_simtoolreal_registered_backends():
@@ -15,11 +14,6 @@ def test_simtoolreal_registered_backends():
     assert set(meta.env_factory_dict) == {"isaacsim", "mujoco"}, (
         "isaacsim is the merge anchor; mujoco landed in M-J2 after the L2 smoke gate"
     )
-
-
-def test_simtoolreal_asset_resolver_finds_robot_urdf():
-    path = resolve_asset(simtoolreal_config.AssetsCfg().robot_urdf)
-    assert path.endswith(".urdf")
 
 
 def test_canonical_layout_constants():

@@ -210,13 +210,11 @@ ARM_DEFAULT_JOINT_POS: dict[str, float] = {
 
 @dataclass(frozen=True)
 class AssetsCfg:
-    """URDFs, procedural-generation knobs, static per-material frictions.
+    """Procedural-generation knobs, static per-material frictions.
 
     simtoolreal_env_cfg.py:56-101 / SimToolReal.yaml ``assets:``.
     """
 
-    robot_urdf: str = "urdf/kuka_sharpa_description/iiwa14_left_sharpa_adjusted_restricted.urdf"
-    table_urdf: str = "urdf/table_narrow.urdf"
     object_name: str = "handle_head_primitives"
     handle_head_types: tuple[str, ...] = (
         "hammer",

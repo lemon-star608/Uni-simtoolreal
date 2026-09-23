@@ -2,8 +2,10 @@
 
 The IsaacSim SDK cannot ship with this package (its license forbids
 redistribution, it requires Python 3.11, and it carries its own torch
-build), so ``scripts/setup_isaacsim_env.sh`` installs a dedicated worker
-venv at the unisim-conventional root ``~/.cache/unisim/isaacsim/venv``.
+build), so the worker runtime is installed by UniLab's official installer
+(``scripts/tools/setup_isaacsim_env.sh`` in a UniLab checkout) into a
+dedicated worker venv at the unisim-conventional root
+``~/.cache/unisim/isaacsim/venv``.
 The training/play entries call :func:`ensure_worker_runtime` before any
 environment is constructed:
 
@@ -30,7 +32,7 @@ CONVENTIONAL_WORKER_PYTHON = (
     Path.home() / ".cache" / "unisim" / "isaacsim" / "venv" / "bin" / "python"
 )
 
-_SETUP_COMMAND = "bash scripts/setup_isaacsim_env.sh"
+_SETUP_COMMAND = "bash scripts/tools/setup_isaacsim_env.sh  # from a UniLab checkout"
 
 
 def ensure_worker_runtime() -> str:
@@ -57,11 +59,13 @@ def ensure_worker_runtime() -> str:
         os.environ[_ENV_PYTHON] = str(conventional)
         return str(conventional)
     raise RuntimeError(
-        "IsaacSim worker runtime not found. Run the one-time setup:\n"
+        "IsaacSim worker runtime not found. Run the one-time setup with "
+        "UniLab's official installer:\n"
         f"    {_SETUP_COMMAND}\n"
-        "It installs IsaacSim 5.1 + IsaacLab 2.3.2.post1 into a dedicated "
-        "Python 3.11 venv at ~/.cache/unisim/isaacsim (~15 GB download), "
-        "which simtoolreal-train/simtoolreal-play detect automatically. "
+        "It installs the official IsaacSim 5.1 + IsaacLab 2.3.0 stack into a "
+        "dedicated Python 3.11 venv at ~/.cache/unisim/isaacsim (~15 GB "
+        "download), which simtoolreal-train/simtoolreal-play detect "
+        "automatically. "
         f"Alternatively export {_ENV_PYTHON} to an existing IsaacSim-capable "
         "interpreter."
     )

@@ -1,7 +1,8 @@
 # simtoolreal_unilab
 
-SimToolReal teacher training on UniLab + UniSim through the IsaacSim
-URDF→USD asset path. See README.md for usage.
+SimToolReal teacher training on UniLab + UniSim on the shared MJCF B-form
+asset path (IsaacSim mapped worker + MuJoCo VariantPack backends). See
+README.md for usage.
 
 ## Repository rules
 
@@ -13,9 +14,8 @@ URDF→USD asset path. See README.md for usage.
   development branch of UniLab onto the pinned official revision. It fails
   loudly if the pin drifts; when upstream UniLab grows these behaviors,
   remove the layer instead of skipping it.
-- Dependencies (`feat/mujoco-mjcf`): `unilab` is pinned to official main
-  (`2e3f30ae`); `unisim-core` is pinned to the PyPI release (1.4.2);
-  `mujoco` (pip) backs the MJCF asset line's compiler gates. The IsaacSim
-  line on `main` still pins the unisim fork branch carrying the scene-
-  composition contract (upstream PR unilabsim/unisim#79).
+- Dependencies (`main`): `unilab` is pinned to an upstream git revision in
+  `pyproject.toml` (`tool.uv.sources`); `unisim-core` (>=1.7.5) and
+  `mjbatch-uni` (>=0.2.4) are official PyPI releases. The retired URDF
+  runtime line is frozen at tag `urdf-anchor` for reference.
 - No co-author trailers from AI assistants in commits.

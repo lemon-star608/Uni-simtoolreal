@@ -7,8 +7,9 @@ sim_backend="isaacsim").  No mocks: the UniSim IsaacSim worker composes the
 mapped entity scene (B form: robot/table/floor/object entity assets
 + the object entity variant binding) and steps PhysX on the GPU.
 
-Requires the external worker runtime (scripts/setup_isaacsim_env.sh) and a
-GPU; skipped on hosts without them (the ``isaacsim`` marker).
+Requires the external worker runtime (UniLab's official installer,
+``scripts/tools/setup_isaacsim_env.sh``) and a GPU; skipped on hosts
+without them (the ``isaacsim`` marker).
 """
 
 from __future__ import annotations
@@ -64,7 +65,9 @@ def _build_env(tmp_path):
 @pytest.fixture(scope="module")
 def env(tmp_path_factory):
     if not _worker_available():
-        pytest.skip("IsaacSim worker runtime not installed (scripts/setup_isaacsim_env.sh)")
+        pytest.skip(
+            "IsaacSim worker runtime not installed (UniLab scripts/tools/setup_isaacsim_env.sh)"
+        )
     built = _build_env(tmp_path_factory.mktemp("isaacsim_smoke"))
     yield built
     built.close()

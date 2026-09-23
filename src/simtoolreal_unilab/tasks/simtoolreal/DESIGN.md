@@ -4,6 +4,9 @@
 > 下列代码已经迁移或 IsaacSim worker 已经通过运行时探针。
 > 2026-09-22 起第 7 节是当前资产/后端构造口径；前文保留当时的迁移证据与
 > 历史 GoalViz 探针记录，不作为当前场景声明。
+> 2026-09-23：URDF 运行时线已退役（URDF 冻结线见 tag `urdf-anchor`）；前文
+> 以现在时出现的 URDF 描述（工具 URDF pool、URDF→USD 转换、fixed_model_variants
+> 整模型通道等）均为历史记录。
 
 ## 0. 范围、来源和判定方法
 
@@ -91,6 +94,10 @@ manager 增加一个通用的 post-reward hook；这个 hook 必须对所有任�
 
 ## 2. 分叉点清单：应落在哪里
 
+> 注（2026-09-23）：表中「IsaacSim 复用原仓库 URDF→USD」「IsaacSim=URDF」
+> 「1200-tool pool 经 `fixed_model_variants` 整模型通道」等现在时 URDF 描述
+> 已退役（URDF 冻结线见 tag `urdf-anchor`）；当前口径见第 7 节。
+
 | 分叉/差异 | owner/adapter 归属 | UniLab 任务是否分支 | 当前结论 |
 |---|---|---|---|
 | 后端选择与 device/solver/worker 参数 | `conf/.../simtoolreal/isaacsim.yaml` + adapter | 否 | base.yaml 不写引擎判断 |
@@ -114,6 +121,10 @@ manager 增加一个通用的 post-reward hook；这个 hook 必须对所有任�
 ## 3. 接口需求与契约覆盖清单
 
 ### 3.1 冷路径、场景和资产
+
+> 注（2026-09-23）：本表「owner 生成 1200 个 URDF」「四角色 URDF/RigidObject
+> 组装」「URDF 初始 pose」等现在时 URDF 描述已退役（URDF 冻结线见 tag
+> `urdf-anchor`）；当前口径见第 7 节。
 
 | 原需求 | 当前公开契约 | 覆盖 | IsaacSim 起点/缺口 |
 |---|---|---|---|
@@ -208,6 +219,9 @@ reward、delay、success、episode lifecycle）。
 
 ## 4. IsaacSim 缺口 checklist（从第 3 节“缺/部分”抽出）
 
+> 注（2026-09-23）：本节的 URDF converter/URDF 解析相关验收项描述的是已退役
+> 的 URDF 运行时线（URDF 冻结线见 tag `urdf-anchor`），保留为历史验收证据。
+
 以下是 Step 1 的可执行验收项。状态“待实测”不是“失败”，但在通过前不能宣称
 IsaacSim 迁移完成。
 
@@ -300,6 +314,10 @@ IsaacSim 迁移完成。
   不把工具池塞进 `SceneCfg`。
 
 ### 6.2 工具变体与分配
+
+> 注（2026-09-23）：本小节描述的 `fixed_model_variants` 整模型通道与工具
+> URDF pool 已退役（URDF 冻结线见 tag `urdf-anchor`）；当前 B-form 实体
+> 变体通道见第 7 节。
 
 变体通道已落地：task 在 `fixed_model_variants` catalog 里声明完整工具文件池
 （每变体一个 `source_model_file` URDF），factory guard 把它构建成
@@ -426,6 +444,9 @@ done 行仍会经历通用生命周期的“全量 step observation + reset-row 
 需要改通用 autoreset 顺序，不属于 task term 的无痛微调。
 
 ### 6.6 当前实现快照（2026-09-12）
+
+> 注（2026-09-23）：本快照中的 1,200-tool URDF pool 已退役（URDF 冻结线见
+> tag `urdf-anchor`）；当前实现为 entity-split MJCF B form，见第 7 节。
 
 该小节记录 2026-09-12 的 Step 1 快照：当时 `SimToolRealEnvCfg` 负责 seed=42、
 12 类×100 的 1,200-tool URDF pool 与 manifest；manager factory 在 backend

@@ -31,26 +31,25 @@
 - 验证环境：Linux x86_64、单张 NVIDIA GPU（RTX 4090）、IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 作为 worker 运行时。
 - 尚未包含机器人视频；一段训练后的提举回合录像本 README 最缺的素材。
 
-## 临时 bring-up 环境
+## 环境安装
 
 要求：Linux x86_64、一张支持 CUDA 的 NVIDIA GPU（学习器与 IsaacSim worker 共用）、[uv](https://docs.astral.sh/uv/)、约 20 GB 磁盘（worker 运行时与缓存）。
 
-在 UniLab #1620 与 UniSim #279 合并发布之前，本分支的这两个依赖指向
-本地 bring-up checkout。请先在当前准备好的工作区运行；临时 source 切回
-官方 release 前，不承诺独立 clean clone 可直接解析依赖。
+UniLab 依赖在 `pyproject.toml` 中钉到上游 git 修订（unisim-core 与 mjbatch-uni 为官方 PyPI 发行版）；clean clone 即可解析全部依赖，无需额外 checkout。
 
 ```bash
-cd /path/to/prepared/simtoolreal_unilab
+cd /path/to/simtoolreal_unilab
 uv sync
-bash scripts/setup_isaacsim_env.sh   # 一次性：安装 IsaacSim worker 运行时（约 15 GB）
-uv run simtoolreal-assets            # 校验随仓库分发的资产
+# 一次性：IsaacSim worker 运行时（约 15 GB），用 UniLab 官方安装脚本
+#（scripts/tools/setup_isaacsim_env.sh，在 UniLab checkout 中运行）
+uv run simtoolreal-assets   # 校验随仓库分发的资产
 ```
 
 以上就是全部安装。两件无法随 `uv sync` 分发的事：
 
-1. **IsaacSim worker 运行时**。UniSim 的 `isaacsim` extra 为空（NVIDIA 的 SDK 不可再分发），worker 跑在独立的 Python 3.11 venv 里。`scripts/setup_isaacsim_env.sh` 一次性把验证过的版本栈装进去（IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 wheel + torch 2.7.0/cu128，来自 NVIDIA PyPI 源（cu128 覆盖 Blackwell 及更早架构）），脚本幂等（分步 marker），装在 `~/.cache/unisim/isaacsim/venv`。脚本仍保留 sha256 钉死的 URDF importer 对齐步骤，供旧 URDF 验证路线使用；当前 MJCF B-form 运行时使用 `MjcfConverter`，不会调用该 importer。`simtoolreal-train`/`simtoolreal-play` 自动发现该安装——无需配置任何环境变量。想改用别的 IsaacSim 解释器，则 export `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`（任意 venv 布局；验证时用的就是这条逃生口）。
+1. **IsaacSim worker 运行时**。UniSim 的 `isaacsim` extra 为空（NVIDIA 的 SDK 不可再分发），worker 跑在独立的 Python 3.11 venv 里。UniLab 官方安装脚本（UniLab checkout 中的 `scripts/tools/setup_isaacsim_env.sh`）一次性把官方验证栈装进去（IsaacSim 5.1.0 + IsaacLab 2.3.0 + torch 2.7.0），脚本幂等（分步 marker），装在 `~/.cache/unisim/isaacsim/venv`。MJCF B-form 运行时经 IsaacLab 的 `MjcfConverter` 转换资产，不涉及 URDF importer。`simtoolreal-train`/`simtoolreal-play` 自动发现该安装——无需配置任何环境变量。想改用别的 IsaacSim 解释器，则 export `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`（任意 venv 布局；验证时用的就是这条逃生口）。
 
-2. **entity 与工具资产**。机器人（KUKA iiwa14 + SHARPA 手）与桌子的源 URDF 随仓库分发在 `simtoolreal_unilab/assets/simtoolreal/`（上游 MIT，SHA-256 manifest；`uv run simtoolreal-assets` 校验）。任务 writer 把它们序列化为 entity MJCF，并首次使用时生成 1200 个工具 MJCF；工具池缓存在 `/tmp` 下（可用 `SIMTOOLREAL_TOOL_POOL_ROOT` 覆盖，bootstrap entity 源遵循 `SIMTOOLREAL_GENERATED_ASSETS_ROOT`）。想改用上游 checkout 的资产，设 `SIMTOOLREAL_ASSETS_ROOT` 指向其 `assets/` 目录。
+2. **entity 与工具资产**。机器人（KUKA iiwa14 + SHARPA 手）与桌子的源 URDF 随仓库分发在 `simtoolreal_unilab/assets/simtoolreal/`（上游 MIT，SHA-256 manifest；`uv run simtoolreal-assets` 校验）。任务 writer 把它们序列化为 entity MJCF，并首次使用时生成 1200 个工具 MJCF；工具池缓存在 `/tmp` 下（可用 `SIMTOOLREAL_TOOL_POOL_ROOT` 覆盖，bootstrap entity 源遵循 `SIMTOOLREAL_GENERATED_ASSETS_ROOT`）。
 
 环境验收 smoke（64 环境、24 工具池、2 epochs——单卡数分钟；这组旗标是必需的，因为生产 rollout 恰好用六个探索块）：
 
@@ -118,7 +117,7 @@ TensorBoard 与 checkpoint 使用同样的 `logs/rlgames_sapg/SimToolReal/<run>/
 | 奖励项与权重 | `src/simtoolreal_unilab/tasks/simtoolreal/rewards.py`，数值在 `conf/rlgames_sapg/task/simtoolreal/base.yaml` |
 | 观测（policy/critic 组、行级 reset 路径） | `tasks/simtoolreal/observations.py` |
 | 目标/命令逻辑与 success hub | `tasks/simtoolreal/commands.py` |
-| 场景组合、工具池接线、资产解析 | `tasks/simtoolreal/scene.py`、`env_cfg.py` |
+| entity bootstrap resolver、工具池接线 | `tasks/simtoolreal/scene.py`、`env_cfg.py` |
 | 1200 工具池定义与 MJCF 生成 | `tasks/simtoolreal/tool_catalog.py`、`tool_mjcf_writer.py` |
 | entity-split B-form 源 | `tasks/simtoolreal/entity_mjcf_writer.py` |
 | 终止与事件（wrench DR、reset） | `tasks/simtoolreal/terminations.py`、`events.py` |
@@ -127,10 +126,11 @@ TensorBoard 与 checkpoint 使用同样的 `logs/rlgames_sapg/SimToolReal/<run>/
 
 ## 兼容层（面向开发者）
 
-本任务需要的若干行为上游 UniLab 尚未提供（多刚体根 reset 路由、实体变体质量 facade、manager 日志视图、seed 传播、entity-assets 物化）。`simtoolreal_unilab._compat` 在 import 时把这些方法体移植到 pinned 的官方 UniLab 修订上，pin 漂移会立刻报错。依赖钉定：
+本任务需要的若干行为上游 UniLab 尚未提供（L3 标签对齐所需的 manager 日志视图、把这些 extras 合并进 step 日志的 env 侧补丁、以及保证 run 间可复现的 env 侧 seed 传播）。`simtoolreal_unilab._compat` 在 import 时把这些方法体移植到 pinned 的官方 UniLab 修订上，pin 漂移会立刻报错；上游一旦原生长出对应行为，相应补丁即移除。依赖钉定（由 `uv sync` 解析）：
 
-- `unilab`——临时 local checkout，携带 IsaacSim solver 参数通道（[Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620)）；合并并发布后切回官方 pin。
-- `unisim-core`——临时 local checkout，携带 mapped-worker visual-only geom/fullinertia 修复（[unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279)）；合并并发布后切回 PyPI 发行版。
+- `unilab`——官方 main @ `838cc03e`（git rev pin），携带 IsaacSim solver 参数通道与 GPU contact buffer 旋钮（[Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620)、[#1636](https://github.com/Motphys/UniLab/pull/1636)）；有包含它们的 PyPI 发行版后切回。
+- `unisim-core`——官方 PyPI 发行版 `>=1.7.5`，已携带合并的 adapter 修复（[unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279) 至 #294）。
+- `mjbatch-uni`——官方 PyPI 发行版 `>=0.2.4`（streaming VariantPackBuilder，[unilabsim/mjbatch_uni#38](https://github.com/unilabsim/mjbatch_uni/pull/38)）；没有它 MuJoCo variant executor 会 fail-closed。
 
 `third_party/simtoolreal_rl_games` 下的 vendored RL-Games 运行时经 SHA 门禁；不要改动其文件。其 pristine 源对象由 `vendor-pristine` 分支承载，保证审计在任何 clone 中可用——clone 时请 fetch 全部分支。push 前运行 `make check` / `make test`。
 

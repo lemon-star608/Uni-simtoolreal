@@ -29,27 +29,25 @@ This is a downstream task package: install it and use UniLab's shared training t
 - Verified on Linux x86_64, one NVIDIA GPU (RTX 4090), IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 as the worker runtime.
 - No robot video is included yet; a recording of a trained lift episode is the top missing piece for this README.
 
-## Bring-up setup (temporary)
+## Setup
 
 Requirements: Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and roughly 20 GB of disk for the worker runtime and caches.
 
-Until UniLab #1620 and UniSim #279 merge and ship, this branch uses local
-bring-up checkouts for those two dependencies. Run it from the prepared
-workspace; a standalone clean clone is not expected to resolve until the
-temporary sources return to official releases.
+The UniLab dependency is pinned to an upstream git revision in `pyproject.toml` (unisim-core and mjbatch-uni are official PyPI releases); a clean clone resolves everything without extra checkouts.
 
 ```bash
-cd /path/to/prepared/simtoolreal_unilab
+cd /path/to/simtoolreal_unilab
 uv sync
-bash scripts/setup_isaacsim_env.sh   # one-time: IsaacSim worker runtime (~15 GB)
-uv run simtoolreal-assets            # verify the vendored assets
+# one-time: IsaacSim worker runtime (~15 GB), via UniLab's official installer
+# (scripts/tools/setup_isaacsim_env.sh, run from a UniLab checkout)
+uv run simtoolreal-assets   # verify the vendored assets
 ```
 
 That is the complete setup. The two pieces that cannot ship inside `uv sync`:
 
-1. **The IsaacSim worker runtime.** UniSim's `isaacsim` extra is empty (NVIDIA's SDK is not redistributed), so the worker runs in a dedicated Python 3.11 venv. `scripts/setup_isaacsim_env.sh` installs the validated stack there (IsaacSim 5.1.0 + IsaacLab 2.3.2.post1 wheels + torch 2.7.0/cu128, from the NVIDIA PyPI index (cu128 covers Blackwell GPUs down to older architectures)), idempotently with per-step markers, under `~/.cache/unisim/isaacsim/venv`. The script also retains its sha256-pinned URDF-importer alignment step for the legacy validated URDF route; the current MJCF B-form runtime uses `MjcfConverter` and does not call that importer. `simtoolreal-train`/`simtoolreal-play` detect the install automatically — no environment variable needed. To use a different IsaacSim-capable interpreter instead, export `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python` (any venv layout; this is the escape hatch the validation used).
+1. **The IsaacSim worker runtime.** UniSim's `isaacsim` extra is empty (NVIDIA's SDK is not redistributed), so the worker runs in a dedicated Python 3.11 venv. UniLab's official installer (`scripts/tools/setup_isaacsim_env.sh` in a UniLab checkout) installs the official validated stack there (IsaacSim 5.1.0 + IsaacLab 2.3.0 + torch 2.7.0), idempotently with per-step markers, under `~/.cache/unisim/isaacsim/venv`. The MJCF B-form runtime converts assets through IsaacLab's `MjcfConverter`; no URDF importer is involved. `simtoolreal-train`/`simtoolreal-play` detect the install automatically — no environment variable needed. To use a different IsaacSim-capable interpreter instead, export `UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python` (any venv layout; this is the escape hatch the validation used).
 
-2. **Entity and tool assets.** The robot (KUKA iiwa14 + SHARPA hand) and table source URDFs ship with this repository under `simtoolreal_unilab/assets/simtoolreal/` (upstream MIT, SHA-256 manifest; `uv run simtoolreal-assets` verifies them). The task writer serializes them to entity MJCFs and generates the 1,200-tool MJCF pool at first use; it is cached under `/tmp` (override: `SIMTOOLREAL_TOOL_POOL_ROOT`), while bootstrap entity sources honor `SIMTOOLREAL_GENERATED_ASSETS_ROOT`. To test against an upstream checkout instead, set `SIMTOOLREAL_ASSETS_ROOT` to its `assets/` directory.
+2. **Entity and tool assets.** The robot (KUKA iiwa14 + SHARPA hand) and table source URDFs ship with this repository under `simtoolreal_unilab/assets/simtoolreal/` (upstream MIT, SHA-256 manifest; `uv run simtoolreal-assets` verifies them). The task writer serializes them to entity MJCFs and generates the 1,200-tool MJCF pool at first use; it is cached under `/tmp` (override: `SIMTOOLREAL_TOOL_POOL_ROOT`), while bootstrap entity sources honor `SIMTOOLREAL_GENERATED_ASSETS_ROOT`.
 
 Environment acceptance smoke (64 envs, 24-tool pool, 2 epochs — minutes on one GPU; the flag set is required because production rollouts use exactly six exploration blocks):
 
@@ -117,7 +115,7 @@ TensorBoard and checkpoints land in the same `logs/rlgames_sapg/SimToolReal/<run
 | Reward terms and weights | `src/simtoolreal_unilab/tasks/simtoolreal/rewards.py`, values in `conf/rlgames_sapg/task/simtoolreal/base.yaml` |
 | Observations (policy/critic groups, row-scoped reset path) | `tasks/simtoolreal/observations.py` |
 | Goal/command logic and the success hub | `tasks/simtoolreal/commands.py` |
-| Scene composition, tool pool wiring, asset resolution | `tasks/simtoolreal/scene.py`, `env_cfg.py` |
+| Entity bootstrap resolvers, tool pool wiring | `tasks/simtoolreal/scene.py`, `env_cfg.py` |
 | The 1,200-tool pool definition and MJCF generation | `tasks/simtoolreal/tool_catalog.py`, `tool_mjcf_writer.py` |
 | Entity-split B-form sources | `tasks/simtoolreal/entity_mjcf_writer.py` |
 | Termination and events (wrench DR, resets) | `tasks/simtoolreal/terminations.py`, `events.py` |
@@ -126,10 +124,11 @@ TensorBoard and checkpoints land in the same `logs/rlgames_sapg/SimToolReal/<run
 
 ## Compatibility layer (developers)
 
-The task needs a few behaviors upstream UniLab does not ship yet (multi-rigid-root reset routing, the entity variant-mass facade, manager logging views, seed propagation, entity-asset materialization). `simtoolreal_unilab._compat` ports those method bodies onto the pinned official UniLab revision at import time and fails loudly if the pin drifts. Dependency pins:
+The task needs a few behaviors upstream UniLab does not ship yet (the manager logging views for L3 label parity, the env-side merge of those extras into the step log, and env-side seed propagation for run-to-run reproducibility). `simtoolreal_unilab._compat` ports those method bodies onto the pinned official UniLab revision at import time and fails loudly if the pin drifts; each patch is removed as soon as upstream grows the behavior natively. Dependency pins (resolved by `uv sync`):
 
-- `unilab` — temporary local checkout carrying the IsaacSim solver-knob channel ([Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620)); switch back to the official pin after it merges and ships.
-- `unisim-core` — temporary local checkout carrying mapped-worker visual-only geom/fullinertia fixes ([unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279)); switch back to the PyPI release after it merges and ships.
+- `unilab` — official main @ `838cc03e` (git rev pin), carrying the IsaacSim solver-knob channel and GPU contact-buffer knobs ([Motphys/UniLab#1620](https://github.com/Motphys/UniLab/pull/1620), [#1636](https://github.com/Motphys/UniLab/pull/1636)); switch to a PyPI release once one ships containing them.
+- `unisim-core` — official PyPI release `>=1.7.5`, which carries the merged adapter fixes ([unilabsim/unisim#279](https://github.com/unilabsim/unisim/pull/279) through #294).
+- `mjbatch-uni` — official PyPI release `>=0.2.4` (streaming VariantPackBuilder, [unilabsim/mjbatch_uni#38](https://github.com/unilabsim/mjbatch_uni/pull/38)); the MuJoCo variant executors fail closed without it.
 
 The vendored RL-Games runtime under `third_party/simtoolreal_rl_games` is SHA-gated; never edit its files. Provenance is anchored by the per-file SHA256 manifest plus the recorded upstream source commit — no local Git objects are required. Run `make check` / `make test` before pushing.
 
