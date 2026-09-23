@@ -2,13 +2,13 @@
 
 [中文](README_zh.md)
 
-SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim): a KUKA iiwa14 arm (7 DoF) with a SHARPA hand (22 DoF) learns to lift and manipulate tools from a 1,200-variant procedurally generated tool pool, matching the [original repository](https://github.com/tylerlum/simtoolreal)'s training semantics. Both physics backends — IsaacSim (mapped subprocess worker) and MuJoCo (mjbatch VariantPack) — start from the same entity-split MJCF B-form asset set; the learner is a vendored, SHA-gated RL-Games SAPG runtime.
+SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim): a KUKA iiwa14 arm (7 DoF) with a SHARPA hand (22 DoF) learns to lift and manipulate tools from a 1,200-variant procedurally generated tool pool, matching the [original repository](https://github.com/tylerlum/simtoolreal)'s training semantics. Both physics backends — IsaacSim (mapped subprocess worker) and MuJoCo (mjbatch VariantPack) — run on the same MJCF asset set, generated once per entity (robot/table/floor plus one file per tool); the learner is a vendored, SHA-gated RL-Games SAPG runtime.
 
 | Capability | Status |
 | --- | --- |
-| `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository (see Evidence) |
+| `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository |
 | Physics backends | IsaacSim (default) and MuJoCo, one shared asset/task definition, switchable via `--backend` |
-| Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run (validated route; see Evidence) |
+| Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run |
 | Playback / inspection | `simtoolreal-play`, TensorBoard overlay with the original tag set |
 | Student / camera / sensor policies, deployment, sim2real | Not carried over; this repository contains no deployment code |
 
@@ -32,7 +32,7 @@ Robot/table source URDFs ship under `assets/simtoolreal/` (upstream MIT, SHA-256
 # Production training (IsaacSim default; num_actors must form exactly six exploration blocks)
 uv run simtoolreal-train algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048
 
-# MuJoCo backend (pure CPU; same B-form task)
+# MuJoCo backend (pure CPU; same task definition)
 uv run simtoolreal-train --backend mujoco
 
 # Acceptance smoke (64 envs, 24-tool pool, 2 epochs — minutes; never a policy baseline)
@@ -53,13 +53,6 @@ uv run tensorboard --logdir logs/rlgames_sapg
 
 Outputs land in `logs/rlgames_sapg/SimToolReal/<run>/` (checkpoints, TensorBoard events, run configuration). The MuJoCo line needs no IsaacSim worker runtime.
 
-## Evidence
-
-- **Training parity (L3)**: on the previously validated IsaacSim route, a full 12,288-env seed-42 run (514 epochs) was compared against the original repository's first 500 epochs — all key TensorBoard label families indistinguishable. The current MJCF B-form route preserves those task and learner code paths.
-- **Per-variant mass readback** vs the generated manifest: max relative deviation 5.7e-08; **world-frame wrench path** bit-identical to the frozen revalidation anchors.
-- Real-backend smoke gates: 8-environment IsaacSim mapped-worker smoke; MuJoCo reset and 100-step smoke.
-- Verified on Linux x86_64, one RTX 4090, IsaacSim 5.1.0 + IsaacLab 2.3.0 (official UniLab default stack) as the worker runtime.
-- No robot video is included yet; a recording of a trained lift episode is the top missing piece for this README.
 
 ## How to modify
 

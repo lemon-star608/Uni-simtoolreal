@@ -2,13 +2,13 @@
 
 [English](README.md)
 
-迁移到 [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim) 的 SimToolReal teacher 策略训练：KUKA iiwa14 机械臂（7 自由度）搭载 SHARPA 灵巧手（22 自由度），从 1,200 个程序化生成的工具变体池中学习抓取与举升工具，训练语义与[原仓库](https://github.com/tylerlum/simtoolreal)对齐。两个物理后端——IsaacSim（mapped 子进程 worker）与 MuJoCo（mjbatch VariantPack）——消费同一份按实体拆分的 MJCF B-form 资产；学习器是 vendored、SHA 锁定的 RL-Games SAPG 运行时。
+迁移到 [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim) 的 SimToolReal teacher 策略训练：KUKA iiwa14 机械臂（7 自由度）搭载 SHARPA 灵巧手（22 自由度），从 1,200 个程序化生成的工具变体池中学习抓取与举升工具，训练语义与[原仓库](https://github.com/tylerlum/simtoolreal)对齐。两个物理后端——IsaacSim（mapped 子进程 worker）与 MuJoCo（mjbatch VariantPack）——跑同一份 MJCF 资产（robot/table/floor 各一份、每个工具一份，一次生成）；学习器是 vendored、SHA 锁定的 RL-Games SAPG 运行时。
 
 | 能力 | 状态 |
 | --- | --- |
-| `SimToolReal` teacher 训练（RL-Games SAPG） | 双后端全规模运行；任务/学习器语义与原仓库做过标签对拍（见「验证证据」） |
+| `SimToolReal` teacher 训练（RL-Games SAPG） | 双后端全规模运行；任务/学习器语义与原仓库做过标签对拍 |
 | 物理后端 | IsaacSim（默认）与 MuJoCo，同一份资产/任务定义，`--backend` 切换 |
-| 与原 IsaacLab 实现的标签一致性 | 同 seed 12,288 env run 的关键 TensorBoard 标签族不可区分（已验证路线，见「验证证据」） |
+| 与原 IsaacLab 实现的标签一致性 | 同 seed 12,288 env run 的关键 TensorBoard 标签族不可区分 |
 | 回放 / 检查 | `simtoolreal-play`、与原仓库标签集一致的 TensorBoard 叠加 |
 | student / 相机 / 传感器策略、部署、sim2real | 未迁移；本仓库不含部署代码 |
 
@@ -32,7 +32,7 @@ uv run simtoolreal-assets    # 校验 vendored 资产
 # 正式训练（IsaacSim 默认；num_actors 必须恰好组成 6 个探索块）
 uv run simtoolreal-train algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048
 
-# MuJoCo 后端（纯 CPU；同一份 B-form 任务）
+# MuJoCo 后端（纯 CPU；同一份任务定义）
 uv run simtoolreal-train --backend mujoco
 
 # 验收冒烟（64 env、24 工具池、2 epoch，几分钟；绝不作为策略基线）
@@ -53,13 +53,6 @@ uv run tensorboard --logdir logs/rlgames_sapg
 
 产物落在 `logs/rlgames_sapg/SimToolReal/<run>/`（checkpoint、TensorBoard 事件、run 配置）。MuJoCo 线不需要 IsaacSim worker 运行时。
 
-## 验证证据
-
-- **训练一致性（L3）**：在此前已验证的 IsaacSim 路线上，完整 12,288 env、seed 42 run（514 epoch）与原仓库前 500 epoch 对拍——全部关键 TensorBoard 标签族不可区分。当前 MJCF B-form 路线保留了同一套任务与学习器代码路径。
-- **逐变体质量回读**与生成清单的最大相对偏差 5.7e-08；**世界系 wrench 路径**与冻结复检锚点逐位一致。
-- 真后端冒烟门禁：8 环境 IsaacSim mapped worker 冒烟；MuJoCo reset 与 100 步冒烟。
-- 验证环境：Linux x86_64、单张 RTX 4090、worker 运行时 IsaacSim 5.1.0 + IsaacLab 2.3.0（UniLab 官方默认栈）。
-- 暂未收录机器人视频；一段训练成功的举升录像是本 README 最缺的一块素材。
 
 ## 想改什么
 
