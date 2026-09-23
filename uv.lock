@@ -667,12 +667,18 @@ wheels = [
 
 [[package]]
 name = "mjbatch-uni"
-version = "0.2.3"
-source = { git = "https://github.com/unilabsim/mjbatch_uni.git?rev=4edd4759a1bdfd75bdbb64b68d0613f8901add81#4edd4759a1bdfd75bdbb64b68d0613f8901add81" }
+version = "0.2.4"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mujoco" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/dd/c7b5f01ba132ee03ea1412651942709ee64febb08004435afe101fd09485/mjbatch_uni-0.2.4.tar.gz", hash = "sha256:7d11c0b798a5722a03a746029ab8d860bf8d1c11caa008205ed8ddf32cc72bb0", size = 45225, upload-time = "2026-09-23T12:24:02.924Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/d0/fe2b7cd3ecb045e00cbad11ce6407862ff8e60dde0304312fed57398055f/mjbatch_uni-0.2.4-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:254056c4656bdb48a963ad1ccd83b5451ebfa312c38a011fae9fe4e1bfbd85ec", size = 198001, upload-time = "2026-09-23T12:23:54.078Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/09/8667b24dc09d4b69456f1f11cb6226f5a9c76b8a7e0688baa45cbe668ebf/mjbatch_uni-0.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d41e8fc20f109693cb30a2f30ef5a7ab9077232d5f05a9414e857a558a28adef", size = 197623, upload-time = "2026-09-23T12:23:57.912Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/f0/dc5f7508dffc980e26a9d16c964a9f6dedc050d3acfbf70ef9fa48db1864/mjbatch_uni-0.2.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:952194f3143c005653b8b701fc91e56335a6d3998348ffef6211503b49904566", size = 197579, upload-time = "2026-09-23T12:24:01.635Z" },
 ]
 
 [[package]]
@@ -1422,13 +1428,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mjbatch-uni", git = "https://github.com/unilabsim/mjbatch_uni.git?rev=4edd4759a1bdfd75bdbb64b68d0613f8901add81" },
+    { name = "mjbatch-uni", specifier = ">=0.2.4" },
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.8.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
     { name = "unilab", git = "https://github.com/Motphys/UniLab.git?rev=838cc03eb62f0a2900c485b3bdf37290b1674c42" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
-    { name = "unisim-core", extras = ["mujoco"], git = "https://github.com/unilabsim/unisim.git?rev=dd983f9d4e07983476b14928f5e2f022f3664966" },
+    { name = "unisim-core", extras = ["mujoco"], specifier = ">=1.7.5" },
 ]
 
 [package.metadata.requires-dev]
@@ -1694,12 +1700,13 @@ requires-dist = [
 
 [[package]]
 name = "unisim-core"
-version = "1.7.4"
-source = { git = "https://github.com/unilabsim/unisim.git?rev=dd983f9d4e07983476b14928f5e2f022f3664966#dd983f9d4e07983476b14928f5e2f022f3664966" }
+version = "1.7.5"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/2c/8255a60c0260a4dc3b41aa60d9910b417a9ae11a1ef3de2b682252680390/unisim_core-1.7.5.tar.gz", hash = "sha256:7613702bf757a6253691bbcd5ab7ae38bf2ce2b8466cf5e6b0947c59466fbc11", size = 526190, upload-time = "2026-09-23T12:31:03.655Z" }
 
 [package.optional-dependencies]
 mujoco = [

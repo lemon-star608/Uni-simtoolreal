@@ -17,10 +17,10 @@ dependencies = [
   # Official PyPI release of unisim-core. The [mujoco] extra pulls in the
   # mujoco/mjbatch-uni pair the MuJoCo backend is pinned and tested against;
   # the MJCF asset line's compiler gates (M-J1) run on that same pin.
-  "unisim-core[mujoco]>=1.7.3",
-  # Direct dep so the [tool.uv.sources] git pin applies (uv only honors
-  # source overrides on the resolution path of named requirements).
-  "mjbatch-uni",
+  "unisim-core[mujoco]>=1.7.5",
+  # Direct dep: mujoco variant executors on unisim >=1.7.5 fail closed
+  # without the streaming VariantPackBuilder (mjbatch-uni >=0.2.4).
+  "mjbatch-uni>=0.2.4",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
   "torch==2.8.0+cu128 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
@@ -46,19 +46,11 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.sources]
-# Official upstream git pins (CI-resolvable; the local path scaffolding is
-# retired now that every downstream PR has merged upstream):
-# - unilab @ 838cc03e: main carrying the isaacsim solver + GPU buffer EnvCfg
-#   knobs (Motphys/UniLab#1620, #1636), pre-1.3.3;
-# - unisim-core @ dd983f9d: main carrying our merged adapter fixes
-#   (unilabsim/unisim#279/#282/#283/#285/#286/#287/#294), pre-1.7.5;
-# - mjbatch-uni @ 4edd4759: the streaming VariantPackBuilder PR branch
-#   (unilabsim/mjbatch_uni#38, open) — mujoco variant executors fail closed
-#   without it on current unisim main.
-# Switch each to its PyPI release once one ships containing it.
+# unilab stays on an upstream git pin until a release ships containing the
+# isaacsim solver + GPU buffer EnvCfg knobs (Motphys/UniLab#1620, #1636 —
+# both merged in main @ 838cc03e, pre-1.3.3).  unisim-core (1.7.5) and
+# mjbatch-uni (0.2.4) are back on official PyPI releases.
 unilab = { git = "https://github.com/Motphys/UniLab.git", rev = "838cc03eb62f0a2900c485b3bdf37290b1674c42" }
-unisim-core = { git = "https://github.com/unilabsim/unisim.git", rev = "dd983f9d4e07983476b14928f5e2f022f3664966" }
-mjbatch-uni = { git = "https://github.com/unilabsim/mjbatch_uni.git", rev = "4edd4759a1bdfd75bdbb64b68d0613f8901add81" }
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
 
