@@ -17,19 +17,19 @@ training:
   task_name: SimToolReal
   sim_backend: mujoco
 
-# MuJoCo-line default scale: 12,288 envs x 1,200 tools, matching the Isaac
-# line's 12,288-env comparison run (CPU single process + mjbatch threads).
-# 12,288 = 6 x 2,048 keeps the SAPG exploration-block invariant
+# MuJoCo-line default scale: 24,576 envs x 1,200 tools, the same default as
+# the IsaacSim leaf (CPU single process + mjbatch threads).
+# 24,576 = 6 x 4,096 keeps the SAPG exploration-block invariant
 # (num_actors % expl_coef_block_size == 0 with exactly six blocks), and
-# 12,288 * horizon_length(16) = 196,608 rows = 2 x 98,304 minibatches — the
+# 24,576 * horizon_length(16) = 393,216 rows = 4 x 98,304 minibatches — the
 # same minibatch size as the Isaac line's production runs.
 algo:
-  num_envs: 12288
+  num_envs: 24576
 rl_games:
   params:
     config:
       minibatch_size: 98304
-      expl_coef_block_size: 2048
+      expl_coef_block_size: 4096
       central_value_config:
         minibatch_size: 98304
 

@@ -9,8 +9,8 @@ TASK_OWNERS = {
 }
 
 # Registered backends per task, default first.  Both consume the shared
-# entity-split MJCF B form: IsaacSim through UniSim's mapped worker, and MuJoCo
-# through entity composition plus its VariantPack runtime.
+# entity-split MJCF B form: MuJoCo through entity composition plus its
+# VariantPack runtime, and IsaacSim through UniSim's mapped worker.
 TASK_BACKENDS = {
-    "SimToolReal": ("isaacsim", "mujoco"),
+    "SimToolReal": ("mujoco", "isaacsim"),
 }

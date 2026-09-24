@@ -7,7 +7,7 @@
 | 能力 | 状态 |
 | --- | --- |
 | `SimToolReal` teacher 训练（RL-Games SAPG） | 双后端全规模运行；任务/学习器语义与原仓库做过标签对拍 |
-| 物理后端 | IsaacSim（默认）与 MuJoCo，同一份资产/任务定义，`--backend` 切换 |
+| 物理后端 | MuJoCo（默认）与 IsaacSim，同一份资产/任务定义，`--backend` 切换 |
 | 与原 IsaacLab 实现的标签一致性 | 同 seed 12,288 env run 的关键 TensorBoard 标签族不可区分 |
 | 回放 / 检查 | `simtoolreal-play`、与原仓库标签集一致的 TensorBoard 叠加 |
 | student / 相机 / 传感器策略、部署、sim2real | 未迁移；本仓库不含部署代码 |
@@ -29,11 +29,12 @@ uv run simtoolreal-assets    # 校验 vendored 资产
 ## 训练与评估
 
 ```bash
-# 正式训练（IsaacSim 默认；num_actors 必须恰好组成 6 个探索块）
-uv run simtoolreal-train algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048
+# 正式训练（MuJoCo 默认，纯 CPU；两个后端默认同为 24,576 env = 6 x 4,096
+# 探索块，跑 1,200 工具池）
+uv run simtoolreal-train
 
-# MuJoCo 后端（纯 CPU；同一份任务定义）
-uv run simtoolreal-train --backend mujoco
+# IsaacSim 后端（同一份任务定义；需要 worker 运行时与 GPU）
+uv run simtoolreal-train --backend isaacsim
 
 # 验收冒烟（64 env、24 工具池、2 epoch，几分钟；绝不作为策略基线）
 uv run simtoolreal-train \
@@ -44,10 +45,10 @@ uv run simtoolreal-train \
   rl_games.params.config.central_value_config.minibatch_size=256 \
   training.smoke=true training.no_play=true
 
-# 回放 checkpoint（经 IsaacSim worker 渲染）
+# 回放 checkpoint（默认走 MuJoCo 回放；--backend isaacsim 经 IsaacSim worker 渲染）
 uv run simtoolreal-play --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
 
-uv run simtoolreal-list-envs                 # SimToolReal  isaacsim / SimToolReal  mujoco
+uv run simtoolreal-list-envs                 # SimToolReal  mujoco / SimToolReal  isaacsim
 uv run tensorboard --logdir logs/rlgames_sapg
 ```
 

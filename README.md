@@ -7,7 +7,7 @@ SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Mo
 | Capability | Status |
 | --- | --- |
 | `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository |
-| Physics backends | IsaacSim (default) and MuJoCo, one shared asset/task definition, switchable via `--backend` |
+| Physics backends | MuJoCo (default) and IsaacSim, one shared asset/task definition, switchable via `--backend` |
 | Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run |
 | Playback / inspection | `simtoolreal-play`, TensorBoard overlay with the original tag set |
 | Student / camera / sensor policies, deployment, sim2real | Not carried over; this repository contains no deployment code |
@@ -29,11 +29,12 @@ Robot/table source URDFs ship under `assets/simtoolreal/` (upstream MIT, SHA-256
 ## Training and evaluation
 
 ```bash
-# Production training (IsaacSim default; num_actors must form exactly six exploration blocks)
-uv run simtoolreal-train algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048
+# Production training (MuJoCo default, pure CPU; both backends default to
+# 24,576 envs = 6 x 4,096 exploration blocks over the 1,200-tool pool)
+uv run simtoolreal-train
 
-# MuJoCo backend (pure CPU; same task definition)
-uv run simtoolreal-train --backend mujoco
+# IsaacSim backend (same task definition; needs the worker runtime and a GPU)
+uv run simtoolreal-train --backend isaacsim
 
 # Acceptance smoke (64 envs, 24-tool pool, 2 epochs — minutes; never a policy baseline)
 uv run simtoolreal-train \
@@ -44,10 +45,11 @@ uv run simtoolreal-train \
   rl_games.params.config.central_value_config.minibatch_size=256 \
   training.smoke=true training.no_play=true
 
-# Play back a checkpoint (renders through the IsaacSim worker)
+# Play back a checkpoint (mujoco playback by default; --backend isaacsim
+# renders through the IsaacSim worker)
 uv run simtoolreal-play --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
 
-uv run simtoolreal-list-envs                 # SimToolReal  isaacsim / SimToolReal  mujoco
+uv run simtoolreal-list-envs                 # SimToolReal  mujoco / SimToolReal  isaacsim
 uv run tensorboard --logdir logs/rlgames_sapg
 ```
 

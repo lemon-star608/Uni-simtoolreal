@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - task: simtoolreal/isaacsim
+  - task: simtoolreal/mujoco
 
 algo:
   algo: rlgames_sapg

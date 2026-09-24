@@ -261,6 +261,14 @@ def test_scene_leaves_share_the_bform_declaration(isaacsim):
     assert mujoco["env"]["asset_format"] == "mjcf"
 
 
+def test_both_leaves_default_to_the_same_scale(isaacsim):
+    """Both backend leaves default to 24,576 envs x 6 x 4,096 blocks."""
+    mujoco = yaml.safe_load((CONF_DIR / "mujoco.yaml").read_text())
+    assert mujoco["algo"]["num_envs"] == 24576
+    assert mujoco["rl_games"]["params"]["config"]["expl_coef_block_size"] == 4096
+    assert isaacsim["algo"]["num_envs"] == 24576
+
+
 # --- owner physics truth (frozen values the MJCF writers consume) -------------
 
 
