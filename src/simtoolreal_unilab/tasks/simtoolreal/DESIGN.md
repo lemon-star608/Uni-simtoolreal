@@ -58,7 +58,7 @@ src/unilab/conf/rlgames_sapg/task/simtoolreal/{base,isaacsim}.yaml
 | `reset_utils.py:200-220` | robot DOF reset、位置/速度噪声、previous target seed | reset event | `events.py` | 通过 Entity 写状态；不在 term 中扫描资产 |
 | `reset_utils.py:223-301` | table/object pose、table z/XY/yaw、object velocity | reset event | `events.py` | object root pose/velocity 写入需要公开 facade |
 | `reset_utils.py:372-401` | goal trackers、delay queues、wrench buffers、success/lift trackers | command/recorder/事件状态 | 各 term 实例 | 跨 term 用 `env.<manager>.get_term(...)` 回取，不设 env 全局状态 hub |
-| `termination_utils.py:10-36` | tolerance curriculum | curriculum/command term | `commands.py` 或 `terminations.py` | 每 interval 按上一 episode successes 平均值缩小 tolerance |
+| `termination_utils.py:10-36` | tolerance curriculum | 状态在 command hub，逐步触发在 termination term | `commands.py`（状态）+ `terminations.py`（触发） | 每 interval 按上一 episode successes 平均值缩小 tolerance；tick 先于同帧 success 判定 |
 | `termination_utils.py:39-72` | success 后换目标、fall、hand far、max successes、timeout | termination terms | `terminations.py` | success 不直接结束 episode；成功后清 goal tracker 并置零 episode length |
 | `logging_utils.py:1-33` | reward/termination metrics | recorder term | `events.py` 或 `RecorderTerm` | 不在 backend 里实现任务日志 |
 | `simtoolreal_env_cfg.py:538-595`、`cfg/task/SimToolReal.yaml` | cfg 分组与默认值 | Hydra config | `base.yaml`、backend leaf | task 语义和 owner physics 在 base；sim/backend 旋钮在 leaf |
@@ -442,6 +442,23 @@ interval 阶段触发；这是已登记的时序差异，不能误报成额外 r
 done 行仍会经历通用生命周期的“全量 step observation + reset-row observation”两次
 组装；后者已经限制为 selected rows。要像原仓库一样只保留 reset 后的一次最终观测，
 需要改通用 autoreset 顺序，不属于 task term 的无痛微调。
+
+对齐审计修复（2026-09-28，`probes/training-pipeline-alignment-audit.md` 差异清单
+2-4，均为 term 内部修复、不改 §6.5 相位顺序）：
+
+* A1.2：原仓库在 `_get_dones` 内先清 per-goal tracker 再算奖励，success 帧的
+  keypoint-delta 被 sentinel 填 0；manager 版 reward 先于 command advance，
+  `KeypointDistanceDelta` 改为按 termination 阶段写入的 `pending_success`
+  快照把成功行的 delta 置 0，tracker 的 min 更新保持不变。
+* A1.3：原仓库 wrench 在 `_pre_physics_step` 读上一步的 lifted 闩锁；UniLab
+  interval event 在 reward 之后运行，`SimToolRealWrenchEvent` 自存一步延迟的
+  `_prev_lifted` 闩锁用于 gate，力/力矩采样路径不变，reset 时闩锁随 episode
+  清空（reset_utils.py:396）。
+* A1.4：容差课程状态仍由 command hub 持有，逐步 tick 的触发移到
+  `SuccessTracker` 内、先于同帧 success 比较（与原仓库
+  `update_tolerance_curriculum` 在 `_get_dones` 内先行的顺序一致）；command
+  阶段的 tick 已移除，`_last_curriculum_step` 守卫保证同帧重复调用不重复
+  收紧。
 
 ### 6.6 当前实现快照（2026-09-12）
 

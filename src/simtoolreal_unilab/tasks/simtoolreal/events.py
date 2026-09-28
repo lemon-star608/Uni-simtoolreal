@@ -249,6 +249,12 @@ class SimToolRealWrenchEvent(ManagerTermBase):
     standard-normal vectors multiplied by object mass and the configured
     scales; trigger probabilities are log-uniform and the lift latch gates the
     active channels.  The adapter owns the actual world-frame write.
+
+    The gate reads the previous step's lift latch (action_utils.py:109-113):
+    the original applies the wrench in ``_pre_physics_step``, before that
+    step's reward stage updates ``_lifted_object``; this interval event runs
+    after the reward stage, so the term keeps a one-step-delayed latch and
+    the wrench applies from the step after the lift is achieved.
     """
 
     def __init__(self, cfg: ManagerTermBaseCfg, env: Any):
@@ -326,11 +332,21 @@ class SimToolRealWrenchEvent(ManagerTermBase):
         self._torques = np.zeros_like(self._forces)
         self._force_prob = np.zeros(env.num_envs, dtype=np.float32)
         self._torque_prob = np.zeros(env.num_envs, dtype=np.float32)
+        # One-step-delayed lift latch for the only-when-lifted gate
+        # (action_utils.py:109-113): the original reads the latch in
+        # _pre_physics_step, before this step's reward update, so a wrench
+        # can apply from the step after the lift is achieved.  The UniLab
+        # interval event runs after the reward stage, so it latches the
+        # previous step's value here (audit fix A1.3).
+        self._prev_lifted = np.zeros(env.num_envs, dtype=bool)
 
     def reset(self, env_ids: np.ndarray | slice | None = None) -> None:
         ids = _ids(self._env, env_ids)
         self._forces[ids] = 0.0
         self._torques[ids] = 0.0
+        # reset_utils.py:396 clears the lift latch on episode reset; the
+        # delayed gate starts closed again for the new episode.
+        self._prev_lifted[ids] = False
         if ids.size:
             self._force_prob[ids] = _log_uniform(
                 self._env.rng, self._force_prob_range, ids.size, label="force_prob_range"
@@ -385,13 +401,19 @@ class SimToolRealWrenchEvent(ManagerTermBase):
 
         try:
             hub = env.command_manager.get_term("goal")
-            lifted = np.asarray(hub.lifted[ids], dtype=bool)
+            lifted_now = np.asarray(hub.lifted[ids], dtype=bool)
         except (AttributeError, KeyError, ValueError):
-            lifted = np.ones(count, dtype=bool)
+            lifted_now = np.ones(count, dtype=bool)
+        # action_utils.py:109-113: gate on the previous step's latch.  The
+        # original's _pre_physics_step runs before the reward stage updates
+        # _lifted_object; this interval event runs after it, so the latch is
+        # delayed one step here and refreshed after gating (audit fix A1.3).
+        lifted = self._prev_lifted[ids]
         if self._force_only_when_lifted:
             self._forces[ids[~lifted]] = 0.0
         if self._torque_only_when_lifted:
             self._torques[ids[~lifted]] = 0.0
+        self._prev_lifted[ids] = lifted_now
 
         self._object.apply_body_wrench_to_sim(
             self._forces[ids],

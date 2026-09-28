@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from typing import cast
 
 import numpy as np
+import pytest
 from unilab.base.entity import EntityCfg, EntityScene
 from unilab.managers import TerminationManager, TerminationTermCfg
 from unilab.managers._types import ManagerBasedRlEnv
@@ -252,6 +253,60 @@ def test_success_chain_per_env_independence():
     expected_near[3] = False
     np.testing.assert_array_equal(hub.near_goal, expected_near)
     np.testing.assert_array_equal(hub.near_goal_steps, expected_near.astype(np.int64))
+
+
+# ----------------------------------------------------------------------------
+# Tolerance curriculum trigger (termination_utils.py:10-36; audit fix A1.4)
+#
+# The hub owns the curriculum state; SuccessTracker triggers the per-step
+# tick ahead of its success comparison, so a tightening is same-frame
+# effective.  Cadence/threshold/floor details stay pinned in
+# tests/tasks/test_simtoolreal_commands.py.
+# ----------------------------------------------------------------------------
+
+
+def test_curriculum_tightening_effective_same_frame():
+    env, backend, hub = _make_env()
+    term = _term(SuccessTracker, env, **SUCCESS_PARAMS)
+    # 0.105 m: inside the initial criterion (0.075 * 1.5 = 0.1125) but
+    # outside the tightened one (0.0675 * 1.5 = 0.10125).
+    _place_object_near_goal(backend, 0.105)
+    term(env)
+    assert hub.near_goal.all()
+    # Interval reached and the completed-episode average meets the threshold:
+    # the tick runs before this frame's success comparison.
+    hub.prev_episode_successes[:] = 4
+    env.common_step_counter = hub.cfg.tolerance_curriculum_interval
+    hub.near_goal_steps[:] = 0
+    term(env)
+    assert hub.current_success_tolerance == pytest.approx(hub.cfg.success_tolerance * 0.9)
+    assert not hub.near_goal.any()
+    np.testing.assert_array_equal(hub.near_goal_steps, 0)
+
+
+def test_curriculum_no_double_tick_within_one_frame():
+    """Two termination-phase invocations in one frame tighten once."""
+    env, backend, hub = _make_env()
+    term = _term(SuccessTracker, env, **SUCCESS_PARAMS)
+    hub.prev_episode_successes[:] = 4
+    env.common_step_counter = hub.cfg.tolerance_curriculum_interval
+    _place_object_near_goal(backend, 0.5)  # far: success state irrelevant
+    term(env)
+    assert hub.current_success_tolerance == pytest.approx(hub.cfg.success_tolerance * 0.9)
+    term(env)
+    assert hub.current_success_tolerance == pytest.approx(hub.cfg.success_tolerance * 0.9)
+
+
+def test_curriculum_floor_respected_via_tracker_tick():
+    env, backend, hub = _make_env()
+    term = _term(SuccessTracker, env, **SUCCESS_PARAMS)
+    hub.current_success_tolerance = 0.011
+    hub.prev_episode_successes[:] = 10
+    env.common_step_counter = hub.cfg.tolerance_curriculum_interval
+    _place_object_near_goal(backend, 0.5)
+    term(env)
+    # 0.011 * 0.9 = 0.0099 -> clamped to the 0.01 floor.
+    assert hub.current_success_tolerance == hub.cfg.target_success_tolerance
 
 
 # ----------------------------------------------------------------------------

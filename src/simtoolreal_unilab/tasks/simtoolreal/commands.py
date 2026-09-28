@@ -6,7 +6,12 @@ sampling, wxyz quaternions), the goal-tracker half of
 ``termination_utils.py:10-36`` (original snapshot 313d5aea) into the UniLab
 ``CommandTerm`` contract.  Per the lifecycle protocol fixed in DESIGN.md
 section 6.5, this term is the hub for goal advancement, success counting, and
-the success-tolerance curriculum:
+the success-tolerance curriculum state.  The curriculum's per-step tick is
+triggered by the termination layer's ``SuccessTracker`` ahead of its success
+comparison (:meth:`tick_tolerance_curriculum`), so a tightening takes effect
+on the same frame's success judgment — the original runs
+``update_tolerance_curriculum`` before the success check inside ``_get_dones``
+(termination_utils.py:10-36; audit fix A1.4):
 
 - the termination layer records this step's ``pending_success`` snapshot;
 - reward terms consume that snapshot (success-frame bonus);
@@ -40,8 +45,10 @@ Registered deviations (DESIGN.md section 3.5 convention):
   ``goal_sampling_type`` selects "delta" | "absolute" directly.
 - The curriculum subclass hooks (``_curriculum_eligible_mask`` /
   ``_curriculum_success_threshold``, ``termination_utils.py:16-27``) are not
-  ported; the curriculum ticks on the per-step path only (``env_ids is
-  None``), not on the reset-path ``compute(dt=0, env_ids)`` recompute.
+  ported; the curriculum ticks once per policy step from the termination
+  layer's ``SuccessTracker`` (never on the reset-path
+  ``compute(dt=0, env_ids)`` recompute, which no longer touches the
+  curriculum at all).
 - ``eval_success_tolerance`` is pinned at construction as well as per step;
   the original pins only inside the per-step update
   (``reset_utils.py:114`` initialises from ``success_tolerance``).
@@ -316,10 +323,6 @@ class SimToolRealCommand(CommandTerm):
         succeeded = ids[self.pending_success[ids]]
         if len(succeeded) > 0:
             self._advance_goal(succeeded)
-        # termination_utils.py:10-36: the curriculum ticks once per policy
-        # step, not on the reset-path recompute (env_ids given).
-        if env_ids is None:
-            self._tick_tolerance_curriculum()
 
     def _advance_goal(self, env_ids: np.ndarray) -> None:
         """Success-driven goal advance (termination_utils.py:46-51)."""
@@ -397,8 +400,16 @@ class SimToolRealCommand(CommandTerm):
         pose[:, :3] += self._env.scene.env_origins[env_ids]
         self._goalviz.write_root_link_pose_to_sim(pose, env_ids=env_ids)
 
-    def _tick_tolerance_curriculum(self) -> None:
-        """Shrink success tolerance on sustained performance (termination_utils.py:10-36)."""
+    def tick_tolerance_curriculum(self) -> None:
+        """Shrink success tolerance on sustained performance (termination_utils.py:10-36).
+
+        The hub owns the curriculum state; the per-step trigger lives in
+        :class:`~.terminations.SuccessTracker`, which calls this ahead of its
+        success comparison so a tightening is effective on the same frame —
+        the original runs the tick before the success judgment inside
+        ``_get_dones`` (audit fix A1.4).  The ``_last_curriculum_step`` guard
+        keeps repeated calls within one frame idempotent (no double tick).
+        """
         cfg = self.cfg
         frame = self._env.common_step_counter
         if frame - self._last_curriculum_step >= cfg.tolerance_curriculum_interval:

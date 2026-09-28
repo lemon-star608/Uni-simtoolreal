@@ -42,6 +42,13 @@ Registered deviations (DESIGN.md section 3.5 convention):
   in ``_get_dones`` — same relative order.  The
   ``_keypoint_success_tolerance_m`` subclass hook (obs_utils.py:190-193) is
   not ported.
+- :class:`KeypointDistanceDelta` zeroes the delta on the success frame
+  (``hub.pending_success`` rows): the original clears the per-goal trackers
+  inside ``_get_dones`` before rewards run (termination_utils.py:46-51), so
+  its success-frame ``keypoint_reward`` sentinel-fills and clamps to 0
+  (reward_utils.py:117-123); the UniLab reward stage runs before the
+  command-stage advance, so the mask reproduces that ordering (audit fix
+  A1.2).
 - The gym-era hand-delta and object velocity penalties stay retired
   (zero-coefficient terms, DESIGN.md section 3.5).
 """
@@ -209,6 +216,12 @@ class KeypointDistanceDelta(ManagerTermBase):
         closest = np.where(hub.closest_keypoint_max_dist < 0.0, kmd, hub.closest_keypoint_max_dist)
         delta = np.clip(closest - kmd, 0.0, 100.0)  # reward_utils.py:45-47
         rew = delta * lifted_now.astype(np.float32)  # :48
+        # termination_utils.py:46-51 -> reward_utils.py:117-123 ordering: the
+        # original clears per-goal trackers inside _get_dones before rewards
+        # run, so the success frame sentinel-fills the tracker and the delta
+        # clamps to 0.  UniLab rewards run before the command-stage advance,
+        # so mask the pending-success rows explicitly (audit fix A1.2).
+        rew[hub.pending_success] = 0.0
         hub.closest_keypoint_max_dist[:] = np.minimum(closest, kmd)  # :46, compute_rewards:110
         return rew.astype(np.float32)
 

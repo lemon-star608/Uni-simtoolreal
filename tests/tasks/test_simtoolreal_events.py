@@ -219,9 +219,13 @@ def test_wrench_event_samples_and_lift_gates_channels():
     )
     ids = np.arange(NUM_ENVS, dtype=np.intp)
     term.reset(ids)
+    # Audit fix A1.3: the gate reads the previous step's latch, so the first
+    # call only latches this step's lifted state; the gated write is the
+    # second call.
     term(env, ids)
-    assert len(obj.calls) == 1
-    forces, torques, body_ids, called_ids = obj.calls[0]
+    term(env, ids)
+    assert len(obj.calls) == 2
+    forces, torques, body_ids, called_ids = obj.calls[-1]
     assert forces.shape == (NUM_ENVS, 1, 3)
     assert torques.shape == (NUM_ENVS, 1, 3)
     np.testing.assert_array_equal(body_ids, [17])
@@ -230,6 +234,54 @@ def test_wrench_event_samples_and_lift_gates_channels():
     np.testing.assert_array_equal(torques[~env.hub.lifted], 0.0)
     assert np.any(forces[env.hub.lifted] != 0.0)
     assert np.any(torques[env.hub.lifted] != 0.0)
+
+
+def test_wrench_gate_applies_one_step_after_lift():
+    """Audit fix A1.3 (action_utils.py:109-113): the original reads the
+    previous step's lifted latch in _pre_physics_step, so the wrench applies
+    from the step after the lift is achieved, not on the crossing step."""
+    env = _scene_mapping(_env(with_roots=False))
+    obj = _WrenchObject()
+    env.scene["object"] = obj
+    term = SimToolRealWrenchEvent(
+        ManagerTermBaseCfg(
+            func=SimToolRealWrenchEvent,
+            params={
+                "force_scale": 20.0,
+                "torque_scale": 2.0,
+                "force_prob_range": (1.0, 1.0),
+                "torque_prob_range": (1.0, 1.0),
+                "object_mass": 2.0,
+                "only_when_lifted": True,
+            },
+        ),
+        env,
+    )
+    ids = np.arange(NUM_ENVS, dtype=np.intp)
+    term.reset(ids)
+    env.hub.lifted[:] = False
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    np.testing.assert_array_equal(forces, 0.0)
+    np.testing.assert_array_equal(torques, 0.0)
+    # Lift achieved this step (the reward stage updates the latch before the
+    # interval event runs): the gate still sees last step's False.
+    env.hub.lifted[:] = True
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    np.testing.assert_array_equal(forces, 0.0)
+    np.testing.assert_array_equal(torques, 0.0)
+    # From the next step on the wrench applies (force sampling path unchanged).
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    assert np.any(forces != 0.0)
+    assert np.any(torques != 0.0)
+    # Episode reset closes the gate again (reset_utils.py:396).
+    term.reset(ids)
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    np.testing.assert_array_equal(forces, 0.0)
+    np.testing.assert_array_equal(torques, 0.0)
 
 
 def test_wrench_probabilities_require_positive_log_uniform_bounds():
