@@ -450,10 +450,14 @@ done 行仍会经历通用生命周期的“全量 step observation + reset-row 
   keypoint-delta 被 sentinel 填 0；manager 版 reward 先于 command advance，
   `KeypointDistanceDelta` 改为按 termination 阶段写入的 `pending_success`
   快照把成功行的 delta 置 0，tracker 的 min 更新保持不变。
-* A1.3：原仓库 wrench 在 `_pre_physics_step` 读上一步的 lifted 闩锁；UniLab
-  interval event 在 reward 之后运行，`SimToolRealWrenchEvent` 自存一步延迟的
-  `_prev_lifted` 闩锁用于 gate，力/力矩采样路径不变，reset 时闩锁随 episode
-  清空（reset_utils.py:396）。
+* A1.3（2026-09-28 复查后撤销，不改门控行为）：初判认为 interval event 读
+  当步闩锁会让力“举起当步就受力”，但该前提不成立——event 在本步物理与
+  reward 之后触发，写入的 wrench 由 adapter staging 给即将到来的 physics
+  step（`Entity.apply_body_wrench_to_sim`；backend 在下一步物理开始时消费，
+  跨该步 substeps 后清除）。因此 event 写入覆盖的物理窗口与原仓库
+  `_pre_physics_step` 写入覆盖的窗口相同，且读到的 `hub.lifted` 正是原仓库
+  在该处读到的同一个 reward 阶段闩锁：直接读 `hub.lifted` 已是逐帧等价，
+  自存一步延迟闩锁反而比原仓库晚一帧，已回退（保留 A1.2/A1.4）。
 * A1.4：容差课程状态仍由 command hub 持有，逐步 tick 的触发移到
   `SuccessTracker` 内、先于同帧 success 比较（与原仓库
   `update_tolerance_curriculum` 在 `_get_dones` 内先行的顺序一致）；command

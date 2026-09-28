@@ -219,12 +219,8 @@ def test_wrench_event_samples_and_lift_gates_channels():
     )
     ids = np.arange(NUM_ENVS, dtype=np.intp)
     term.reset(ids)
-    # Audit fix A1.3: the gate reads the previous step's latch, so the first
-    # call only latches this step's lifted state; the gated write is the
-    # second call.
     term(env, ids)
-    term(env, ids)
-    assert len(obj.calls) == 2
+    assert len(obj.calls) == 1
     forces, torques, body_ids, called_ids = obj.calls[-1]
     assert forces.shape == (NUM_ENVS, 1, 3)
     assert torques.shape == (NUM_ENVS, 1, 3)
@@ -236,10 +232,14 @@ def test_wrench_event_samples_and_lift_gates_channels():
     assert np.any(torques[env.hub.lifted] != 0.0)
 
 
-def test_wrench_gate_applies_one_step_after_lift():
-    """Audit fix A1.3 (action_utils.py:109-113): the original reads the
-    previous step's lifted latch in _pre_physics_step, so the wrench applies
-    from the step after the lift is achieved, not on the crossing step."""
+def test_wrench_gate_reads_reward_stage_latch_for_upcoming_step():
+    """A1.3 reaudit (action_utils.py:109-113): the original gates the
+    ``_pre_physics_step`` wrench write on the latch the previous reward
+    stage wrote, and that write covers the upcoming physics window.  Our
+    interval event runs right after the reward stage latched ``hub.lifted``
+    and its write is staged for the upcoming step — the same window — so the
+    direct read is the parity behavior.  A term-local delayed latch would
+    apply the wrench one step later than the original, not match it."""
     env = _scene_mapping(_env(with_roots=False))
     obj = _WrenchObject()
     env.scene["object"] = obj
@@ -259,25 +259,28 @@ def test_wrench_gate_applies_one_step_after_lift():
     )
     ids = np.arange(NUM_ENVS, dtype=np.intp)
     term.reset(ids)
+    # Not lifted at this step's reward stage: nothing is staged for the
+    # upcoming step's physics.
     env.hub.lifted[:] = False
     term(env, ids)
     forces, torques, _, _ = obj.calls[-1]
     np.testing.assert_array_equal(forces, 0.0)
     np.testing.assert_array_equal(torques, 0.0)
-    # Lift achieved this step (the reward stage updates the latch before the
-    # interval event runs): the gate still sees last step's False.
+    # Lift achieved during this step's physics: the reward stage (running
+    # before the interval event) latched hub.lifted=True, exactly the latch
+    # the original's _pre_physics_step reads for the upcoming window.  The
+    # wrench stages now and lands in that window — one step after the lift,
+    # no more.
     env.hub.lifted[:] = True
-    term(env, ids)
-    forces, torques, _, _ = obj.calls[-1]
-    np.testing.assert_array_equal(forces, 0.0)
-    np.testing.assert_array_equal(torques, 0.0)
-    # From the next step on the wrench applies (force sampling path unchanged).
     term(env, ids)
     forces, torques, _, _ = obj.calls[-1]
     assert np.any(forces != 0.0)
     assert np.any(torques != 0.0)
-    # Episode reset closes the gate again (reset_utils.py:396).
+    # Episode reset closes the gate again: the command hub reset clears the
+    # latch (commands.py, mirroring reset_utils.py:396) and the event reset
+    # zeroes its staged buffers.
     term.reset(ids)
+    env.hub.lifted[:] = False
     term(env, ids)
     forces, torques, _, _ = obj.calls[-1]
     np.testing.assert_array_equal(forces, 0.0)
