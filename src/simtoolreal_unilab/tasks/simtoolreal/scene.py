@@ -50,9 +50,14 @@ def _resolve_entity_bootstrap(name: str, layout: str = "same_layout") -> str:
     ) / ("entity_bootstrap" if layout == TOOL_POOL_LAYOUT_SAME else f"entity_bootstrap_{layout}")
     # The complete bootstrap set (entity sources + the uniform layout's
     # file-backed meshes): a partial set is rewritten, never half-reused.
+    from .cold_start import mark, phase
+
     paths = bootstrap_entity_set_paths(root, layout=layout)
     if not all(path.is_file() for path in paths.values()):
-        write_bootstrap_entity_set(root, layout=layout)
+        with phase("bootstrap entity materialization", f"layout={layout}"):
+            write_bootstrap_entity_set(root, layout=layout)
+    else:
+        mark("bootstrap entity materialization", f"layout={layout} (cache hit)")
     return str(paths[name])
 
 

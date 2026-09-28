@@ -11,6 +11,7 @@ import runpy
 import sys
 
 from simtoolreal_unilab.config import CONF_ROOT, TASK_BACKENDS, TASK_OWNERS
+from simtoolreal_unilab.tasks.simtoolreal.cold_start import mark
 
 
 def _run(mode):
@@ -32,6 +33,7 @@ def _run(mode):
     backend = args.backend or backends[0]
     if backend not in backends:
         parser.error(f"task {args.task} supports backends {backends}, got {backend!r}")
+    mark("cli entry", f"mode={mode} task={args.task} backend={backend}")
     generated = [f"task={TASK_OWNERS[args.task]}/{backend}"]
     if args.checkpoint_file:
         # Playback resolves a run directory or checkpoint file directly.

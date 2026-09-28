@@ -25,11 +25,28 @@ def _make_env_with_entity_binding(cfg, num_envs: int = 1, backend_type: str = "m
     ``fixed_variant_plan`` the same way, but no upstream hook exists for
     ``entity_variant`` — this wrapper is that hook, task-side).  Both B-form
     lines (mujoco since M-J5, isaacsim since the Isaac/MJCF bring-up) register
-    through it.
+    through it.  Backend creation (unisim compose + VariantPack + worker INIT)
+    and the first reset carry cold-start phase markers.
     """
+    from .cold_start import mark, phase
+
     if isinstance(cfg, SimToolRealEnvCfg):
         cfg.bind_entity_variant(num_envs)
-    return make_manager_based_rl_env(cfg, num_envs=num_envs, backend_type=backend_type)
+    with phase("backend creation", f"backend={backend_type} num_envs={num_envs}"):
+        env = make_manager_based_rl_env(cfg, num_envs=num_envs, backend_type=backend_type)
+
+    original_reset = env.reset
+
+    def _reset_with_first_marker(*args, **kwargs):
+        env.reset = original_reset  # one-shot marker: restore, then delegate
+        with phase("first reset"):
+            return original_reset(*args, **kwargs)
+
+    try:
+        env.reset = _reset_with_first_marker
+    except AttributeError:
+        mark("first reset", "marker unavailable (env disallows reset wrapping)")
+    return env
 
 
 registry.register_env_config("SimToolReal", SimToolRealEnvCfg)

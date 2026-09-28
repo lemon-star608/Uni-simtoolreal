@@ -41,7 +41,9 @@ _ALLOWED_STDLIB = {
     "itertools",
     "json",
     "random",
+    "sys",  # stderr: cold_start's phase markers
     "tempfile",
+    "time",  # perf_counter: cold_start's phase markers
     "warnings",
     "xml",  # ElementTree: the MJCF writers' transcription parser (no physics engine)
 }

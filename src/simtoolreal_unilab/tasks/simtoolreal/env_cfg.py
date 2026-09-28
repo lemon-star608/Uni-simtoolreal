@@ -70,11 +70,13 @@ def _materialize_mjcf_pool(
     realization, so the manifest's layout gates re-derive byte identity
     against the matching writer.
     """
+    from .cold_start import mark, phase
     from .entity_mjcf_writer import write_entity_set
 
+    with phase("catalog build", f"seed={seed} n_per_type={num_per_type}"):
+        catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
     text_fn = _layout_tool_text_fn(layout)
     meshes_fn = _layout_tool_meshes_fn(layout)
-    catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
     root = _entity_pool_root(seed, num_per_type, configured_root, layout)
     manifest_path = root / "manifest.json"
     expected = {
@@ -143,8 +145,11 @@ def _materialize_mjcf_pool(
             # A partial or stale pool is rebuilt below.
             tool_names = None
     if tool_names is None:
-        manifest = write_entity_set(root, seed=seed, num_per_type=num_per_type, layout=layout)
+        with phase("pool materialization", f"layout={layout} root={root} (rebuild)"):
+            manifest = write_entity_set(root, seed=seed, num_per_type=num_per_type, layout=layout)
         tool_names = tuple(str(name) for name in manifest["tool_files"])
+    else:
+        mark("pool materialization", f"layout={layout} root={root} (cache hit)")
     paths = tuple((root / "tools" / name).resolve() for name in tool_names)
     masses = tuple(float(spec.mass) for spec in catalog)
     scales = tuple(tuple(float(x) for x in spec.object_scale) for spec in catalog)
@@ -213,6 +218,13 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     )
 
     def validate(self) -> None:
+        from .cold_start import mark
+
+        mark(
+            "env_cfg validate",
+            f"layout={self.tool_pool_layout} n_per_type={self.tool_pool_num_per_type} "
+            f"seed={self.tool_pool_seed} pool_enabled={self.tool_pool_enabled}",
+        )
         super().validate()
         if (
             isinstance(self.tool_pool_num_per_type, bool)
@@ -358,6 +370,13 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         from unisim.dr.types import FixedVariantLayout, FixedVariantPlan, ModelSourceDescriptor
         from unisim.entities import EntityVariantBinding
 
+        from .cold_start import mark
+
+        mark(
+            "entity variant binding",
+            f"num_envs={num_envs} variants={len(self.tool_pool_files)} "
+            f"layout={self.tool_pool_layout}",
+        )
         # The knob's accepted values mirror the enum's, and validate() already
         # failed closed on anything else; the enum constructor fails closed too.
         layout = FixedVariantLayout(self.tool_pool_layout)
