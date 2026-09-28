@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import os
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from pathlib import Path
 from typing import Sequence
 
@@ -197,13 +198,17 @@ def write_tool_catalog_mjcfs(
     catalog: Sequence[ToolSpec],
     out_dir: str | Path,
     object_base_size: float = OBJECT_BASE_SIZE,
+    text_fn: Callable[[ToolSpec], str] = tool_mjcf_text,
 ) -> tuple[list[str], list[tuple[float, float, float]]]:
     """Write one MJCF per catalog entry into ``out_dir``.
 
     Batch counterpart of the retired URDF batch writer (generate_objects.py:
     302-399 minus sampling): same filename template with an ``.xml`` suffix,
     same stale-file cleanup (for ``.xml``), same return contract — file paths
-    paired with handle scales normalized by ``object_base_size``.
+    paired with handle scales normalized by ``object_base_size``.  ``text_fn``
+    selects the geom realization: the default same-layout writer, or
+    ``tool_uniform_mjcf_writer.tool_mjcf_text_uniform`` for the D8
+    uniform-public pool.
     """
     out_dir = Path(out_dir)
     if out_dir.exists():
@@ -220,7 +225,7 @@ def write_tool_catalog_mjcfs(
         idx = type_counts.get(spec.type, 0)
         type_counts[spec.type] = idx + 1
         mjcf_path = out_dir / _tool_filename(spec, idx)
-        write_tool_mjcf(spec, mjcf_path)
+        mjcf_path.write_text(text_fn(spec))
         paths.append(str(mjcf_path))
         # ToolSpec.object_scale is the handle scale already normalized by
         # OBJECT_BASE_SIZE; rescale if the caller overrides the base size.
