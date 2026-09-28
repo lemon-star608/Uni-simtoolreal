@@ -14,7 +14,7 @@
 
 ## 首次运行
 
-要求：Linux x86_64、带 CUDA 的 NVIDIA GPU（学习器与 IsaacSim worker 共用）、[uv](https://docs.astral.sh/uv/)、约 20 GB 磁盘（worker 运行时与缓存）。依赖全部由 lockfile 解析（unisim-core 与 mjbatch-uni 走 PyPI；unilab 为上游 git 修订 pin）——无需额外克隆。
+要求：Linux x86_64、带 CUDA 的 NVIDIA GPU（学习器与 IsaacSim worker 共用）、[uv](https://docs.astral.sh/uv/)、约 20 GB 磁盘（worker 运行时与缓存）。依赖全部由 lockfile 解析（unilab、unisim-core、mjbatch-uni 均走 PyPI）——无需额外克隆。
 
 ```bash
 git clone <本仓库> && cd simtoolreal_unilab
@@ -67,7 +67,7 @@ uv run tensorboard --logdir logs/rlgames_sapg
 | 算法超参 | `conf/rlgames_sapg/config.yaml` |
 | 叠在官方 pin 上的行为 | `src/simtoolreal_unilab/_compat/`（上游长出即移除） |
 
-依赖 pin：`unilab` 跟踪上游 main @ `838cc03e`（git rev，含 [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636)；发版含它们后切回 PyPI）、`unisim-core >= 1.7.5`、`mjbatch-uni >= 0.2.4`。`third_party/` 下的 vendored RL-Games 运行时 SHA 锁定，禁止编辑。推送前跑 `make check` / `make test`。
+依赖 pin：`unilab >= 1.3.3`（PyPI 正式版，含 [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636)）、`unisim-core >= 1.7.10`、`mjbatch-uni >= 0.2.4`、`torch == 2.14.0+cu130`（unilab 1.3.3 自家的验证目标版本）。`third_party/` 下的 vendored RL-Games 运行时 SHA 锁定，禁止编辑。推送前跑 `make check` / `make test`。
 
 ## 致谢
 

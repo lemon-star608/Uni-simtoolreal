@@ -14,8 +14,8 @@ README.md for usage.
   development branch of UniLab onto the pinned official revision. It fails
   loudly if the pin drifts; when upstream UniLab grows these behaviors,
   remove the layer instead of skipping it.
-- Dependencies (`main`): `unilab` is pinned to an upstream git revision in
-  `pyproject.toml` (`tool.uv.sources`); `unisim-core` (>=1.7.5) and
-  `mjbatch-uni` (>=0.2.4) are official PyPI releases. The retired URDF
-  runtime line is frozen at tag `urdf-anchor` for reference.
+- Dependencies (`main`): all official PyPI releases — `unilab` (>=1.3.3,
+  carrying #1620/#1636), `unisim-core` (>=1.7.10), `mjbatch-uni` (>=0.2.4),
+  `torch` (==2.14.0+cu130). The retired URDF runtime line is frozen at tag
+  `urdf-anchor` for reference.
 - No co-author trailers from AI assistants in commits.

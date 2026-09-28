@@ -14,7 +14,7 @@ SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Mo
 
 ## First run
 
-Requires Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and ~20 GB of disk for the worker runtime and caches. Dependencies resolve from the lockfile (unisim-core and mjbatch-uni from PyPI; unilab pinned to an upstream git revision) — no extra checkouts.
+Requires Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and ~20 GB of disk for the worker runtime and caches. Dependencies resolve from the lockfile (unilab, unisim-core and mjbatch-uni all from PyPI) — no extra checkouts.
 
 ```bash
 git clone <this repo> && cd simtoolreal_unilab
@@ -68,7 +68,7 @@ Outputs land in `logs/rlgames_sapg/SimToolReal/<run>/` (checkpoints, TensorBoard
 | Algorithm hyperparameters | `conf/rlgames_sapg/config.yaml` |
 | Behaviors layered on pinned UniLab | `src/simtoolreal_unilab/_compat/` (removed as upstream grows them) |
 
-Dependency pins: `unilab` tracks upstream main @ `838cc03e` (git rev, carrying [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636); switches to PyPI once a release contains them), `unisim-core >= 1.7.5`, `mjbatch-uni >= 0.2.4`. The vendored RL-Games runtime under `third_party/` is SHA-gated; never edit it. Run `make check` / `make test` before pushing.
+Dependency pins: `unilab >= 1.3.3` (PyPI release carrying [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636)), `unisim-core >= 1.7.10`, `mjbatch-uni >= 0.2.4`, `torch == 2.14.0+cu130` (unilab 1.3.3's own validation target). The vendored RL-Games runtime under `third_party/` is SHA-gated; never edit it. Run `make check` / `make test` before pushing.
 
 ## Credits
 
