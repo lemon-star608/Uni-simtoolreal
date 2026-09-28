@@ -140,6 +140,10 @@ env:
   tool_pool_target_entity: object
   tool_pool_root: null
   tool_pool_enabled: true
+  # Tool-pool geom realization (D8): same_layout (M-J2 analytic pool, the
+  # default) or uniform_public_layout (full-mesh uniform pool).  CLI override:
+  # env.tool_pool_layout=uniform_public_layout.
+  tool_pool_layout: same_layout
 
 # Frozen owner physics truth (task data, not a scene declaration).  The MJCF
 # writers read these through tasks/simtoolreal/owner_physics.py; the owner-YAML

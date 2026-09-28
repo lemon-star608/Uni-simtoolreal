@@ -19,26 +19,31 @@ _ENTITY_MJCF_RESOLVER_NAME = "simtoolreal_entity_mjcf"
 _ENTITY_POSITION_RESOLVER_NAME = "simtoolreal_entity_position"
 
 
-def _resolve_entity_bootstrap(name: str) -> str:
+def _resolve_entity_bootstrap(name: str, layout: str = "same_layout") -> str:
     """Materialize the pool-independent entity sources (B form, M-J5).
 
     Robot/table/floor plus one canonical bootstrap object (catalog hammer):
     the owner YAML's entity_assets
     resolve these at Hydra time, before pool knobs settle; each env's object
-    identity comes from the entity variant binding, not this file.
+    identity comes from the entity variant binding, not this file.  The
+    object source takes the pool ``layout`` (``env.tool_pool_layout``): the
+    uniform contract validates the base source against the pool's canonical
+    variant, so the bootstrap object must share the pool's geom realization
+    (robot/table/floor are layout-independent).  Per-layout directories keep
+    both bootstrap sets valid simultaneously.
     """
     if name not in {"robot", "table", "floor", "object"}:
         raise ValueError(
             "unknown SimToolReal entity bootstrap source; expected robot/table/floor/object, "
             f"got {name!r}"
         )
-    from .entity_mjcf_writer import write_bootstrap_entity_set
+    from .entity_mjcf_writer import TOOL_POOL_LAYOUT_SAME, write_bootstrap_entity_set
 
     root = (
         Path(os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "")).expanduser()
         if os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "").strip()
         else Path(tempfile.gettempdir()) / "simtoolreal_generated_assets"
-    ) / "entity_bootstrap"
+    ) / ("entity_bootstrap" if layout == TOOL_POOL_LAYOUT_SAME else f"entity_bootstrap_{layout}")
     paths = {
         "robot": root / "robot.xml",
         "table": root / "table.xml",
@@ -46,7 +51,7 @@ def _resolve_entity_bootstrap(name: str) -> str:
         "object": root / "object_bootstrap.xml",
     }
     if not all(path.is_file() for path in paths.values()):
-        write_bootstrap_entity_set(root)
+        write_bootstrap_entity_set(root, layout=layout)
     return str(paths[name])
 
 

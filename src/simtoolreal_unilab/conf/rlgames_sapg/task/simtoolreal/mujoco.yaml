@@ -82,8 +82,11 @@ env:
         # Bootstrap source only: the cold-path anchor.  Each env's real tool
         # identity comes from the entity variant binding assembled by the env
         # config (bind_entity_variant; round-robin over the 1200-file pool).
+        # The bootstrap object shares the pool's geom realization (the uniform
+        # contract validates the base source against the canonical variant),
+        # so the resolver takes env.tool_pool_layout.
         source:
-          model_file: ${simtoolreal_entity_mjcf:object}
+          model_file: ${simtoolreal_entity_mjcf:object,${env.tool_pool_layout}}
         asset_format: mjcf
         kind: rigid
         root_mode: floating
