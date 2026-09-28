@@ -37,19 +37,20 @@ def _resolve_entity_bootstrap(name: str, layout: str = "same_layout") -> str:
             "unknown SimToolReal entity bootstrap source; expected robot/table/floor/object, "
             f"got {name!r}"
         )
-    from .entity_mjcf_writer import TOOL_POOL_LAYOUT_SAME, write_bootstrap_entity_set
+    from .entity_mjcf_writer import (
+        TOOL_POOL_LAYOUT_SAME,
+        bootstrap_entity_set_paths,
+        write_bootstrap_entity_set,
+    )
 
     root = (
         Path(os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "")).expanduser()
         if os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "").strip()
         else Path(tempfile.gettempdir()) / "simtoolreal_generated_assets"
     ) / ("entity_bootstrap" if layout == TOOL_POOL_LAYOUT_SAME else f"entity_bootstrap_{layout}")
-    paths = {
-        "robot": root / "robot.xml",
-        "table": root / "table.xml",
-        "floor": root / "floor.xml",
-        "object": root / "object_bootstrap.xml",
-    }
+    # The complete bootstrap set (entity sources + the uniform layout's
+    # file-backed meshes): a partial set is rewritten, never half-reused.
+    paths = bootstrap_entity_set_paths(root, layout=layout)
     if not all(path.is_file() for path in paths.values()):
         write_bootstrap_entity_set(root, layout=layout)
     return str(paths[name])

@@ -209,3 +209,30 @@ def test_tool_pool_layout_change_after_binding_fails_closed(tmp_path):
     from unisim.dr.types import FixedVariantLayout
 
     assert cfg.scene.entity_variant.plan.layout == FixedVariantLayout.SAME_LAYOUT
+
+
+def test_uniform_pool_cache_covers_mesh_files(tmp_path):
+    """The uniform pool's file-backed meshes join the cache contract: correct
+    content is silently reused; a modified or missing mesh forces a rebuild."""
+    cfg = _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout")
+    cfg.validate()
+    root = Path(cfg.tool_pool_files[0]).parent.parent
+    manifest = json.loads((root / "manifest.json").read_text())
+    assert manifest["tool_meshes"]  # manifest accounts for the mesh files
+    meshes_dir = root / "tools" / "meshes"
+    assert set(manifest["tool_meshes"]) == {p.name for p in meshes_dir.glob("*.obj")}
+    victim = meshes_dir / sorted(manifest["tool_meshes"])[0]
+    original = victim.read_bytes()
+
+    again = _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout")
+    again.validate()
+    assert again.tool_pool_files == cfg.tool_pool_files
+    assert victim.read_bytes() == original
+
+    victim.write_text("stale")
+    _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout").validate()
+    assert victim.read_bytes() == original
+
+    victim.unlink()
+    _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout").validate()
+    assert victim.read_bytes() == original

@@ -2,7 +2,8 @@
 
 Pins the layout-parameterized entity writer: the uniform pool carries the
 same ToolSpec truth as the same-layout pool (mass/com/diaginertia/scale are
-layout-independent), every tool compiles, erasers omit the head slots, and a
+layout-independent), every tool compiles, erasers omit the collision head
+slot, and a
 uniform subset composes under ``FixedVariantLayout.UNIFORM_PUBLIC_LAYOUT``
 through unisim's official validation path.
 """
@@ -38,7 +39,7 @@ def uniform_set(tmp_path_factory):
 
 
 def test_uniform_set_manifest_records_the_layout(uniform_set):
-    _, manifest = uniform_set
+    out, manifest = uniform_set
     assert manifest["layout"] == TOOL_POOL_LAYOUT_UNIFORM
     assert manifest["entities"]["object"]["variant_binding"] == {
         "target_entity": "object",
@@ -47,6 +48,17 @@ def test_uniform_set_manifest_records_the_layout(uniform_set):
     assert manifest["tool_count"] == 12 * NUM_PER_TYPE
     # Robot/table/floor are layout-independent; the same digest contract holds.
     assert set(manifest["digests"]) == {"robot.xml", "table.xml", "floor.xml"}
+    # File-backed mesh companions are recorded with digests (IsaacSim cannot
+    # consume inline meshes); erasers contribute no head mesh.
+    assert manifest["tool_meshes"]
+    meshes_dir = out / "tools" / "meshes"
+    assert set(manifest["tool_meshes"]) == {p.name for p in meshes_dir.glob("*.obj")}
+    handles = [n for n in manifest["tool_meshes"] if n.endswith("_handle.obj")]
+    heads = [n for n in manifest["tool_meshes"] if n.endswith("_head.obj")]
+    assert len(handles) == 12 * NUM_PER_TYPE
+    # One head OBJ per headed tool plus the single placeholder shared by all
+    # erasers (content-addressed naming dedups it).
+    assert len(heads) == 11 * NUM_PER_TYPE + 1
 
 
 def test_uniform_tools_compile_mesh_only_erasers_headless(uniform_set):
@@ -59,7 +71,10 @@ def test_uniform_tools_compile_mesh_only_erasers_headless(uniform_set):
         assert all(model.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH for g in range(model.ngeom))
         if spec.head_scale is None:
             erasers += 1
-            assert names == ("object_handle_col", "object_handle_vis")
+            # Only the collision head slot is omitted; the visual slot stays
+            # as the shared transparent placeholder (IsaacSim PhysX
+            # homogeneity, 2026-09-28).
+            assert names == ("object_handle_col", "object_handle_vis", "object_head_vis")
         else:
             assert names == (
                 "object_handle_col",
@@ -74,7 +89,8 @@ def test_uniform_tools_compile_mesh_only_erasers_headless(uniform_set):
 
 def test_uniform_bootstrap_object_matches_the_pool_layout(tmp_path):
     """The uniform contract validates the base source against the canonical
-    variant, so the bootstrap hammer must be uniform-meshed too."""
+    variant, so the bootstrap hammer must be uniform-meshed too — including
+    its file-backed mesh companions (IsaacSim importer)."""
     paths = write_bootstrap_entity_set(tmp_path / "boot", layout=TOOL_POOL_LAYOUT_UNIFORM)
     model = mujoco.MjModel.from_xml_path(str(paths["object"]))
     assert _geom_names(model) == (
@@ -84,6 +100,15 @@ def test_uniform_bootstrap_object_matches_the_pool_layout(tmp_path):
         "object_head_vis",
     )
     assert all(model.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH for g in range(model.ngeom))
+    mesh_paths = [p for key, p in paths.items() if key.startswith("mesh:")]
+    assert len(mesh_paths) == 2  # headed hammer: handle + head OBJs
+    assert all(p.is_file() for p in mesh_paths)
+    # The resolver's reuse check sees the complete set.
+    from simtoolreal_unilab.tasks.simtoolreal.entity_mjcf_writer import (
+        bootstrap_entity_set_paths,
+    )
+
+    assert bootstrap_entity_set_paths(tmp_path / "boot", layout=TOOL_POOL_LAYOUT_UNIFORM) == paths
     # Layout-independent entities are untouched.
     for name in ("robot", "table", "floor"):
         assert mujoco.MjModel.from_xml_path(str(paths[name])).ngeom > 0
@@ -135,7 +160,7 @@ def test_full_pool_parity_between_layouts(tmp_path):
         np.testing.assert_allclose(
             same_model.body_inertia[same_body], uniform_model.body_inertia[body], rtol=0, atol=0
         )
-        headless += int(uniform_model.ngeom == 2)
+        headless += int(uniform_model.ngeom == 3)  # erasers omit the collision head slot
     assert headless == 100
 
 
@@ -208,8 +233,9 @@ def test_uniform_subset_composes_under_uniform_public_layout(tmp_path):
         # entity namespace is only attached at compose time, so the tuples are
         # built directly — the same (name, type, body) triples
         # summarize_uniform_variant_layout produces for the composed scene).
-        # Eraser variants omit exactly the two head slots; headed variants
-        # carry the full four-slot set.
+        # Eraser variants omit exactly the collision head slot (the visual
+        # slot stays as the shared placeholder); headed variants carry the
+        # full four-slot set.
         head_slots = {"object_head_col", "object_head_vis"}
         all_slots = head_slots | {"object_handle_col", "object_handle_vis"}
 
@@ -236,7 +262,7 @@ def test_uniform_subset_composes_under_uniform_public_layout(tmp_path):
         for spec, summary in zip(catalog, summaries, strict=True):
             present = {name for name, _, _ in summary.geoms}
             if spec.head_scale is None:
-                assert present == all_slots - head_slots
+                assert present == all_slots - {"object_head_col"}
             else:
                 assert present == all_slots
         # Canonical = the max-geom, lowest-index variant: the first headed

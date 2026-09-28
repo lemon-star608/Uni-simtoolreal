@@ -28,9 +28,11 @@ from .config import ENTITY_ASSETS_MANIFEST_SCHEMA, TOOL_POOL_TARGET_ENTITY
 from .entity_mjcf_writer import (
     TOOL_POOL_LAYOUT_SAME,
     TOOL_POOL_LAYOUTS,
+    _layout_tool_meshes_fn,
     _layout_tool_text_fn,
 )
 from .tool_catalog import build_tool_catalog
+from .tool_uniform_mjcf_writer import MESHES_DIRNAME
 
 _DEFAULT_NUM_PER_TYPE = 100
 _DEFAULT_SEED = 42
@@ -71,6 +73,7 @@ def _materialize_mjcf_pool(
     from .entity_mjcf_writer import write_entity_set
 
     text_fn = _layout_tool_text_fn(layout)
+    meshes_fn = _layout_tool_meshes_fn(layout)
     catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
     root = _entity_pool_root(seed, num_per_type, configured_root, layout)
     manifest_path = root / "manifest.json"
@@ -81,6 +84,13 @@ def _materialize_mjcf_pool(
         "tool_count": len(catalog),
         "layout": layout,
     }
+    # File-backed mesh companions (uniform pool): the cache gate re-derives
+    # their bytes from the same ToolSpecs — a stale/missing/modified mesh
+    # fails the gate exactly like a stale tool file and forces a rebuild.
+    expected_meshes: dict[str, str] = {}
+    if meshes_fn is not None:
+        for mesh_spec in catalog:
+            expected_meshes.update(meshes_fn(mesh_spec))
     tool_names: tuple[str, ...] | None = None
     if manifest_path.is_file():
         try:
@@ -88,6 +98,7 @@ def _materialize_mjcf_pool(
             names = tuple(str(value) for value in manifest["tool_files"])
             entities = manifest["entities"]
             tool_digests = manifest["tool_digests"]
+            mesh_digests = manifest.get("tool_meshes", {})
             static_digests = manifest["digests"]
             static = ("robot.xml", "table.xml", "floor.xml")
             if (
@@ -103,6 +114,12 @@ def _materialize_mjcf_pool(
                 }
                 and isinstance(tool_digests, dict)
                 and set(tool_digests) == set(names)
+                and isinstance(mesh_digests, dict)
+                and set(mesh_digests) == set(expected_meshes)
+                and all(
+                    sha256(obj.encode()).hexdigest() == mesh_digests[name]
+                    for name, obj in expected_meshes.items()
+                )
                 and isinstance(static_digests, dict)
                 and set(static_digests) == set(static)
                 and all(
@@ -114,6 +131,11 @@ def _materialize_mjcf_pool(
                     and path.read_text() == text_fn(spec)
                     and sha256(path.read_bytes()).hexdigest() == tool_digests[name]
                     for name, spec in zip(names, catalog, strict=True)
+                )
+                and all(
+                    (mesh_path := root / "tools" / MESHES_DIRNAME / name).is_file()
+                    and mesh_path.read_text() == obj
+                    for name, obj in expected_meshes.items()
                 )
             ):
                 tool_names = names

@@ -199,6 +199,7 @@ def write_tool_catalog_mjcfs(
     out_dir: str | Path,
     object_base_size: float = OBJECT_BASE_SIZE,
     text_fn: Callable[[ToolSpec], str] = tool_mjcf_text,
+    meshes_fn: Callable[[ToolSpec], dict[str, str]] | None = None,
 ) -> tuple[list[str], list[tuple[float, float, float]]]:
     """Write one MJCF per catalog entry into ``out_dir``.
 
@@ -208,7 +209,10 @@ def write_tool_catalog_mjcfs(
     paired with handle scales normalized by ``object_base_size``.  ``text_fn``
     selects the geom realization: the default same-layout writer, or
     ``tool_uniform_mjcf_writer.tool_mjcf_text_uniform`` for the D8
-    uniform-public pool.
+    uniform-public pool.  ``meshes_fn`` is the uniform pool's file-backed
+    mesh companion (IsaacSim's MJCF importer cannot consume inline meshes):
+    when given, the mesh files land in ``out_dir/meshes`` with stale
+    ``.obj`` cleanup, deduplicated by filename.
     """
     out_dir = Path(out_dir)
     if out_dir.exists():
@@ -217,6 +221,16 @@ def write_tool_catalog_mjcfs(
                 p.unlink()
     else:
         os.makedirs(out_dir)
+    meshes_dir: Path | None = None
+    mesh_files: dict[str, str] = {}
+    if meshes_fn is not None:
+        meshes_dir = out_dir / "meshes"
+        if meshes_dir.exists():
+            for p in meshes_dir.iterdir():
+                if p.suffix == ".obj":
+                    p.unlink()
+        else:
+            os.makedirs(meshes_dir)
 
     paths: list[str] = []
     scales_norm: list[tuple[float, float, float]] = []
@@ -227,11 +241,17 @@ def write_tool_catalog_mjcfs(
         mjcf_path = out_dir / _tool_filename(spec, idx)
         mjcf_path.write_text(text_fn(spec))
         paths.append(str(mjcf_path))
+        if meshes_fn is not None:
+            mesh_files.update(meshes_fn(spec))
         # ToolSpec.object_scale is the handle scale already normalized by
         # OBJECT_BASE_SIZE; rescale if the caller overrides the base size.
         factor = OBJECT_BASE_SIZE / object_base_size
         sx, sy, sz = spec.object_scale
         scales_norm.append((sx * factor, sy * factor, sz * factor))
+
+    if meshes_dir is not None:
+        for name, text in mesh_files.items():
+            (meshes_dir / name).write_text(text)
 
     return paths, scales_norm
 

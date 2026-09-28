@@ -23,6 +23,9 @@ Output layout (see ``write_entity_set``):
                          realization follows the requested pool ``layout``
                          (``TOOL_POOL_LAYOUTS``: the M-J2 analytic same-layout
                          pool or the D8 full-mesh uniform pool)
+    tools/meshes/*.obj   the uniform pool's file-backed mesh companions
+                         (IsaacSim's MJCF importer cannot consume inline
+                         meshes); absent for analytic layouts
     manifest.json        entity declaration records (the exact
                          SceneEntitySpec/EntityVariantBinding field values
                          the owner YAML will mirror) + digests + the pool
@@ -74,6 +77,23 @@ def _layout_tool_text_fn(layout: str):
         from .tool_uniform_mjcf_writer import tool_mjcf_text_uniform
 
         return tool_mjcf_text_uniform
+    raise ValueError(
+        f"SimToolReal tool pool layout must be one of {TOOL_POOL_LAYOUTS}, got {layout!r}"
+    )
+
+
+def _layout_tool_meshes_fn(layout: str):
+    """Per-layout mesh-file companion (``None`` for analytic layouts).
+
+    The uniform pool's meshes are file-backed OBJs (IsaacSim's MJCF importer
+    cannot consume inline meshes); the same-layout pool has no mesh files.
+    """
+    if layout == TOOL_POOL_LAYOUT_SAME:
+        return None
+    if layout == TOOL_POOL_LAYOUT_UNIFORM:
+        from .tool_uniform_mjcf_writer import tool_mesh_objs
+
+        return tool_mesh_objs
     raise ValueError(
         f"SimToolReal tool pool layout must be one of {TOOL_POOL_LAYOUTS}, got {layout!r}"
     )
@@ -257,6 +277,7 @@ def write_entity_set(
     entity's ``variant_binding`` record so pool caches validate per layout.
     """
     text_fn = _layout_tool_text_fn(layout)
+    meshes_fn = _layout_tool_meshes_fn(layout)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -266,11 +287,20 @@ def write_entity_set(
 
     catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
     tools_dir = out_dir / "tools"
-    tool_paths, _ = write_tool_catalog_mjcfs(catalog, tools_dir, text_fn=text_fn)
+    tool_paths, _ = write_tool_catalog_mjcfs(
+        catalog, tools_dir, text_fn=text_fn, meshes_fn=meshes_fn
+    )
 
     def digest(path: Path) -> str:
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
+    # File-backed mesh companions (uniform pool; empty for analytic layouts):
+    # the manifest records their digests so the pool cache accounts for them.
+    mesh_names: list[str] = []
+    if meshes_fn is not None:
+        from .tool_uniform_mjcf_writer import MESHES_DIRNAME
+
+        mesh_names = sorted({name for spec in catalog for name in meshes_fn(spec)})
     manifest = {
         "schema": ENTITY_ASSETS_MANIFEST_SCHEMA,
         "seed": int(seed),
@@ -280,6 +310,7 @@ def write_entity_set(
         # side's mass/scale tables share).
         "tool_files": [Path(p).name for p in tool_paths],
         "tool_digests": {Path(p).name: digest(Path(p)) for p in tool_paths},
+        "tool_meshes": {name: digest(tools_dir / MESHES_DIRNAME / name) for name in mesh_names},
         "layout": layout,
         "entities": {
             "robot": {
@@ -330,6 +361,37 @@ def write_entity_set(
     return manifest
 
 
+def _bootstrap_spec():
+    return build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
+
+
+def bootstrap_entity_set_paths(
+    out_dir: str | Path, *, layout: str = TOOL_POOL_LAYOUT_SAME
+) -> dict[str, Path]:
+    """Every file the bootstrap entity set occupies under ``out_dir``.
+
+    The scene resolver's reuse check validates this complete set: the four
+    entity sources plus, for the uniform layout, the bootstrap object's
+    file-backed meshes (IsaacSim's MJCF importer cannot consume inline
+    meshes).  Mesh keys are namespaced (``mesh:<name>``) so entity lookups
+    stay exact.
+    """
+    meshes_fn = _layout_tool_meshes_fn(layout)
+    out_dir = Path(out_dir)
+    paths = {
+        "robot": out_dir / "robot.xml",
+        "table": out_dir / "table.xml",
+        "floor": out_dir / "floor.xml",
+        "object": out_dir / "object_bootstrap.xml",
+    }
+    if meshes_fn is not None:
+        from .tool_uniform_mjcf_writer import MESHES_DIRNAME
+
+        for name in meshes_fn(_bootstrap_spec()):
+            paths[f"mesh:{name}"] = out_dir / MESHES_DIRNAME / name
+    return paths
+
+
 def write_bootstrap_entity_set(
     out_dir: str | Path, *, layout: str = TOOL_POOL_LAYOUT_SAME
 ) -> dict[str, Path]:
@@ -344,18 +406,23 @@ def write_bootstrap_entity_set(
     hammer is a headed tool, so it carries the full slot set under both
     layouts, and the uniform contract validates the base source against the
     pool's canonical variant — the bootstrap must match the pool's layout.
+    Returns ``bootstrap_entity_set_paths`` (entity sources + mesh files).
     """
     text_fn = _layout_tool_text_fn(layout)
+    meshes_fn = _layout_tool_meshes_fn(layout)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    paths = {
-        "robot": _write_tree(_build_robot_entity(), out_dir / "robot.xml"),
-        "table": _write_tree(_build_table_entity(), out_dir / "table.xml"),
-        "floor": _write_tree(_build_floor_entity(), out_dir / "floor.xml"),
-    }
-    spec = build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
-    paths["object"] = out_dir / "object_bootstrap.xml"
+    paths = bootstrap_entity_set_paths(out_dir, layout=layout)
+    _write_tree(_build_robot_entity(), paths["robot"])
+    _write_tree(_build_table_entity(), paths["table"])
+    _write_tree(_build_floor_entity(), paths["floor"])
+    spec = _bootstrap_spec()
     paths["object"].write_text(text_fn(spec))
+    if meshes_fn is not None:
+        for key, path in paths.items():
+            if key.startswith("mesh:"):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(meshes_fn(spec)[key.removeprefix("mesh:")])
     return paths
 
 
@@ -363,6 +430,7 @@ __all__ = [
     "TOOL_POOL_LAYOUT_SAME",
     "TOOL_POOL_LAYOUT_UNIFORM",
     "TOOL_POOL_LAYOUTS",
+    "bootstrap_entity_set_paths",
     "write_bootstrap_entity_set",
     "write_entity_set",
 ]

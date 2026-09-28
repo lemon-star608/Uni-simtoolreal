@@ -120,8 +120,9 @@ def test_variant_assignment_binds_catalog_masses(env):
 
 def test_uniform_variants_realize_mesh_geoms(env):
     """The bound pool's variant files are full-mesh: every slot mesh-typed,
-    erasers headless.  (The pool files are the sources the VariantPack maps
-    per env; the compose-level contract gate pins eraser omission.)"""
+    erasers omitting only the collision head slot.  (The pool files are the
+    sources the VariantPack maps per env; the compose-level contract gate
+    pins eraser omission.)"""
     from pathlib import Path
 
     from simtoolreal_unilab.tasks.simtoolreal.tool_catalog import build_tool_catalog
@@ -130,4 +131,4 @@ def test_uniform_variants_realize_mesh_geoms(env):
     for spec, path in zip(catalog, env.cfg.tool_pool_files, strict=True):
         model = mujoco.MjModel.from_xml_path(str(Path(path)))
         assert all(model.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH for g in range(model.ngeom))
-        assert model.ngeom == (2 if spec.head_scale is None else 4)
+        assert model.ngeom == (3 if spec.head_scale is None else 4)
