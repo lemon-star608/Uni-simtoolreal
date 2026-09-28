@@ -25,28 +25,37 @@ import numpy as np
 from unilab.envs import ManagerBasedRlEnvCfg
 
 from .config import ENTITY_ASSETS_MANIFEST_SCHEMA, TOOL_POOL_TARGET_ENTITY
+from .entity_mjcf_writer import (
+    TOOL_POOL_LAYOUT_SAME,
+    TOOL_POOL_LAYOUTS,
+    _layout_tool_text_fn,
+)
 from .tool_catalog import build_tool_catalog
-from .tool_mjcf_writer import tool_mjcf_text
 
 _DEFAULT_NUM_PER_TYPE = 100
 _DEFAULT_SEED = 42
 _DEFAULT_TARGET_ENTITY = TOOL_POOL_TARGET_ENTITY
 _DEFAULT_ASSET_FORMAT = "mjcf"
 _VALID_ASSET_FORMATS = ("mjcf",)
+_DEFAULT_TOOL_POOL_LAYOUT = TOOL_POOL_LAYOUT_SAME
 
 
-def _entity_pool_root(seed: int, num_per_type: int, configured: str | None) -> Path:
+def _entity_pool_root(seed: int, num_per_type: int, configured: str | None, layout: str) -> Path:
     if configured is not None and str(configured).strip():
         root = Path(str(configured)).expanduser()
     else:
         env_root = os.environ.get("SIMTOOLREAL_TOOL_POOL_ROOT", "").strip()
         base = Path(env_root).expanduser() if env_root else Path(tempfile.gettempdir())
         root = base / "simtoolreal_entity_pool"
-    return root / f"seed_{seed}_n{num_per_type}"
+    # Per-layout pool directories (D8): the same_layout and uniform pools
+    # coexist — neither cache invalidates the other, and the manifest's
+    # layout gate keys validate each pool against its own layout.
+    suffix = "_uniform" if layout != TOOL_POOL_LAYOUT_SAME else ""
+    return root / f"seed_{seed}_n{num_per_type}{suffix}"
 
 
 def _materialize_mjcf_pool(
-    *, seed: int, num_per_type: int, configured_root: str | None
+    *, seed: int, num_per_type: int, configured_root: str | None, layout: str
 ) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[tuple[float, float, float], ...]]:
     """Shared MJCF pool branch (M-J5, B form): entity-split tool variants.
 
@@ -54,19 +63,23 @@ def _materialize_mjcf_pool(
     robot/table/floor + tools/); the variant catalog binds to the ``object``
     entity through ``bind_entity_variant`` instead of the whole-model
     ``fixed_model_variants`` channel.  Both shipped owner leaves select this
-    format.  Masses/scales stay task-side tables in catalog order (D5).
+    format.  Masses/scales stay task-side tables in catalog order (D5) and
+    are layout-independent — the D8 uniform layout only changes the geom
+    realization, so the manifest's layout gates re-derive byte identity
+    against the matching writer.
     """
     from .entity_mjcf_writer import write_entity_set
 
+    text_fn = _layout_tool_text_fn(layout)
     catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
-    root = _entity_pool_root(seed, num_per_type, configured_root)
+    root = _entity_pool_root(seed, num_per_type, configured_root, layout)
     manifest_path = root / "manifest.json"
     expected = {
         "schema": ENTITY_ASSETS_MANIFEST_SCHEMA,
         "seed": int(seed),
         "num_per_type": int(num_per_type),
         "tool_count": len(catalog),
-        "layout": "same_layout",
+        "layout": layout,
     }
     tool_names: tuple[str, ...] | None = None
     if manifest_path.is_file():
@@ -86,7 +99,7 @@ def _materialize_mjcf_pool(
                 and entities[TOOL_POOL_TARGET_ENTITY].get("variant_binding")
                 == {
                     "target_entity": TOOL_POOL_TARGET_ENTITY,
-                    "layout": "same_layout",
+                    "layout": layout,
                 }
                 and isinstance(tool_digests, dict)
                 and set(tool_digests) == set(names)
@@ -98,7 +111,7 @@ def _materialize_mjcf_pool(
                 )
                 and all(
                     (path := root / "tools" / name).is_file()
-                    and path.read_text() == tool_mjcf_text(spec)
+                    and path.read_text() == text_fn(spec)
                     and sha256(path.read_bytes()).hexdigest() == tool_digests[name]
                     for name, spec in zip(names, catalog, strict=True)
                 )
@@ -108,7 +121,7 @@ def _materialize_mjcf_pool(
             # A partial or stale pool is rebuilt below.
             tool_names = None
     if tool_names is None:
-        manifest = write_entity_set(root, seed=seed, num_per_type=num_per_type)
+        manifest = write_entity_set(root, seed=seed, num_per_type=num_per_type, layout=layout)
         tool_names = tuple(str(name) for name in manifest["tool_files"])
     paths = tuple((root / "tools" / name).resolve() for name in tool_names)
     masses = tuple(float(spec.mass) for spec in catalog)
@@ -154,6 +167,10 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     tool_pool_target_entity: str = _DEFAULT_TARGET_ENTITY
     tool_pool_root: str | None = None
     tool_pool_enabled: bool = True
+    # Tool-pool geom realization (D8): ``same_layout`` (M-J2 analytic pool) or
+    # ``uniform_public_layout`` (full-mesh uniform pool).  Fail-closed on any
+    # other value; mapped to ``FixedVariantLayout`` in ``bind_entity_variant``.
+    tool_pool_layout: str = _DEFAULT_TOOL_POOL_LAYOUT
     # ``mjcf`` is the shared B-form route selected by both shipped owner
     # leaves; it is the only supported asset format.
     asset_format: str = _DEFAULT_ASSET_FORMAT
@@ -169,7 +186,7 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     )
     tool_pool_files: tuple[str, ...] = field(default_factory=tuple, init=False, repr=False)
     tool_pool_masses: tuple[float, ...] = field(default_factory=tuple, init=False, repr=False)
-    _tool_pool_materialized_from: tuple[int, int, str, str | None] | None = field(
+    _tool_pool_materialized_from: tuple[int, int, str, str, str | None] | None = field(
         default=None, init=False, repr=False, compare=False
     )
 
@@ -200,6 +217,11 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
             raise ValueError("SimToolReal tool_pool_root must be a non-empty string or None")
         if not isinstance(self.tool_pool_enabled, bool):
             raise ValueError("SimToolReal tool_pool_enabled must be bool")
+        if self.tool_pool_layout not in TOOL_POOL_LAYOUTS:
+            raise ValueError(
+                f"SimToolReal tool_pool_layout must be one of {TOOL_POOL_LAYOUTS}, "
+                f"got {self.tool_pool_layout!r}"
+            )
         if self.asset_format not in _VALID_ASSET_FORMATS:
             raise ValueError(
                 f"SimToolReal asset_format must be one of {_VALID_ASSET_FORMATS}, "
@@ -245,6 +267,7 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
             int(self.tool_pool_seed),
             int(self.tool_pool_num_per_type),
             str(self.asset_format),
+            str(self.tool_pool_layout),
             self.tool_pool_root,
         )
         if self.tool_pool_files and self._tool_pool_materialized_from == knobs:
@@ -262,6 +285,7 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
             seed=int(self.tool_pool_seed),
             num_per_type=int(self.tool_pool_num_per_type),
             configured_root=self.tool_pool_root,
+            layout=str(self.tool_pool_layout),
         )
         if not paths:
             raise RuntimeError(f"SimToolReal tool pool materialized no {self.asset_format} files")
@@ -282,9 +306,11 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         the env factory call site knows — so the task's mujoco factory
         wrapper calls this right before ``make_manager_based_rl_env``.  The
         assignment is the same round-robin the whole-model guard would build
-        (``arange(num_envs) % len(catalog)``).  No-op for a disabled pool;
-        idempotent per num_envs; a conflicting rebind fails closed (the plan
-        is immutable once built).
+        (``arange(num_envs) % len(catalog)``).  The plan's layout comes from
+        ``tool_pool_layout`` (same pool cache, same catalog tables — only the
+        geom realization and the executor contract differ).  No-op for a
+        disabled pool; idempotent per num_envs; a conflicting rebind fails
+        closed (the plan is immutable once built).
         """
         if not self.tool_pool_enabled:
             return
@@ -310,11 +336,14 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         from unisim.dr.types import FixedVariantLayout, FixedVariantPlan, ModelSourceDescriptor
         from unisim.entities import EntityVariantBinding
 
+        # The knob's accepted values mirror the enum's, and validate() already
+        # failed closed on anything else; the enum constructor fails closed too.
+        layout = FixedVariantLayout(self.tool_pool_layout)
         assignment = np.arange(num_envs, dtype=np.int32) % np.int32(len(self.tool_pool_files))
         plan = FixedVariantPlan(
             assignment=assignment,
             variants=tuple(ModelSourceDescriptor(model_file=path) for path in self.tool_pool_files),
-            layout=FixedVariantLayout.SAME_LAYOUT,
+            layout=layout,
         )
         scene.entity_variant = EntityVariantBinding(
             target_entity=self.tool_pool_target_entity, plan=plan

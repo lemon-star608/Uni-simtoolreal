@@ -127,3 +127,85 @@ def test_mjcf_knob_change_after_binding_fails_closed(tmp_path):
     with pytest.raises(ValueError, match="tool pool disabled after the factory built"):
         cfg.validate()
     assert cfg.scene.entity_variant.plan.assignment.shape == (7,)
+
+
+def test_tool_pool_layout_defaults_to_same_layout(tmp_path):
+    from unisim.dr.types import FixedVariantLayout
+
+    cfg = _mjcf_cfg(tmp_path)
+    assert cfg.tool_pool_layout == "same_layout"
+    cfg.validate()
+    cfg.bind_entity_variant(num_envs=3)
+    assert cfg.scene.entity_variant.plan.layout == FixedVariantLayout.SAME_LAYOUT
+    manifest = json.loads(
+        (Path(cfg.tool_pool_files[0]).parent.parent / "manifest.json").read_text()
+    )
+    assert manifest["layout"] == "same_layout"
+    assert manifest["entities"]["object"]["variant_binding"]["layout"] == "same_layout"
+
+
+def test_tool_pool_layout_uniform_binds_uniform_layout(tmp_path):
+    from unisim.dr.types import FixedVariantLayout
+
+    cfg = _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout")
+    cfg.validate()
+    cfg.bind_entity_variant(num_envs=3)
+
+    binding = cfg.scene.entity_variant
+    assert binding.plan.layout == FixedVariantLayout.UNIFORM_PUBLIC_LAYOUT
+    assert tuple(variant.model_file for variant in binding.plan.variants) == cfg.tool_pool_files
+
+    root = Path(cfg.tool_pool_files[0]).parent.parent
+    manifest = json.loads((root / "manifest.json").read_text())
+    assert manifest["layout"] == "uniform_public_layout"
+    assert manifest["entities"]["object"]["variant_binding"] == {
+        "target_entity": "object",
+        "layout": "uniform_public_layout",
+    }
+    # Masses/scales are layout-independent ToolSpec tables (D5).
+    catalog = build_tool_catalog(num_per_type=1, seed=cfg.tool_pool_seed, shuffle=True)
+    assert cfg.tool_pool_masses == tuple(float(spec.mass) for spec in catalog)
+
+
+def test_uniform_and_same_layout_pools_coexist(tmp_path):
+    """Sibling pool directories: neither cache invalidates the other (D8)."""
+    same = _mjcf_cfg(tmp_path)
+    same.validate()
+    uniform = _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout")
+    uniform.validate()
+
+    same_root = Path(same.tool_pool_files[0]).parent.parent
+    uniform_root = Path(uniform.tool_pool_files[0]).parent.parent
+    assert same_root != uniform_root
+    assert same_root.name.endswith("_n1") and uniform_root.name.endswith("_n1_uniform")
+    assert same.tool_pool_masses == uniform.tool_pool_masses
+    assert same.tool_pool_scales == uniform.tool_pool_scales
+
+    # Re-validating either layout reuses its own cache rather than rebuilding
+    # or cross-accepting the sibling pool.
+    again_same = _mjcf_cfg(tmp_path)
+    again_same.validate()
+    assert again_same.tool_pool_files == same.tool_pool_files
+    again_uniform = _mjcf_cfg(tmp_path, tool_pool_layout="uniform_public_layout")
+    again_uniform.validate()
+    assert again_uniform.tool_pool_files == uniform.tool_pool_files
+
+
+def test_tool_pool_layout_invalid_value_fails_closed(tmp_path):
+    cfg = _mjcf_cfg(tmp_path, tool_pool_layout="uniform_primitive")
+    with pytest.raises(ValueError, match="tool_pool_layout must be one of"):
+        cfg.validate()
+
+
+def test_tool_pool_layout_change_after_binding_fails_closed(tmp_path):
+    cfg = _mjcf_cfg(tmp_path)
+    cfg.validate()
+    cfg.bind_entity_variant(num_envs=5)
+
+    cfg.tool_pool_layout = "uniform_public_layout"
+    with pytest.raises(ValueError, match="pool knobs changed after the factory built"):
+        cfg.validate()
+    cfg.bind_entity_variant(num_envs=5)
+    from unisim.dr.types import FixedVariantLayout
+
+    assert cfg.scene.entity_variant.plan.layout == FixedVariantLayout.SAME_LAYOUT

@@ -19,10 +19,14 @@ Output layout (see ``write_entity_set``):
                          declaration (EntityInitialState), so the body sits
                          at the origin here
     floor.xml            one-body rigid plane (M2 adds no implicit ground)
-    tools/tool_*.xml     the 1200 standalone tool MJCFs (no scene)
+    tools/tool_*.xml     the 1200 standalone tool MJCFs (no scene); the geom
+                         realization follows the requested pool ``layout``
+                         (``TOOL_POOL_LAYOUTS``: the M-J2 analytic same-layout
+                         pool or the D8 full-mesh uniform pool)
     manifest.json        entity declaration records (the exact
                          SceneEntitySpec/EntityVariantBinding field values
-                         the owner YAML will mirror) + digests
+                         the owner YAML will mirror) + digests + the pool
+                         ``layout`` the cache validates against
 """
 
 from __future__ import annotations
@@ -49,6 +53,30 @@ from .robot_mjcf_writer import (
 )
 from .tool_catalog import build_tool_catalog
 from .tool_mjcf_writer import write_tool_catalog_mjcfs
+
+# Tool-pool layouts (D8): ``same_layout`` is the M-J2 analytic pool;
+# ``uniform_public_layout`` is the full-mesh uniform pool
+# (``tool_uniform_mjcf_writer``).  The values mirror
+# ``unisim.dr.types.FixedVariantLayout``; this module stays the task side's
+# fail-closed gate before the enum mapping in ``env_cfg.bind_entity_variant``.
+TOOL_POOL_LAYOUT_SAME = "same_layout"
+TOOL_POOL_LAYOUT_UNIFORM = "uniform_public_layout"
+TOOL_POOL_LAYOUTS = (TOOL_POOL_LAYOUT_SAME, TOOL_POOL_LAYOUT_UNIFORM)
+
+
+def _layout_tool_text_fn(layout: str):
+    """Per-layout single-tool serializer; fail-closed on unknown layouts."""
+    if layout == TOOL_POOL_LAYOUT_SAME:
+        from .tool_mjcf_writer import tool_mjcf_text
+
+        return tool_mjcf_text
+    if layout == TOOL_POOL_LAYOUT_UNIFORM:
+        from .tool_uniform_mjcf_writer import tool_mjcf_text_uniform
+
+        return tool_mjcf_text_uniform
+    raise ValueError(
+        f"SimToolReal tool pool layout must be one of {TOOL_POOL_LAYOUTS}, got {layout!r}"
+    )
 
 
 def _write_tree(root: ET.Element, path: Path) -> Path:
@@ -219,8 +247,16 @@ def write_entity_set(
     *,
     seed: int = 42,
     num_per_type: int = 100,
+    layout: str = TOOL_POOL_LAYOUT_SAME,
 ) -> dict:
-    """Write the entity-split MJCF asset set and return its manifest dict."""
+    """Write the entity-split MJCF asset set and return its manifest dict.
+
+    ``layout`` selects the tool geom realization (``TOOL_POOL_LAYOUTS``):
+    the M-J2 analytic same-layout pool or the D8 full-mesh uniform pool.
+    The manifest records the layout both at top level and in the object
+    entity's ``variant_binding`` record so pool caches validate per layout.
+    """
+    text_fn = _layout_tool_text_fn(layout)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -230,7 +266,7 @@ def write_entity_set(
 
     catalog = build_tool_catalog(num_per_type=num_per_type, seed=seed, shuffle=True)
     tools_dir = out_dir / "tools"
-    tool_paths, _ = write_tool_catalog_mjcfs(catalog, tools_dir)
+    tool_paths, _ = write_tool_catalog_mjcfs(catalog, tools_dir, text_fn=text_fn)
 
     def digest(path: Path) -> str:
         return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -244,7 +280,7 @@ def write_entity_set(
         # side's mass/scale tables share).
         "tool_files": [Path(p).name for p in tool_paths],
         "tool_digests": {Path(p).name: digest(Path(p)) for p in tool_paths},
-        "layout": "same_layout",
+        "layout": layout,
         "entities": {
             "robot": {
                 "source": robot_path.name,
@@ -280,7 +316,7 @@ def write_entity_set(
                 "root_mode": "floating",
                 "variant_binding": {
                     "target_entity": TOOL_POOL_TARGET_ENTITY,
-                    "layout": "same_layout",
+                    "layout": layout,
                 },
             },
         },
@@ -294,17 +330,22 @@ def write_entity_set(
     return manifest
 
 
-def write_bootstrap_entity_set(out_dir: str | Path) -> dict[str, Path]:
+def write_bootstrap_entity_set(
+    out_dir: str | Path, *, layout: str = TOOL_POOL_LAYOUT_SAME
+) -> dict[str, Path]:
     """Write the pool-independent entity sources for the scene declaration.
 
     The owner YAML's ``entity_assets`` needs concrete source files at Hydra
     resolution time — before the env config's pool knobs (seed/num_per_type)
     settle.  Robot/table/floor are pool-independent; the object entity's
     source is one canonical catalog entry (the deterministic bootstrap
-    hammer) whose per-env identity the variant binding replaces at build time.
+    hammer) whose per-env identity the variant binding replaces at build
+    time.  ``layout`` selects the bootstrap object's geom realization: the
+    hammer is a headed tool, so it carries the full slot set under both
+    layouts, and the uniform contract validates the base source against the
+    pool's canonical variant — the bootstrap must match the pool's layout.
     """
-    from .tool_mjcf_writer import write_tool_mjcf
-
+    text_fn = _layout_tool_text_fn(layout)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = {
@@ -313,8 +354,15 @@ def write_bootstrap_entity_set(out_dir: str | Path) -> dict[str, Path]:
         "floor": _write_tree(_build_floor_entity(), out_dir / "floor.xml"),
     }
     spec = build_tool_catalog(types=("hammer",), num_per_type=1, seed=42, shuffle=False)[0]
-    paths["object"] = write_tool_mjcf(spec, out_dir / "object_bootstrap.xml")
+    paths["object"] = out_dir / "object_bootstrap.xml"
+    paths["object"].write_text(text_fn(spec))
     return paths
 
 
-__all__ = ["write_bootstrap_entity_set", "write_entity_set"]
+__all__ = [
+    "TOOL_POOL_LAYOUT_SAME",
+    "TOOL_POOL_LAYOUT_UNIFORM",
+    "TOOL_POOL_LAYOUTS",
+    "write_bootstrap_entity_set",
+    "write_entity_set",
+]
