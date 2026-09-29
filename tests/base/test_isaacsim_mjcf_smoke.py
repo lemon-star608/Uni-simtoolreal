@@ -123,6 +123,10 @@ def test_variant_assignment_binds_distinct_masses(env):
     # by the same assignment.
     assert term._object_masses is not None
     np.testing.assert_allclose(term._object_masses, catalog_masses[assignment], rtol=1e-6)
+    # The production fast-iteration profile disables wrench DR.  The wrench
+    # smoke below re-enables its scales locally to exercise the write path.
+    assert term._force_scale == 0.0
+    assert term._torque_scale == 0.0
 
 
 def test_wrench_event_measurably_perturbs_object(env):
@@ -143,12 +147,18 @@ def test_wrench_event_measurably_perturbs_object(env):
 
     term._force_prob[:] = 1.0
     term._torque_prob[:] = 1.0
-    for _ in range(10):
-        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
-    active = np.asarray(env.scene["object"].data.root_link_vel_w)[:, :3]
-    active = np.linalg.norm(active, axis=1).mean()
+    term._force_scale = 20.0
+    term._torque_scale = 2.0
+    try:
+        for _ in range(10):
+            env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+        active = np.asarray(env.scene["object"].data.root_link_vel_w)[:, :3]
+        active = np.linalg.norm(active, axis=1).mean()
 
-    assert active > 10 * max(control, 1e-3), (
-        f"wrench event had no measurable effect: control={control}, active={active}"
-    )
-    env.reset()
+        assert active > 10 * max(control, 1e-3), (
+            f"wrench event had no measurable effect: control={control}, active={active}"
+        )
+    finally:
+        term._force_scale = 0.0
+        term._torque_scale = 0.0
+        env.reset()
