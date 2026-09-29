@@ -31,10 +31,14 @@ env:
     # — the owner-YAML parity tests pin the two leaves in sync.  The only
     # deliberate differences: self_collision is declared here (the IsaacSim
     # worker honors the toggle; the mujoco compose path is fail-closed on
-    # it), and gravity_disabled is declared here because the MJCF gravcomp
+    # it), gravity_disabled is declared here because the MJCF gravcomp
     # attribute does not survive IsaacLab's MJCF conversion while the IsaacSim
     # worker does honor the explicit declaration (#270); the MuJoCo line gets
-    # the same semantics natively from the gravcomp baked into robot.xml.
+    # the same semantics natively from the gravcomp baked into robot.xml, and
+    # joint_velocity_limits is declared here because MJCF has no
+    # joint-velocity-limit concept (unilabsim/unisim#323) while the target
+    # line's URDF importer authors physxJoint:maxJointVelocity from the same
+    # vendored URDF table.
     default_keyframe_name: home
     entity_assets:
       - name: robot
@@ -55,6 +59,12 @@ env:
         # robot.xml carries the 35 authored excludes; the IsaacSim worker
         # re-authors them as USD filtered pairs (#262).
         self_collision: true
+        # The URDF <limit velocity> table (the target line's
+        # physxJoint:maxJointVelocity) declared per joint (unisim#323);
+        # parsed from the vendored URDF by the resolver — no numbers restated
+        # here.  IsaacSim leaf only: the mujoco compose path is fail-closed
+        # on the field, and PhysX brakes joints at these caps.
+        joint_velocity_limits: ${simtoolreal_joint_velocity_limits:robot}
       - name: table
         source:
           model_file: ${simtoolreal_entity_mjcf:table}

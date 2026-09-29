@@ -106,6 +106,21 @@ def test_step_100_no_nan(env):
     assert np.isfinite(state.reward).all()
 
 
+def test_joint_velocity_limits_authored_and_verified(env):
+    """The URDF <limit velocity> caps reach the worker (unilabsim/unisim#323).
+
+    The unisim host fails INIT closed unless the worker's PhysX max-velocity
+    readback matches the declared table on every environment, so a built env
+    is itself the engine-side evidence; here we pin that the declaration
+    resolved to the URDF truth on the scene spec.
+    """
+    from simtoolreal_unilab.tasks.simtoolreal.owner_physics import load_joint_velocity_limits
+
+    spec = next(s for s in env.cfg.scene.entity_assets if s.name == "robot")
+    assert spec.joint_velocity_limits == load_joint_velocity_limits()
+    assert len(spec.joint_velocity_limits) == 29
+
+
 def test_variant_assignment_binds_distinct_masses(env):
     """Round-robin assignment over 12 variants; wrench mass table follows it."""
     import simtoolreal_unilab.tasks.simtoolreal.env_cfg as env_cfg_module

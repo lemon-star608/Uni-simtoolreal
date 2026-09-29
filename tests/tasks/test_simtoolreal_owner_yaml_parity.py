@@ -236,17 +236,27 @@ def test_scene_leaves_share_the_bform_declaration(isaacsim):
     toggle), gravity_disabled is declared on the IsaacSim leaf only (the
     MJCF gravcomp attribute does not survive IsaacLab's MJCF conversion,
     while the MuJoCo line gets the same semantics natively from robot.xml),
-    and each leaf's YAML anchor name differs.
+    joint_velocity_limits is declared on the IsaacSim leaf only (MJCF has no
+    joint-velocity-limit concept; unilabsim/unisim#323), and each leaf's YAML
+    anchor name differs.
     """
     mujoco = yaml.safe_load((CONF_DIR / "mujoco.yaml").read_text())
+    dropped = ("self_collision", "gravity_disabled", "joint_velocity_limits")
     isa_assets = {
-        spec["name"]: {
-            k: v for k, v in spec.items() if k not in ("self_collision", "gravity_disabled")
-        }
+        spec["name"]: {k: v for k, v in spec.items() if k not in dropped}
         for spec in isaacsim["env"]["scene"]["entity_assets"]
     }
     mu_assets = {spec["name"]: spec for spec in mujoco["env"]["scene"]["entity_assets"]}
     assert isa_assets == mu_assets
+    # The IsaacSim robot declares the URDF velocity-limit table through the
+    # resolver; the mujoco leaf must not declare the field at all.
+    isa_robot = next(
+        spec for spec in isaacsim["env"]["scene"]["entity_assets"] if spec["name"] == "robot"
+    )
+    assert isa_robot["joint_velocity_limits"] == "${simtoolreal_joint_velocity_limits:robot}"
+    assert all(
+        "joint_velocity_limits" not in spec for spec in mujoco["env"]["scene"]["entity_assets"]
+    )
     # entities selectors match too, except site_names: the IsaacSim backend
     # does not implement get_site_ids and no term reads the sites, so only
     # the mujoco leaf declares them.
@@ -294,6 +304,38 @@ def test_owner_physics_friction_tables(base, isaacsim):
     assert physics["table"]["contact_friction"] == [0.5, 0.5, 0.0]
     assert physics["object"]["contact_friction"] == [0.5, 0.5, 0.0]
     assert "owner_physics" not in isaacsim
+
+
+def test_joint_velocity_limits_match_the_vendored_urdf():
+    """The IsaacSim leaf's joint_velocity_limits table == URDF <limit velocity>.
+
+    The URDF is the truth source (the target line's URDF importer authors
+    physxJoint:maxJointVelocity from it); the owner table must cover exactly
+    the 29 canonical joints with the per-joint URDF values — the URDF
+    importer's own evidence: arm joints 10 rad/s, hand joints
+    11.62-35.07 rad/s (probes/joint-velocity-and-articulation-probes).
+    """
+    import xml.etree.ElementTree as ET
+
+    from simtoolreal_unilab.tasks.simtoolreal.config import JOINT_NAMES_CANONICAL
+    from simtoolreal_unilab.tasks.simtoolreal.owner_physics import (
+        ROBOT_URDF,
+        load_joint_velocity_limits,
+    )
+
+    expected = {}
+    for joint in ET.parse(ROBOT_URDF).getroot().iter("joint"):
+        if joint.get("type") in ("revolute", "prismatic"):
+            expected[joint.get("name")] = float(joint.find("limit").get("velocity"))
+    assert len(expected) == 29
+    assert tuple(expected) == JOINT_NAMES_CANONICAL  # URDF document order == canonical
+    assert load_joint_velocity_limits() == expected
+    # The resolver feeds the same table to the IsaacSim leaf's declaration.
+    from simtoolreal_unilab.tasks.simtoolreal.scene import _resolve_joint_velocity_limits
+
+    assert _resolve_joint_velocity_limits("robot") == expected
+    with pytest.raises(ValueError, match="unknown"):
+        _resolve_joint_velocity_limits("object")
 
 
 # --- PhysX solver knobs (simtoolreal_env_cfg.py:515-535) ----------------------

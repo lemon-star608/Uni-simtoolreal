@@ -1529,7 +1529,7 @@ requires-dist = [
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.14.0+cu130", index = "https://download.pytorch.org/whl/cu130" },
     { name = "unilab", specifier = ">=1.3.3" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
-    { name = "unisim-core", extras = ["mujoco"], specifier = ">=1.7.10" },
+    { name = "unisim-core", extras = ["mujoco"], git = "https://github.com/unilabsim/unisim?branch=feat%2Fdof-velocity-limit" },
 ]
 
 [package.metadata.requires-dev]
@@ -1802,12 +1802,11 @@ requires-dist = [
 [[package]]
 name = "unisim-core"
 version = "1.7.10"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/unilabsim/unisim?branch=feat%2Fdof-velocity-limit#6be4df9a5c0fa9a613e4902a6cf8f180d7cf3124" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/0d/099e8886ba5b6404e6ae26424e325b38e66031e257deec66ae974240a38b/unisim_core-1.7.10.tar.gz", hash = "sha256:249490d85839d2a64e7b48ce3a5d5330fd71233f6e77d5a90926613a1dd25299", size = 534116, upload-time = "2026-09-24T11:35:36.978Z" }
 
 [package.optional-dependencies]
 mujoco = [

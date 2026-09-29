@@ -49,6 +49,10 @@ explicit = true
 [tool.uv.sources]
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
+# TEMPORARY (feature branch only, never main): consume the unisim PR branch
+# carrying SceneEntitySpec.joint_velocity_limits (unilabsim/unisim#323, PR
+# #324).  Flip back to the PyPI floor once a unisim-core release ships it.
+unisim-core = { git = "https://github.com/unilabsim/unisim", branch = "feat/dof-velocity-limit" }
 
 [tool.uv]
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]

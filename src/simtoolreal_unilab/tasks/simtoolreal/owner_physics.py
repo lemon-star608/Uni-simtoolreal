@@ -9,15 +9,26 @@ data kept out of either backend leaf and out of the B-form scene declaration
 restates a number: every value is read from the owner YAML, and
 ``tests/tasks/test_simtoolreal_owner_yaml_parity.py`` pins that YAML against
 the original repository's frozen tables.
+
+The one exception is the joint velocity limits: MJCF has no
+joint-velocity-limit concept, so they cannot ride the asset and are declared
+on the IsaacSim leaf's robot entity (``joint_velocity_limits``,
+unilabsim/unisim#323).  Their truth source is the vendored URDF's
+``<limit velocity>`` table — the same table the target line's URDF importer
+authors as ``physxJoint:maxJointVelocity`` — parsed here so no number is
+restated in either leaf.
 """
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 from omegaconf import OmegaConf
+
+from ...assets import ASSET_ROOT
 
 BASE_YAML = (
     Path(__file__).resolve().parents[2]
@@ -26,6 +37,13 @@ BASE_YAML = (
     / "task"
     / "simtoolreal"
     / "base.yaml"
+)
+
+# Vendored robot description; the joint velocity-limit truth source (the
+# target line's URDF importer authors physxJoint:maxJointVelocity from it).
+# Kept in sync with robot_mjcf_writer.ROBOT_URDF.
+ROBOT_URDF = (
+    ASSET_ROOT / "urdf" / "kuka_sharpa_description" / "iiwa14_left_sharpa_adjusted_restricted.urdf"
 )
 
 # Compatibility name for callers that only need the config containing
@@ -99,12 +117,40 @@ def load_owner_physics(path: Path = BASE_YAML) -> OwnerPhysics:
     )
 
 
+@lru_cache(maxsize=1)
+def load_joint_velocity_limits(path: Path = ROBOT_URDF) -> dict[str, float]:
+    """Parse every articulated joint's velocity limit (rad/s) from the URDF.
+
+    The IsaacSim leaf declares the returned table as the robot entity's
+    ``joint_velocity_limits`` (unilabsim/unisim#323); PhysX brakes joints at
+    these caps, matching the target line's URDF-importer behavior.  Fail
+    closed if any revolute/prismatic joint lacks a positive finite limit.
+    """
+    root = ET.parse(path).getroot()
+    limits: dict[str, float] = {}
+    for joint in root.iter("joint"):
+        if joint.get("type") not in ("revolute", "prismatic"):
+            continue
+        name = joint.get("name")
+        limit = joint.find("limit")
+        velocity = None if limit is None else limit.get("velocity")
+        value = float(velocity) if velocity is not None else float("nan")
+        if not name or not value > 0.0:
+            raise ValueError(f"robot URDF joint {name!r} has no positive velocity limit")
+        limits[name] = value
+    if not limits:
+        raise ValueError(f"robot URDF {path} declares no articulated joints")
+    return limits
+
+
 __all__ = [
     "ActuatorGains",
     "BASE_YAML",
     "OWNER_YAML",
     "OwnerPhysics",
+    "ROBOT_URDF",
     "ROLLING_FRICTION_DEFAULT",
     "TORSIONAL_FRICTION_DEFAULT",
+    "load_joint_velocity_limits",
     "load_owner_physics",
 ]

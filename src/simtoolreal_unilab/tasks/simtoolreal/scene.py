@@ -2,9 +2,11 @@
 
 The manager-based factory keeps scene roles in the owner YAML; this module
 owns the OmegaConf resolvers the owner YAML uses at Hydra time: the entity
-MJCF bootstrap sources (``simtoolreal_entity_mjcf``) and the frozen entity
-spawn positions (``simtoolreal_entity_position``).  The full 1200-file tool
-pool remains an init-randomization adapter concern.
+MJCF bootstrap sources (``simtoolreal_entity_mjcf``), the frozen entity
+spawn positions (``simtoolreal_entity_position``) and the robot joint
+velocity-limit table (``simtoolreal_joint_velocity_limits``, parsed from the
+vendored URDF).  The full 1200-file tool pool remains an init-randomization
+adapter concern.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from omegaconf import OmegaConf
 
 _ENTITY_MJCF_RESOLVER_NAME = "simtoolreal_entity_mjcf"
 _ENTITY_POSITION_RESOLVER_NAME = "simtoolreal_entity_position"
+_JOINT_VELOCITY_LIMITS_RESOLVER_NAME = "simtoolreal_joint_velocity_limits"
 
 
 def _resolve_entity_bootstrap(name: str, layout: str = "same_layout") -> str:
@@ -94,6 +97,26 @@ def register_resolvers() -> None:
         OmegaConf.register_new_resolver(_ENTITY_MJCF_RESOLVER_NAME, _resolve_entity_bootstrap)
     if not OmegaConf.has_resolver(_ENTITY_POSITION_RESOLVER_NAME):
         OmegaConf.register_new_resolver(_ENTITY_POSITION_RESOLVER_NAME, _resolve_entity_position)
+    if not OmegaConf.has_resolver(_JOINT_VELOCITY_LIMITS_RESOLVER_NAME):
+        OmegaConf.register_new_resolver(
+            _JOINT_VELOCITY_LIMITS_RESOLVER_NAME, _resolve_joint_velocity_limits
+        )
+
+
+def _resolve_joint_velocity_limits(name: str) -> dict[str, float]:
+    """Per-joint velocity limits (rad/s) parsed from the vendored robot URDF.
+
+    MJCF cannot carry joint velocity limits, so the IsaacSim leaf declares
+    them on the robot entity (``joint_velocity_limits``, unilabsim/unisim#323)
+    through this resolver; no numbers are restated in the YAML.
+    """
+    if name != "robot":
+        raise ValueError(
+            f"unknown SimToolReal joint velocity-limit table {name!r}; expected 'robot'"
+        )
+    from .owner_physics import load_joint_velocity_limits
+
+    return dict(load_joint_velocity_limits())
 
 
 __all__ = ["register_resolvers"]
