@@ -10,6 +10,8 @@
 # Sources (field-level mirror, see DESIGN.md section 1 and config.py):
 #   simtoolreal/isaacsimenvs/tasks/simtoolreal/simtoolreal_env_cfg.py
 #   simtoolreal/isaacsimenvs/cfg/task/SimToolReal.yaml
+# Actor-side sim2real DR and action smoothing are deliberately disabled below
+# for the fast-iteration profile recommended in upstream issue #26.
 # Step-1 assemblies are in place: the terms below are the real
 # observation/reward/termination/event ports, not zero-frame placeholders.
 env:
@@ -25,13 +27,13 @@ env:
         simtoolreal:
           func: simtoolreal_unilab.tasks.simtoolreal.observations.SimToolRealPolicyObservation
           params:
-            use_object_state_delay_noise: true
-            object_state_delay_max: 10
-            object_state_xyz_noise_std: 0.01
-            object_state_rotation_noise_degrees: 5.0
-            joint_velocity_obs_noise_std: 0.1
-            use_obs_delay: true
-            obs_delay_max: 3
+            use_object_state_delay_noise: false
+            object_state_delay_max: 0
+            object_state_xyz_noise_std: 0.0
+            object_state_rotation_noise_degrees: 0.0
+            joint_velocity_obs_noise_std: 0.0
+            use_obs_delay: false
+            obs_delay_max: 0
             clamp_abs_observations: 10.0
     critic:
       terms:
@@ -44,11 +46,11 @@ env:
     joint_pos:
       _target_: simtoolreal_unilab.tasks.simtoolreal.actions.SimToolRealActionCfg
       entity_name: robot
-      arm_moving_average: 0.1
-      hand_moving_average: 0.1
+      arm_moving_average: 1.0
+      hand_moving_average: 1.0
       dof_speed_scale: 1.5
-      use_action_delay: true
-      action_delay_max: 3
+      use_action_delay: false
+      action_delay_max: 0
   commands:
     goal:
       _target_: simtoolreal_unilab.tasks.simtoolreal.commands.SimToolRealCommandCfg
@@ -92,9 +94,9 @@ env:
       # must not set the trigger cadence (the original applies it every policy step).
       interval_range_s: [0.016666666666666666, 0.016666666666666666]
       params:
-        force_scale: 20.0
+        force_scale: 0.0
         force_prob_range: [0.001, 0.1]
-        torque_scale: 2.0
+        torque_scale: 0.0
         torque_prob_range: [0.001, 0.1]
         only_when_lifted: true
   terminations:
