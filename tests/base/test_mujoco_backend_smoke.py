@@ -147,6 +147,10 @@ def test_wrench_event_measurably_perturbs_object(env):
     # The wrench masses come from the task-side catalog table (D5).
     assert term._object_masses is not None
     assert term._object_masses.shape == (NUM_ENVS,)
+    # The production fast-iteration profile disables wrench DR.  The wrench
+    # smoke below re-enables its scales locally to exercise the write path.
+    assert term._force_scale == 0.0
+    assert term._torque_scale == 0.0
 
     hub = env.command_manager.get_term("goal")
     hub.lifted[:] = True
@@ -158,11 +162,17 @@ def test_wrench_event_measurably_perturbs_object(env):
 
     term._force_prob[:] = 1.0
     term._torque_prob[:] = 1.0
-    for _ in range(10):
-        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
-    active = np.linalg.norm(backend._qvel_view[:, 29:32], axis=1).mean()
+    term._force_scale = 20.0
+    term._torque_scale = 2.0
+    try:
+        for _ in range(10):
+            env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+        active = np.linalg.norm(backend._qvel_view[:, 29:32], axis=1).mean()
 
-    assert active > 100 * max(control, 1e-9), (
-        f"wrench event had no measurable effect: control={control}, active={active}"
-    )
-    env.reset()
+        assert active > 100 * max(control, 1e-9), (
+            f"wrench event had no measurable effect: control={control}, active={active}"
+        )
+    finally:
+        term._force_scale = 0.0
+        term._torque_scale = 0.0
+        env.reset()

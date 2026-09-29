@@ -221,7 +221,7 @@ def test_wrench_event_samples_and_lift_gates_channels():
     term.reset(ids)
     term(env, ids)
     assert len(obj.calls) == 1
-    forces, torques, body_ids, called_ids = obj.calls[0]
+    forces, torques, body_ids, called_ids = obj.calls[-1]
     assert forces.shape == (NUM_ENVS, 1, 3)
     assert torques.shape == (NUM_ENVS, 1, 3)
     np.testing.assert_array_equal(body_ids, [17])
@@ -230,6 +230,61 @@ def test_wrench_event_samples_and_lift_gates_channels():
     np.testing.assert_array_equal(torques[~env.hub.lifted], 0.0)
     assert np.any(forces[env.hub.lifted] != 0.0)
     assert np.any(torques[env.hub.lifted] != 0.0)
+
+
+def test_wrench_gate_reads_reward_stage_latch_for_upcoming_step():
+    """A1.3 reaudit (action_utils.py:109-113): the original gates the
+    ``_pre_physics_step`` wrench write on the latch the previous reward
+    stage wrote, and that write covers the upcoming physics window.  Our
+    interval event runs right after the reward stage latched ``hub.lifted``
+    and its write is staged for the upcoming step — the same window — so the
+    direct read is the parity behavior.  A term-local delayed latch would
+    apply the wrench one step later than the original, not match it."""
+    env = _scene_mapping(_env(with_roots=False))
+    obj = _WrenchObject()
+    env.scene["object"] = obj
+    term = SimToolRealWrenchEvent(
+        ManagerTermBaseCfg(
+            func=SimToolRealWrenchEvent,
+            params={
+                "force_scale": 20.0,
+                "torque_scale": 2.0,
+                "force_prob_range": (1.0, 1.0),
+                "torque_prob_range": (1.0, 1.0),
+                "object_mass": 2.0,
+                "only_when_lifted": True,
+            },
+        ),
+        env,
+    )
+    ids = np.arange(NUM_ENVS, dtype=np.intp)
+    term.reset(ids)
+    # Not lifted at this step's reward stage: nothing is staged for the
+    # upcoming step's physics.
+    env.hub.lifted[:] = False
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    np.testing.assert_array_equal(forces, 0.0)
+    np.testing.assert_array_equal(torques, 0.0)
+    # Lift achieved during this step's physics: the reward stage (running
+    # before the interval event) latched hub.lifted=True, exactly the latch
+    # the original's _pre_physics_step reads for the upcoming window.  The
+    # wrench stages now and lands in that window — one step after the lift,
+    # no more.
+    env.hub.lifted[:] = True
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    assert np.any(forces != 0.0)
+    assert np.any(torques != 0.0)
+    # Episode reset closes the gate again: the command hub reset clears the
+    # latch (commands.py, mirroring reset_utils.py:396) and the event reset
+    # zeroes its staged buffers.
+    term.reset(ids)
+    env.hub.lifted[:] = False
+    term(env, ids)
+    forces, torques, _, _ = obj.calls[-1]
+    np.testing.assert_array_equal(forces, 0.0)
+    np.testing.assert_array_equal(torques, 0.0)
 
 
 def test_wrench_probabilities_require_positive_log_uniform_bounds():

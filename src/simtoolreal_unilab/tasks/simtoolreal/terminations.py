@@ -39,8 +39,11 @@ Registered deviations (DESIGN.md section 3.5 convention):
 - The ``_termination_reasons`` dict (termination_utils.py:66-71) is not
   ported: ``TerminationManager`` keeps per-term done buffers and logs
   ``Episode_Termination/<name>``.
-- The tolerance curriculum (termination_utils.py:10-36) lives in the command
-  hub (step 1.4b-1), not in these terms.
+- The tolerance curriculum state (termination_utils.py:10-36) lives in the
+  command hub (step 1.4b-1); :class:`SuccessTracker` triggers the per-step
+  tick ahead of its success comparison, so a tightening is effective on the
+  same frame — the original runs ``update_tolerance_curriculum`` before the
+  success judgment inside ``_get_dones`` (audit fix A1.4).
 - ``fall_height``/``hand_far_distance`` are hardcoded literals in the
   original (:55, :62); here they are cfg-backed params whose defaults are
   those literals (config.py:347-349).
@@ -73,7 +76,9 @@ _MAX_CONSECUTIVE_SUCCESSES = 50  # simtoolreal_env_cfg.py:438
 class SuccessTracker(ManagerTermBase):
     """Per-step success criterion snapshot (obs_utils.py:190-205); never done.
 
-    Writes ``hub.near_goal``/``hub.near_goal_steps``/``hub.pending_success``
+    Triggers the hub's tolerance-curriculum tick ahead of the success
+    comparison (termination_utils.py:10-36 ordering; audit fix A1.4), then
+    writes ``hub.near_goal``/``hub.near_goal_steps``/``hub.pending_success``
     for the reward and command stages later in the same control step
     (DESIGN.md section 6.5).
     """
@@ -99,6 +104,10 @@ class SuccessTracker(ManagerTermBase):
     def __call__(self, env, **params) -> np.ndarray:
         del params
         hub = goal_command(env)
+        # termination_utils.py:10-36 runs the tolerance curriculum before the
+        # success judgment (same-frame effective); the hub owns the state,
+        # this term owns the per-step trigger (audit fix A1.4).
+        hub.tick_tolerance_curriculum()
         kp_offsets = np.broadcast_to(
             self._kp_offsets[None, :, :], (env.num_envs, *self._kp_offsets.shape)
         )

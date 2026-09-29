@@ -58,7 +58,7 @@ src/unilab/conf/rlgames_sapg/task/simtoolreal/{base,isaacsim}.yaml
 | `reset_utils.py:200-220` | robot DOF reset、位置/速度噪声、previous target seed | reset event | `events.py` | 通过 Entity 写状态；不在 term 中扫描资产 |
 | `reset_utils.py:223-301` | table/object pose、table z/XY/yaw、object velocity | reset event | `events.py` | object root pose/velocity 写入需要公开 facade |
 | `reset_utils.py:372-401` | goal trackers、delay queues、wrench buffers、success/lift trackers | command/recorder/事件状态 | 各 term 实例 | 跨 term 用 `env.<manager>.get_term(...)` 回取，不设 env 全局状态 hub |
-| `termination_utils.py:10-36` | tolerance curriculum | curriculum/command term | `commands.py` 或 `terminations.py` | 每 interval 按上一 episode successes 平均值缩小 tolerance |
+| `termination_utils.py:10-36` | tolerance curriculum | 状态在 command hub，逐步触发在 termination term | `commands.py`（状态）+ `terminations.py`（触发） | 每 interval 按上一 episode successes 平均值缩小 tolerance；tick 先于同帧 success 判定 |
 | `termination_utils.py:39-72` | success 后换目标、fall、hand far、max successes、timeout | termination terms | `terminations.py` | success 不直接结束 episode；成功后清 goal tracker 并置零 episode length |
 | `logging_utils.py:1-33` | reward/termination metrics | recorder term | `events.py` 或 `RecorderTerm` | 不在 backend 里实现任务日志 |
 | `simtoolreal_env_cfg.py:538-595`、`cfg/task/SimToolReal.yaml` | cfg 分组与默认值 | Hydra config | `base.yaml`、backend leaf | task 语义和 owner physics 在 base；sim/backend 旋钮在 leaf |
@@ -442,6 +442,37 @@ interval 阶段触发；这是已登记的时序差异，不能误报成额外 r
 done 行仍会经历通用生命周期的“全量 step observation + reset-row observation”两次
 组装；后者已经限制为 selected rows。要像原仓库一样只保留 reset 后的一次最终观测，
 需要改通用 autoreset 顺序，不属于 task term 的无痛微调。
+
+对齐审计修复（2026-09-28 差异清单及后续逐项复跑，均为 term 内部修复、不改
+§6.5 相位顺序）：
+
+* A1.2：原仓库在 `_get_dones` 内先清 per-goal tracker 再算奖励，success 帧的
+  keypoint-delta 被 sentinel 填 0；manager 版 reward 先于 command advance，
+  `KeypointDistanceDelta` 改为按 termination 阶段写入的 `pending_success`
+  快照把成功行的 delta 置 0，tracker 的 min 更新保持不变。
+* A1.5：同一 tracker-clear 顺序也作用于 fingertip-delta。原仓库
+  `reset_goal_trackers()` 同时清 `_closest_fingertip_dist`，success 帧
+  `distance_delta_reward()` 的每指 delta 都从 -1 sentinel 出发并 clamp 为 0；
+  manager 版同样用 `pending_success` 掩码，不能用只修 keypoint 的局部结论覆盖。
+* A1.6：成功换 goal 时只把 `episode_length_buf` 写 0 不够。`NpEnv.step()` 在
+  read phase 返回后还会对 authoritative `state.info["steps"]` 加一；若 command
+  阶段把它也写 0，下一帧读到 length=2，而 DirectRLEnv 在 post-step 加一后于
+  `_get_dones()` 内清零、下一帧读到 length=1。goal advance 需把 authoritative
+  计数器 staging 成“本帧后加一为 0”的值（有符号 -1 / 无符号 max），下一帧
+  才恢复原仓库的 length=1。
+* A1.3（2026-09-28 复查后撤销，不改门控行为）：初判认为 interval event 读
+  当步闩锁会让力“举起当步就受力”，但该前提不成立——event 在本步物理与
+  reward 之后触发，写入的 wrench 由 adapter staging 给即将到来的 physics
+  step（`Entity.apply_body_wrench_to_sim`；backend 在下一步物理开始时消费，
+  跨该步 substeps 后清除）。因此 event 写入覆盖的物理窗口与原仓库
+  `_pre_physics_step` 写入覆盖的窗口相同，且读到的 `hub.lifted` 正是原仓库
+  在该处读到的同一个 reward 阶段闩锁：直接读 `hub.lifted` 已是逐帧等价，
+  自存一步延迟闩锁反而比原仓库晚一帧，已回退（保留 A1.2/A1.4）。
+* A1.4：容差课程状态仍由 command hub 持有，逐步 tick 的触发移到
+  `SuccessTracker` 内、先于同帧 success 比较（与原仓库
+  `update_tolerance_curriculum` 在 `_get_dones` 内先行的顺序一致）；command
+  阶段的 tick 已移除，`_last_curriculum_step` 守卫保证同帧重复调用不重复
+  收紧。
 
 ### 6.6 当前实现快照（2026-09-12）
 

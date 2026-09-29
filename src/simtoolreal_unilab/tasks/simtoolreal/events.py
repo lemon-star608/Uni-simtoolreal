@@ -249,6 +249,17 @@ class SimToolRealWrenchEvent(ManagerTermBase):
     standard-normal vectors multiplied by object mass and the configured
     scales; trigger probabilities are log-uniform and the lift latch gates the
     active channels.  The adapter owns the actual world-frame write.
+
+    The lift gate reads ``hub.lifted`` directly (action_utils.py:109-113).
+    The original reads the latch in ``_pre_physics_step`` — after the
+    previous step's reward stage updated it, immediately before the physics
+    window its write covers.  This interval event occupies the same slot in
+    our lifecycle: it runs after the reward stage latched ``hub.lifted``
+    from the post-physics state, and its wrench write is staged for the
+    upcoming step (``Entity.apply_body_wrench_to_sim``; the backend consumes
+    it at the start of the next step's physics).  The direct read therefore
+    sees exactly the one-step-behind latch the original sees; adding a
+    term-local delayed latch would lag it by one more step (A1.3 reaudit).
     """
 
     def __init__(self, cfg: ManagerTermBaseCfg, env: Any):
@@ -388,6 +399,14 @@ class SimToolRealWrenchEvent(ManagerTermBase):
             lifted = np.asarray(hub.lifted[ids], dtype=bool)
         except (AttributeError, KeyError, ValueError):
             lifted = np.ones(count, dtype=bool)
+        # action_utils.py:109-113 parity: the original gates the wrench in
+        # _pre_physics_step on the latch the previous reward stage wrote, and
+        # that write covers the upcoming physics window.  This event runs
+        # right after the reward stage latched hub.lifted (post-physics
+        # state) and the write below is staged for the upcoming step's
+        # physics — the same window — so the direct read is the parity
+        # behavior (A1.3 reaudit; a term-local delayed latch would lag the
+        # original by one more step).
         if self._force_only_when_lifted:
             self._forces[ids[~lifted]] = 0.0
         if self._torque_only_when_lifted:

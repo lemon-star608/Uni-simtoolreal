@@ -264,6 +264,22 @@ def test_fingertip_delta_clip_upper_bound():
     np.testing.assert_allclose(term(env), 5 * 10.0, rtol=1e-6)
 
 
+def test_fingertip_delta_zeroes_success_frame():
+    """The original clears this tracker before rewards on a goal success."""
+    env, backend, hub = _make_env()
+    term = _term(FingertipDistanceDelta, env, bonus_threshold=0.15)
+    _place_fingertips(backend, np.full(5, 1.0))
+    term(env)  # seed the tracker
+
+    hub.pending_success[:] = False
+    hub.pending_success[1] = True
+    _place_fingertips(backend, np.full(5, 0.8))
+    values = term(env)
+    np.testing.assert_allclose(values[0], 5 * 0.2, rtol=1e-6)
+    np.testing.assert_array_equal(values[1], 0.0)
+    np.testing.assert_allclose(hub.closest_fingertip_dist, 0.8, rtol=1e-6)
+
+
 # ----------------------------------------------------------------------------
 # Keypoint distance delta (reward_utils.py:42-51; fixed-size branch, §3.5)
 # ----------------------------------------------------------------------------
@@ -340,6 +356,42 @@ def test_keypoint_delta_gate_tracker_and_clip():
     backend.body_pos[:, OBJECT_BODY_ID] = OBJECT_POS + np.asarray([0.30, 0.0, 0.0])
     np.testing.assert_array_equal(term(env), 0.0)
     np.testing.assert_allclose(hub.closest_keypoint_max_dist, 0.03, rtol=1e-5)
+
+
+def test_keypoint_delta_zeroes_success_frame():
+    """Audit fix A1.2 (termination_utils.py:46-51 -> reward_utils.py:117-123):
+    the original clears the per-goal trackers inside _get_dones before rewards
+    run, so the success frame's keypoint delta clamps to 0; the pending_success
+    snapshot written by the termination stage reproduces that here."""
+    env, backend, hub = _make_env()
+    term = _term(
+        KeypointDistanceDelta,
+        env,
+        bonus_threshold=0.15,
+        keypoint_scale=1.5,
+        fixed_size=[0.141, 0.03025, 0.0271],
+    )
+    hub.goal[:, :3] = OBJECT_POS
+    backend.body_pos[:, GOALVIZ_BODY_ID] = OBJECT_POS
+    hub.lifted[:] = True
+    # Seed the tracker at 0.2 (sentinel step pays nothing).
+    backend.body_pos[:, OBJECT_BODY_ID] = OBJECT_POS + np.asarray([0.2, 0.0, 0.0])
+    np.testing.assert_array_equal(term(env), 0.0)
+    # Success frame for envs 1 and 4: closing to 0.08 pays the delta on the
+    # other rows only; the success rows clamp to 0.
+    backend.body_pos[:, OBJECT_BODY_ID] = OBJECT_POS + np.asarray([0.08, 0.0, 0.0])
+    hub.pending_success[[1, 4]] = True
+    rew = term(env)
+    expected = np.full(NUM_ENVS, 0.12, dtype=np.float32)
+    expected[[1, 4]] = 0.0
+    np.testing.assert_allclose(rew, expected, rtol=1e-5)
+    # The tracker still min-updates on the success frame (the command stage
+    # clears it on the goal advance).
+    np.testing.assert_allclose(hub.closest_keypoint_max_dist, 0.08, rtol=1e-5)
+    # Following frame: the snapshot was consumed, every row pays normally.
+    hub.pending_success[:] = False
+    backend.body_pos[:, OBJECT_BODY_ID] = OBJECT_POS + np.asarray([0.03, 0.0, 0.0])
+    np.testing.assert_allclose(term(env), 0.05, rtol=1e-5)
 
 
 # ----------------------------------------------------------------------------

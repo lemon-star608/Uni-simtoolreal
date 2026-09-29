@@ -330,6 +330,36 @@ def test_success_advance_consumes_pending_success():
     assert len(backend.set_state_calls) == 1  # the reset commit only
 
 
+def test_success_advance_zeroes_length_after_post_frame_increment():
+    """A goal advance must survive NpEnv's post-read-frame ``steps += 1``.
+
+    DirectRLEnv observes length one on the step after a success.  A plain
+    dual-write to zero is incremented again by ``NpEnv.step`` after the
+    command phase, which would make the next ManagerBasedRlEnv frame observe
+    length two.
+    """
+    env, backend, transaction, hub = _make_env(seed=17)
+    _reset_all(env, transaction, hub)
+    env.episode_length_buf[:] = 40
+    env.steps_mirror[:] = 39
+    authoritative = np.full(NUM_ENVS, 39, dtype=np.uint32)
+    env._state = SimpleNamespace(info={"steps": authoritative})
+
+    succeeded = np.asarray([1, 4], dtype=np.int64)
+    hub.pending_success[succeeded] = True
+    _compute_step(env, transaction, hub)
+
+    np.testing.assert_array_equal(env.episode_length_buf[succeeded], 0)
+    np.testing.assert_array_equal(authoritative[succeeded], np.iinfo(np.uint32).max)
+
+    # This is the tail of NpEnv.step, followed by the next frame's
+    # np.add(info["steps"], 1, out=episode_length_buf).
+    authoritative += 1
+    np.add(authoritative, 1, out=env.episode_length_buf)
+    np.testing.assert_array_equal(env.episode_length_buf[succeeded], 1)
+    np.testing.assert_array_equal(env.episode_length_buf[[0, 2, 3]], 41)
+
+
 def test_pending_success_scoped_on_reset_path_compute():
     """compute(dt=0, env_ids) only consumes pending_success inside env_ids."""
     env, backend, transaction, hub = _make_env()
@@ -398,6 +428,11 @@ def test_delta_mode_chains_across_successive_advances():
 
 # ----------------------------------------------------------------------------
 # Tolerance curriculum (termination_utils.py:10-36)
+#
+# The hub owns the curriculum state; the per-step trigger moved to the
+# termination layer's SuccessTracker (audit fix A1.4), so these cadence tests
+# drive hub.tick_tolerance_curriculum() directly.  The same-frame semantics
+# are pinned in tests/tasks/test_simtoolreal_terminations.py.
 # ----------------------------------------------------------------------------
 
 
@@ -415,27 +450,28 @@ def _curriculum_env(**overrides):
 
 def test_tolerance_curriculum_interval_and_shrink():
     env, _, transaction, hub = _curriculum_env()
+    del transaction
     start = hub.current_success_tolerance
     assert start == hub.cfg.success_tolerance
 
     # Before the interval elapses: no shrink even with enough successes.
     hub.prev_episode_successes[:] = 5
     env.common_step_counter = 9
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == start
 
     # Interval reached and threshold met: shrink by the increment.
     env.common_step_counter = 10
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == pytest.approx(start * 0.9)
     assert hub._last_curriculum_step == 10
 
     # The next window is measured from the last shrink.
     env.common_step_counter = 19
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == pytest.approx(start * 0.9)
     env.common_step_counter = 20
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == pytest.approx(start * 0.9**2)
 
 
@@ -443,45 +479,56 @@ def test_tolerance_curriculum_below_threshold_keeps_checking():
     """termination_utils.py:14-30: a missed window does not advance
     ``_last_curriculum_update``, so the check re-runs every step."""
     env, _, transaction, hub = _curriculum_env()
+    del transaction
     hub.prev_episode_successes[:] = 0  # below threshold
     env.common_step_counter = 30
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == hub.cfg.success_tolerance
     assert hub._last_curriculum_step == 0
     # The very next step can shrink once the threshold is met.
     hub.prev_episode_successes[:] = 3
     env.common_step_counter = 31
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == pytest.approx(hub.cfg.success_tolerance * 0.9)
     assert hub._last_curriculum_step == 31
 
 
 def test_tolerance_curriculum_floor():
     env, _, transaction, hub = _curriculum_env()
+    del transaction
     hub.current_success_tolerance = 0.011
     hub.prev_episode_successes[:] = 10
     env.common_step_counter = 10
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     # 0.011 * 0.9 = 0.0099 -> clamped to the 0.01 floor.
     assert hub.current_success_tolerance == hub.cfg.target_success_tolerance
 
 
 def test_eval_tolerance_pins_curriculum():
     env, _, transaction, hub = _curriculum_env(eval_success_tolerance=0.02)
+    del transaction
     assert hub.current_success_tolerance == 0.02  # pinned at construction
     hub.prev_episode_successes[:] = 10
     env.common_step_counter = 10
-    hub.compute(dt=STEP_DT, env_ids=None)
+    hub.tick_tolerance_curriculum()
     assert hub.current_success_tolerance == 0.02
 
 
-def test_curriculum_not_ticked_on_reset_path_compute():
+def test_curriculum_not_ticked_by_command_phase():
+    """Audit fix A1.4: the command phase never ticks the curriculum — the
+    per-step trigger lives in the termination layer's SuccessTracker, so
+    neither the reset-path recompute nor a per-step compute can double-tick
+    within one frame."""
     env, _, transaction, hub = _curriculum_env()
     hub.prev_episode_successes[:] = 10
     env.common_step_counter = 50
     ids = np.asarray([0], dtype=np.int64)
     with transaction.scoped(ids):
         hub.compute(dt=0.0, env_ids=ids)
+    assert hub.current_success_tolerance == hub.cfg.success_tolerance
+    assert hub._last_curriculum_step == 0
+    with transaction.scoped(np.arange(NUM_ENVS, dtype=np.int64)):
+        hub.compute(dt=STEP_DT, env_ids=None)
     assert hub.current_success_tolerance == hub.cfg.success_tolerance
     assert hub._last_curriculum_step == 0
 
