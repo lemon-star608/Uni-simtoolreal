@@ -33,13 +33,14 @@ Registered deviations (DESIGN.md section 3.5 convention):
   observations compute after the command manager, so the relative order is
   preserved; ``goal_count`` stays "number of goals advanced this episode".
 - ``env.episode_length_buf[ids] = 0`` (``termination_utils.py:51``) goes
-  through the env's ``set_episode_length_buf`` dual-write setter when
-  available, so the env-owned ``state.info["steps"]`` mirror is zeroed with
-  it (``manager_based_rl_env.py:494`` recomputes the buffer from
-  ``info["steps"]`` every step; a direct buffer write would not persist).  The truncation check
-  has already run when this executes, so the task's time-out term (1.4b-3)
-  must mask time-outs with ``pending_success`` to preserve the original
-  "a success step never truncates" semantics.
+  through the env's ``set_episode_length_buf`` dual-write setter and then
+  stages the authoritative ``state.info["steps"]`` mirror for UniLab's
+  post-read-frame increment.  A plain zero write is insufficient:
+  ``NpEnv.step`` increments ``info["steps"]`` once after this phase, which
+  would make the next observed episode length two instead of one.  The
+  truncation check has already run when this executes, so the task's time-out
+  term (1.4b-3) must mask time-outs with ``pending_success`` to preserve the
+  original "a success step never truncates" semantics.
 - The ``fixed_goal_pose`` debug pin and the ``fixed_trajectory_file`` ablation
   (``reset_utils.py:311-350``) are tooling-only branches and are not ported;
   ``goal_sampling_type`` selects "delta" | "absolute" directly.
@@ -69,6 +70,7 @@ Registered deviations (DESIGN.md section 3.5 convention):
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
@@ -335,11 +337,9 @@ class SimToolRealCommand(CommandTerm):
         # reset_utils.py:394: intra-episode advance uses cfg.goal_sampling_type.
         self._sample_goal(env_ids, mode=self.cfg.goal_sampling_type)
         # termination_utils.py:51: zero the episode length so truncation does
-        # not fire for chained successes.  The env owns the buffer pair
-        # (episode_length_buf is recomputed from state.info["steps"] each
-        # step), so the write goes through the env's dual-write setter when
-        # available; the direct-write fallback keeps SimpleNamespace test
-        # doubles working (transient, buffer-only).
+        # not fire for chained successes.  ``episode_length_buf`` is visible
+        # to this frame's observations; ``state.info["steps"]`` is the
+        # authoritative counter that NpEnv increments after this read frame.
         env = self._env
         set_lengths = getattr(env, "set_episode_length_buf", None)
         if callable(set_lengths):
@@ -348,6 +348,7 @@ class SimToolRealCommand(CommandTerm):
             set_lengths(lengths)
         else:
             env.episode_length_buf[env_ids] = 0
+        _stage_zero_authoritative_steps_after_frame(env, env_ids)
 
     def _sample_goal(self, env_ids: np.ndarray, mode: str) -> None:
         """Resample the goal pose and commit it to GoalViz (reset_utils.py:304-369)."""
@@ -535,3 +536,29 @@ __all__ = [
     "sample_absolute_goal_pose",
     "sample_delta_goal_pose",
 ]
+
+
+def _stage_zero_authoritative_steps_after_frame(env, env_ids: np.ndarray) -> None:
+    """Prepare ``state.info["steps"]`` for NpEnv's post-frame ``+1``.
+
+    The generic setter intentionally rejects negative counters because its
+    public purpose is cold-path initialization.  A mid-frame goal advance is
+    different: the authoritative array is incremented once more after this
+    phase returns, so the required pre-increment value is ``-1`` (or the
+    unsigned wrap representation thereof).  Test doubles without live state
+    keep only the direct ``episode_length_buf`` write above.
+    """
+    state = getattr(env, "_state", None)
+    info = getattr(state, "info", None)
+    if isinstance(info, Mapping):
+        steps = info.get("steps")
+    else:
+        steps = getattr(info, "steps", None)
+    if steps is None:
+        return
+    if np.issubdtype(steps.dtype, np.unsignedinteger):
+        steps[env_ids] = np.iinfo(steps.dtype).max
+    elif np.issubdtype(steps.dtype, np.signedinteger):
+        steps[env_ids] = -1
+    else:
+        raise TypeError(f"episode step mirror has unsupported dtype {steps.dtype}")

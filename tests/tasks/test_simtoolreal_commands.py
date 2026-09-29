@@ -330,6 +330,36 @@ def test_success_advance_consumes_pending_success():
     assert len(backend.set_state_calls) == 1  # the reset commit only
 
 
+def test_success_advance_zeroes_length_after_post_frame_increment():
+    """A goal advance must survive NpEnv's post-read-frame ``steps += 1``.
+
+    DirectRLEnv observes length one on the step after a success.  A plain
+    dual-write to zero is incremented again by ``NpEnv.step`` after the
+    command phase, which would make the next ManagerBasedRlEnv frame observe
+    length two.
+    """
+    env, backend, transaction, hub = _make_env(seed=17)
+    _reset_all(env, transaction, hub)
+    env.episode_length_buf[:] = 40
+    env.steps_mirror[:] = 39
+    authoritative = np.full(NUM_ENVS, 39, dtype=np.uint32)
+    env._state = SimpleNamespace(info={"steps": authoritative})
+
+    succeeded = np.asarray([1, 4], dtype=np.int64)
+    hub.pending_success[succeeded] = True
+    _compute_step(env, transaction, hub)
+
+    np.testing.assert_array_equal(env.episode_length_buf[succeeded], 0)
+    np.testing.assert_array_equal(authoritative[succeeded], np.iinfo(np.uint32).max)
+
+    # This is the tail of NpEnv.step, followed by the next frame's
+    # np.add(info["steps"], 1, out=episode_length_buf).
+    authoritative += 1
+    np.add(authoritative, 1, out=env.episode_length_buf)
+    np.testing.assert_array_equal(env.episode_length_buf[succeeded], 1)
+    np.testing.assert_array_equal(env.episode_length_buf[[0, 2, 3]], 41)
+
+
 def test_pending_success_scoped_on_reset_path_compute():
     """compute(dt=0, env_ids) only consumes pending_success inside env_ids."""
     env, backend, transaction, hub = _make_env()

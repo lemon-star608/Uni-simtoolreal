@@ -42,13 +42,13 @@ Registered deviations (DESIGN.md section 3.5 convention):
   in ``_get_dones`` — same relative order.  The
   ``_keypoint_success_tolerance_m`` subclass hook (obs_utils.py:190-193) is
   not ported.
-- :class:`KeypointDistanceDelta` zeroes the delta on the success frame
-  (``hub.pending_success`` rows): the original clears the per-goal trackers
-  inside ``_get_dones`` before rewards run (termination_utils.py:46-51), so
-  its success-frame ``keypoint_reward`` sentinel-fills and clamps to 0
-  (reward_utils.py:117-123); the UniLab reward stage runs before the
-  command-stage advance, so the mask reproduces that ordering (audit fix
-  A1.2).
+- :class:`FingertipDistanceDelta` and :class:`KeypointDistanceDelta` zero
+  their deltas on the success frame (``hub.pending_success`` rows): the
+  original clears both per-goal trackers inside ``_get_dones`` before rewards
+  run (termination_utils.py:46-51), so both success-frame rewards
+  sentinel-fill and clamp to 0 (reward_utils.py:99-123); the UniLab reward
+  stage runs before the command-stage advance, so the masks reproduce that
+  ordering (audit fixes A1.2/A1.5).
 - The gym-era hand-delta and object velocity penalties stay retired
   (zero-coefficient terms, DESIGN.md section 3.5).
 """
@@ -174,6 +174,10 @@ class FingertipDistanceDelta(ManagerTermBase):
         closest = np.where(hub.closest_fingertip_dist < 0.0, curr, hub.closest_fingertip_dist)
         deltas = np.clip(closest - curr, 0.0, 10.0)  # reward_utils.py:33-35
         rew = deltas.sum(axis=-1) * (~lifted_now).astype(np.float32)  # :36
+        # termination_utils.py:46-51 clears this tracker before rewards run on
+        # a success frame; the sentinel path therefore clamps to zero.  The
+        # later command stage restores the same end state by clearing again.
+        rew[hub.pending_success] = 0.0
         # :34, compute_rewards:104 — the tracker updates regardless of the gate.
         hub.closest_fingertip_dist[:] = np.minimum(closest, curr)
         return rew.astype(np.float32)

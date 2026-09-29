@@ -264,6 +264,22 @@ def test_fingertip_delta_clip_upper_bound():
     np.testing.assert_allclose(term(env), 5 * 10.0, rtol=1e-6)
 
 
+def test_fingertip_delta_zeroes_success_frame():
+    """The original clears this tracker before rewards on a goal success."""
+    env, backend, hub = _make_env()
+    term = _term(FingertipDistanceDelta, env, bonus_threshold=0.15)
+    _place_fingertips(backend, np.full(5, 1.0))
+    term(env)  # seed the tracker
+
+    hub.pending_success[:] = False
+    hub.pending_success[1] = True
+    _place_fingertips(backend, np.full(5, 0.8))
+    values = term(env)
+    np.testing.assert_allclose(values[0], 5 * 0.2, rtol=1e-6)
+    np.testing.assert_array_equal(values[1], 0.0)
+    np.testing.assert_allclose(hub.closest_fingertip_dist, 0.8, rtol=1e-6)
+
+
 # ----------------------------------------------------------------------------
 # Keypoint distance delta (reward_utils.py:42-51; fixed-size branch, §3.5)
 # ----------------------------------------------------------------------------

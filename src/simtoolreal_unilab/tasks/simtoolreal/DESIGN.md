@@ -443,13 +443,23 @@ done 行仍会经历通用生命周期的“全量 step observation + reset-row 
 组装；后者已经限制为 selected rows。要像原仓库一样只保留 reset 后的一次最终观测，
 需要改通用 autoreset 顺序，不属于 task term 的无痛微调。
 
-对齐审计修复（2026-09-28，`probes/training-pipeline-alignment-audit.md` 差异清单
-2-4，均为 term 内部修复、不改 §6.5 相位顺序）：
+对齐审计修复（2026-09-28 差异清单及后续逐项复跑，均为 term 内部修复、不改
+§6.5 相位顺序）：
 
 * A1.2：原仓库在 `_get_dones` 内先清 per-goal tracker 再算奖励，success 帧的
   keypoint-delta 被 sentinel 填 0；manager 版 reward 先于 command advance，
   `KeypointDistanceDelta` 改为按 termination 阶段写入的 `pending_success`
   快照把成功行的 delta 置 0，tracker 的 min 更新保持不变。
+* A1.5：同一 tracker-clear 顺序也作用于 fingertip-delta。原仓库
+  `reset_goal_trackers()` 同时清 `_closest_fingertip_dist`，success 帧
+  `distance_delta_reward()` 的每指 delta 都从 -1 sentinel 出发并 clamp 为 0；
+  manager 版同样用 `pending_success` 掩码，不能用只修 keypoint 的局部结论覆盖。
+* A1.6：成功换 goal 时只把 `episode_length_buf` 写 0 不够。`NpEnv.step()` 在
+  read phase 返回后还会对 authoritative `state.info["steps"]` 加一；若 command
+  阶段把它也写 0，下一帧读到 length=2，而 DirectRLEnv 在 post-step 加一后于
+  `_get_dones()` 内清零、下一帧读到 length=1。goal advance 需把 authoritative
+  计数器 staging 成“本帧后加一为 0”的值（有符号 -1 / 无符号 max），下一帧
+  才恢复原仓库的 length=1。
 * A1.3（2026-09-28 复查后撤销，不改门控行为）：初判认为 interval event 读
   当步闩锁会让力“举起当步就受力”，但该前提不成立——event 在本步物理与
   reward 之后触发，写入的 wrench 由 adapter staging 给即将到来的 physics
