@@ -2,25 +2,34 @@
 
 [中文](README_zh.md)
 
-SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim): a KUKA iiwa14 arm (7 DoF) with a SHARPA hand (22 DoF) learns to lift and manipulate tools from a 1,200-variant procedurally generated tool pool, matching the [original repository](https://github.com/tylerlum/simtoolreal)'s training semantics. Both physics backends — IsaacSim (mapped subprocess worker) and MuJoCo (mjbatch VariantPack) — run on the same MJCF asset set, generated once per entity (robot/table/floor plus one file per tool); the learner is a vendored, SHA-gated RL-Games SAPG runtime.
+SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim): a KUKA iiwa14 arm (7 DoF) with a SHARPA dexterous hand (22 DoF) learns to lift and manipulate tools from a 1,200-variant procedurally generated tool pool, matching the [original repository](https://github.com/tylerlum/simtoolreal)'s training semantics. Both physics backends — MuJoCo (mjbatch VariantPack) and IsaacSim (mapped subprocess worker) — run on the same MJCF asset set, generated once per entity (robot/table/floor plus one file per tool); the learner is a vendored, SHA-gated RL-Games SAPG runtime.
+
+<!-- 训练回放动图待补（simtoolreal-play 录制） -->
+
+## Capabilities
 
 | Capability | Status |
 | --- | --- |
 | `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository |
-| Physics backends | MuJoCo (default) and IsaacSim, one shared asset/task definition, switchable via `--backend` |
+| Physics backends | MuJoCo (default, pure CPU) and IsaacSim (GPU worker); one shared asset/task definition, switchable via `--backend` |
 | Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run |
 | Playback / inspection | `simtoolreal-play`, TensorBoard overlay with the original tag set |
 | Student / camera / sensor policies, deployment, sim2real | Not carried over; this repository contains no deployment code |
 
+Paper-reported numbers (e.g. sim2real) belong to the original implementation and are not re-validated here.
+
 ## First run
 
-Requires Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and ~20 GB of disk for the worker runtime and caches. Dependencies resolve from the lockfile (unilab, unisim-core and mjbatch-uni all from PyPI) — no extra checkouts.
+Requires Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and ~20 GB of disk for the worker runtime and caches.
 
 ```bash
-git clone <this repo> && cd simtoolreal_unilab
+git clone https://github.com/unilabsim/simtoolreal_unilab.git && cd simtoolreal_unilab
 uv sync
-uv run simtoolreal-assets    # verify the vendored assets
+uv run simtoolreal-assets     # verify the vendored assets
+uv run simtoolreal-list-envs  # SimToolReal  mujoco / SimToolReal  isaacsim
 ```
+
+All dependencies resolve from the lockfile (unilab, unisim-core and mjbatch-uni from PyPI; torch 2.14.0+cu130) — no extra checkouts. This repository is source-install only and is not published to PyPI.
 
 One piece cannot ship inside `uv sync`: the IsaacSim worker runtime (NVIDIA's SDK is not redistributed). Install it once with `bash scripts/setup_isaacsim_env.sh` (vendored from UniLab's official installer, IsaacSim 5.1.0 + IsaacLab 2.3.0, idempotent); `simtoolreal-train`/`simtoolreal-play` detect it automatically. Escape hatch for another IsaacSim-capable interpreter: `export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`.
 
@@ -49,12 +58,10 @@ uv run simtoolreal-train \
 # renders through the IsaacSim worker)
 uv run simtoolreal-play --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
 
-uv run simtoolreal-list-envs                 # SimToolReal  mujoco / SimToolReal  isaacsim
 uv run tensorboard --logdir logs/rlgames_sapg
 ```
 
-Outputs land in `logs/rlgames_sapg/SimToolReal/<run>/` (checkpoints, TensorBoard events, run configuration). The MuJoCo line needs no IsaacSim worker runtime.
-
+Outputs land in `logs/rlgames_sapg/SimToolReal/<run>/` (checkpoints, TensorBoard events, run configuration). The MuJoCo line needs no IsaacSim worker runtime; the IsaacSim line shares one GPU between the worker and the learner. Task and backend routing keys are locked by the CLI and cannot be overridden — scale and algorithm fields are Hydra overrides such as `algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048` (num_actors must form exactly six exploration blocks).
 
 ## How to modify
 
@@ -72,7 +79,7 @@ Dependency pins: `unilab >= 1.3.3` (PyPI release carrying [#1620](https://github
 
 ## Credits
 
-- **SimToolReal** — upstream task, assets, and training semantics ([tylerlum/simtoolreal](https://github.com/tylerlum/simtoolreal), MIT); paper-reported numbers (e.g. sim2real) belong to the original implementation and are not re-validated here.
+- **SimToolReal** — upstream task, assets, and training semantics ([tylerlum/simtoolreal](https://github.com/tylerlum/simtoolreal), MIT).
 - **UniLab** / **UniSim** / **unilab-rl** — training infrastructure, physics-backend contract, and runtimes; **RL-Games** — the SAPG learner, vendored with an audited patch set (`third_party/simtoolreal_rl_games/PATCHES.md`).
 
 Licensed under [Apache-2.0](LICENSE); the vendored runtime and upstream assets keep their own licenses. For framework-level problems (backends, contract), report to UniLab/UniSim instead.
