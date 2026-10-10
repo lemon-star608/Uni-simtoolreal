@@ -737,18 +737,12 @@ wheels = [
 
 [[package]]
 name = "mjbatch-uni"
-version = "0.2.4"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.6.dev0"
+source = { git = "https://github.com/unilabsim/mjbatch_uni.git?rev=9da4dc59dccfaeedbbcd1f336553498dc983a99b#9da4dc59dccfaeedbbcd1f336553498dc983a99b" }
 dependencies = [
     { name = "mujoco" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/dd/c7b5f01ba132ee03ea1412651942709ee64febb08004435afe101fd09485/mjbatch_uni-0.2.4.tar.gz", hash = "sha256:7d11c0b798a5722a03a746029ab8d860bf8d1c11caa008205ed8ddf32cc72bb0", size = 45225, upload-time = "2026-09-23T12:24:02.924Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/d0/fe2b7cd3ecb045e00cbad11ce6407862ff8e60dde0304312fed57398055f/mjbatch_uni-0.2.4-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:254056c4656bdb48a963ad1ccd83b5451ebfa312c38a011fae9fe4e1bfbd85ec", size = 198001, upload-time = "2026-09-23T12:23:54.078Z" },
-    { url = "https://files.pythonhosted.org/packages/e2/09/8667b24dc09d4b69456f1f11cb6226f5a9c76b8a7e0688baa45cbe668ebf/mjbatch_uni-0.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d41e8fc20f109693cb30a2f30ef5a7ab9077232d5f05a9414e857a558a28adef", size = 197623, upload-time = "2026-09-23T12:23:57.912Z" },
-    { url = "https://files.pythonhosted.org/packages/6e/f0/dc5f7508dffc980e26a9d16c964a9f6dedc050d3acfbf70ef9fa48db1864/mjbatch_uni-0.2.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:952194f3143c005653b8b701fc91e56335a6d3998348ffef6211503b49904566", size = 197579, upload-time = "2026-09-23T12:24:01.635Z" },
 ]
 
 [[package]]
@@ -1523,7 +1517,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mjbatch-uni", specifier = ">=0.2.4" },
+    { name = "mjbatch-uni", git = "https://github.com/unilabsim/mjbatch_uni.git?rev=9da4dc59dccfaeedbbcd1f336553498dc983a99b" },
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.14.0+cu130", index = "https://download.pytorch.org/whl/cu130" },

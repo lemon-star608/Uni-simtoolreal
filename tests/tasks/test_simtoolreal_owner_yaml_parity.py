@@ -45,21 +45,21 @@ def test_env_timing(base):
     assert base["env"]["scale_rewards_by_dt"] is False
 
 
-# --- observations (SimToolReal.yaml:63-71, :142-157) ------------------------
+# --- observations (2026-09-30 no-DR baseline) --------------------------------
 
 
 def test_observation_terms(base):
     policy = base["env"]["observations"]["policy"]["terms"]["simtoolreal"]["params"]
-    # SimToolReal.yaml:144-147 (obs latency), :150-153 (object state),
-    # :156-157 (joint vel), :71 (clamp).
+    # The upstream DR knobs are retained in the observation term, but the
+    # owner baseline disables all actor-side latency/noise paths.
     assert policy == {
-        "use_object_state_delay_noise": True,
-        "object_state_delay_max": 10,
-        "object_state_xyz_noise_std": 0.01,
-        "object_state_rotation_noise_degrees": 5.0,
-        "joint_velocity_obs_noise_std": 0.1,
-        "use_obs_delay": True,
-        "obs_delay_max": 3,
+        "use_object_state_delay_noise": False,
+        "object_state_delay_max": 0,
+        "object_state_xyz_noise_std": 0.0,
+        "object_state_rotation_noise_degrees": 0.0,
+        "joint_velocity_obs_noise_std": 0.0,
+        "use_obs_delay": False,
+        "obs_delay_max": 0,
         "clamp_abs_observations": 10.0,
     }
     critic = base["env"]["observations"]["critic"]["terms"]["simtoolreal"]["params"]
@@ -74,8 +74,8 @@ def test_action_term(base):
     assert action["arm_moving_average"] == 0.1
     assert action["hand_moving_average"] == 0.1
     assert action["dof_speed_scale"] == 1.5  # :79
-    assert action["use_action_delay"] is True  # :146
-    assert action["action_delay_max"] == 3  # :147
+    assert action["use_action_delay"] is False
+    assert action["action_delay_max"] == 0
 
 
 # --- commands/goal (SimToolReal.yaml:118-123, :130-137; env_cfg.py:444) ------
@@ -116,9 +116,9 @@ def test_wrench_dr_event(base):
     # interval (pipeline-audit.md F8).
     assert wrench["interval_range_s"] == [0.016666666666666666, 0.016666666666666666]
     params = wrench["params"]
-    assert params["force_scale"] == 20.0  # :160
+    assert params["force_scale"] == 0.0
     assert params["force_prob_range"] == [0.001, 0.1]  # :161
-    assert params["torque_scale"] == 2.0  # :166
+    assert params["torque_scale"] == 0.0
     assert params["torque_prob_range"] == [0.001, 0.1]  # :167
     assert params["only_when_lifted"] is True  # :164/:170
     # Upstream decays are 0.0 (SimToolReal.yaml:162/:168) and come from the

@@ -21,7 +21,8 @@ dependencies = [
   "unisim-core[mujoco]>=1.7.10",
   # Direct dep: mujoco variant executors on unisim >=1.7.5 fail closed
   # without the streaming VariantPackBuilder (mjbatch-uni >=0.2.4).
-  "mjbatch-uni>=0.2.4",
+  # Temporary PR branch for unilabsim/mjbatch_uni#40 (PR #41).
+  "mjbatch-uni==0.2.6.dev0",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
   "torch==2.14.0+cu130 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
@@ -47,6 +48,7 @@ url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.uv.sources]
+mjbatch-uni = { git = "https://github.com/unilabsim/mjbatch_uni.git", rev = "9da4dc59dccfaeedbbcd1f336553498dc983a99b" }
 unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
 torch = [{ index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
 

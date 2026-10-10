@@ -20,18 +20,19 @@ env:
   observations:
     policy:
       terms:
-        # Actor frame: noisy/delayed object state path (obs_utils.py:329-346;
-        # SimToolReal.yaml obs/domain_randomization sections).
+        # Actor frame with DR disabled.  This matches the 2026-09-30
+        # SimToolReal baseline: no observation latency, object-state noise, or
+        # joint-velocity noise during teacher training.
         simtoolreal:
           func: simtoolreal_unilab.tasks.simtoolreal.observations.SimToolRealPolicyObservation
           params:
-            use_object_state_delay_noise: true
-            object_state_delay_max: 10
-            object_state_xyz_noise_std: 0.01
-            object_state_rotation_noise_degrees: 5.0
-            joint_velocity_obs_noise_std: 0.1
-            use_obs_delay: true
-            obs_delay_max: 3
+            use_object_state_delay_noise: false
+            object_state_delay_max: 0
+            object_state_xyz_noise_std: 0.0
+            object_state_rotation_noise_degrees: 0.0
+            joint_velocity_obs_noise_std: 0.0
+            use_obs_delay: false
+            obs_delay_max: 0
             clamp_abs_observations: 10.0
     critic:
       terms:
@@ -47,8 +48,9 @@ env:
       arm_moving_average: 0.1
       hand_moving_average: 0.1
       dof_speed_scale: 1.5
-      use_action_delay: true
-      action_delay_max: 3
+      # Keep action DR disabled for the 2026-09-30 no-DR baseline.
+      use_action_delay: false
+      action_delay_max: 0
   commands:
     goal:
       _target_: simtoolreal_unilab.tasks.simtoolreal.commands.SimToolRealCommandCfg
@@ -92,9 +94,11 @@ env:
       # must not set the trigger cadence (the original applies it every policy step).
       interval_range_s: [0.016666666666666666, 0.016666666666666666]
       params:
-        force_scale: 20.0
+        # Zero scales disable wrench DR while retaining the original event
+        # topology and lift gate (the 2026-09-30 baseline configuration).
+        force_scale: 0.0
         force_prob_range: [0.001, 0.1]
-        torque_scale: 2.0
+        torque_scale: 0.0
         torque_prob_range: [0.001, 0.1]
         only_when_lifted: true
   terminations:
