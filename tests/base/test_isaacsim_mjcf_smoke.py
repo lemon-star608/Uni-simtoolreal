@@ -132,6 +132,13 @@ def test_wrench_event_measurably_perturbs_object(env):
         env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
 
     term = env.event_manager._mode_class_term_cfgs["interval"][0].func
+    # The production owner YAML disables wrench DR for the 2026-09-30 no-DR
+    # baseline.  This test validates the event mechanism itself, so temporarily
+    # restore the nonzero upstream scales and restore them before leaving.
+    original_force_scale = term._force_scale
+    original_torque_scale = term._torque_scale
+    term._force_scale = 20.0
+    term._torque_scale = 2.0
     hub = env.command_manager.get_term("goal")
     hub.lifted[:] = True
     term._force_prob[:] = 0.0
@@ -151,4 +158,6 @@ def test_wrench_event_measurably_perturbs_object(env):
     assert active > 10 * max(control, 1e-3), (
         f"wrench event had no measurable effect: control={control}, active={active}"
     )
+    term._force_scale = original_force_scale
+    term._torque_scale = original_torque_scale
     env.reset()
