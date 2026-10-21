@@ -25,6 +25,11 @@ dependencies = [
   "mjbatch-uni==0.2.6.dev0",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
+  # DexToolBench interactive evaluation renders the committed static MJCFs in
+  # the same Viser launcher layout as upstream.
+  "gymnasium>=0.29",
+  "viser>=1.1",
+  "pillow>=10",
   "torch==2.14.0+cu130 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
   "tensorboard>=2.8",
   "tensorboardX>=2.5",
@@ -38,6 +43,7 @@ simtoolreal-train = "simtoolreal_unilab.cli:train_main"
 simtoolreal-assets = "simtoolreal_unilab.assets:main"
 simtoolreal-play = "simtoolreal_unilab.cli:play_main"
 simtoolreal-list-envs = "simtoolreal_unilab.cli:list_main"
+simtoolreal-dextoolbench-interactive = "simtoolreal_unilab.dextoolbench.interactive:main"
 
 [dependency-groups]
 dev = ["pytest>=9", "ruff>=0.15"]

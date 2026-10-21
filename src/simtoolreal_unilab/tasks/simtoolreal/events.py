@@ -103,10 +103,15 @@ class SimToolRealReset(ManagerTermBase):
         self._joint_ids, _ = self._robot.find_joints(names, preserve_order=True)
         default = [ARM_DEFAULT_JOINT_POS[name] for name in ARM_JOINT_NAMES]
         default += [0.0] * len(HAND_JOINT_NAMES)
+        params = cfg.params
+        if bool(params.get("start_arm_higher", False)):
+            # DexToolBench evaluation uses the same +/- 10 degree offsets as
+            # upstream startArmHigher=True.
+            default[1] -= np.deg2rad(10.0)
+            default[3] += np.deg2rad(10.0)
         self._default_pos = np.asarray(default, dtype=np.float32)
 
         defaults = ResetCfg()
-        params = cfg.params
         self._pos_noise_arm = float(
             params.get("dof_pos_noise_arm", defaults.reset_dof_pos_random_interval_arm)
         )

@@ -1,0 +1,23 @@
+<mujoco model="dextoolbench_flat_eraser">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="object_visual" file="../../../objects/eraser/flat_eraser/flat_eraser.obj" />
+    <mesh name="object_collision_0" file="../../../objects/eraser/flat_eraser/collision_0.obj" />
+    <mesh name="object_collision_1" file="../../../objects/eraser/flat_eraser/collision_1.obj" />
+    <mesh name="object_collision_2" file="../../../objects/eraser/flat_eraser/collision_2.obj" />
+    <mesh name="object_collision_3" file="../../../objects/eraser/flat_eraser/collision_3.obj" />
+    <texture name="object_texture" type="2d" file="../../../objects/eraser/flat_eraser/material_0.png" />
+    <material name="object_material" texture="object_texture" texuniform="true" />
+  </asset>
+  <worldbody>
+    <body name="object_root" pos="0 0 0.63">
+      <freejoint name="object_root_joint" />
+      <inertial pos="0.0349726 -7.76239e-05 2.97282e-06" mass="0.0725315" fullinertia="2.03731e-05 0.000111757 0.000101191 3.82869e-08 2.56478e-07 1.17868e-08" />
+      <geom name="object_visual_geom" type="mesh" mesh="object_visual" group="2" material="object_material" contype="0" conaffinity="0" density="0" />
+      <geom name="object_collision_geom_0" type="mesh" mesh="object_collision_0" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_1" type="mesh" mesh="object_collision_1" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_2" type="mesh" mesh="object_collision_2" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_3" type="mesh" mesh="object_collision_3" friction="0.5 0.005 0.0001" group="3" density="0" />
+    </body>
+  </worldbody>
+</mujoco>

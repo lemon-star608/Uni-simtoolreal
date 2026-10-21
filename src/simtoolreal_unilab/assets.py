@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 
 ASSET_ROOT = Path(__file__).parent / "assets" / "simtoolreal"
+DEXTOOLBENCH_ASSET_ROOT = Path(__file__).parent / "assets" / "dextoolbench"
 
 _UPSTREAM = "https://github.com/tylerlum/simtoolreal"
 _UPSTREAM_COMMIT = "313d5aea"  # frozen snapshot the migration verified against
@@ -35,6 +36,17 @@ def verify_assets() -> dict[str, str]:
 
 def main() -> None:
     print(f"Verified {len(verify_assets())} local SimToolReal assets in {ASSET_ROOT}")
+    dextoolbench_manifest = json.loads((DEXTOOLBENCH_ASSET_ROOT / "manifest.json").read_text())
+    for relative, expected in dextoolbench_manifest["sha256"].items():
+        path = DEXTOOLBENCH_ASSET_ROOT / relative
+        if not path.is_file():
+            raise FileNotFoundError(f"Required DexToolBench asset is missing: {path}")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise ValueError(f"DexToolBench asset checksum mismatch: {path}")
+    print(
+        f"Verified {len(dextoolbench_manifest['sha256'])} local DexToolBench "
+        f"assets in {DEXTOOLBENCH_ASSET_ROOT}"
+    )
     print(f"source: {_UPSTREAM} @ {_UPSTREAM_COMMIT} (MIT)")
 
 

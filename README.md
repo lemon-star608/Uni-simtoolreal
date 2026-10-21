@@ -11,6 +11,7 @@ SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Mo
 | Capability | Status |
 | --- | --- |
 | `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository |
+| `DexToolBench` interactive evaluation | All 24 upstream object/task combinations as committed static MJCFs on the MuJoCo backend, with upstream no-DR eval settings and Viser launcher layout |
 | Physics backends | MuJoCo (default, pure CPU) and IsaacSim (GPU worker); one shared asset/task definition, switchable via `--backend` |
 | Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run |
 | Playback / inspection | `simtoolreal-play`, TensorBoard overlay with the original tag set |
@@ -62,6 +63,32 @@ uv run tensorboard --logdir logs/rlgames_sapg
 ```
 
 Outputs land in `logs/rlgames_sapg/SimToolReal/<run>/` (checkpoints, TensorBoard events, run configuration). The MuJoCo line needs no IsaacSim worker runtime; the IsaacSim line shares one GPU between the worker and the learner. Task and backend routing keys are locked by the CLI and cannot be overridden — scale and algorithm fields are Hydra overrides such as `algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048` (num_actors must form exactly six exploration blocks).
+
+## DexToolBench interactive demo
+
+```bash
+# Zero-action scene/task inspection
+uv run simtoolreal-dextoolbench-interactive
+
+# Deterministic policy demo
+uv run simtoolreal-dextoolbench-interactive \
+  --config-path /path/to/config.yaml \
+  --checkpoint-path /path/to/model.pth
+```
+
+The launcher keeps the upstream category/object/task dropdowns, Viser controls,
+sidebar, object/goal rendering, and worker lifecycle. Each task loads one
+committed full-scene MJCF directly through `SceneCfg.model_file`; there is no
+runtime MJCF writer or SimToolReal tool pool on this path. See
+[`docs/dextoolbench-mujoco.md`](docs/dextoolbench-mujoco.md) for the alignment
+matrix.
+
+Alignment with the original repository is verified by `tests/dextoolbench/`
+(`uv run pytest tests/dextoolbench`): all 24 committed MJCFs compile with the
+upstream 29-joint layout, `startArmHigher` keyframe, and training contact/
+friction channels, and the Viser goal mirror carries only the MJCF-local geom
+transform under the `/goal` frame. The zero-action launcher above doubles as a
+visual side-by-side check against the upstream Viser UI.
 
 ## How to modify
 

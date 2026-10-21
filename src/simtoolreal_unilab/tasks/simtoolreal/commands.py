@@ -167,6 +167,14 @@ class SimToolRealCommandCfg(CommandTermCfg):
     # multiplier is task DR state consumed by the observation terms; the hub
     # owns the buffer so actor and critic read the same per-env values.
     object_scale_noise_multiplier_range: tuple[float, float] = (1.0, 1.0)
+    # DexToolBench evaluation advances through an authoring-time trajectory.
+    # Entries use the hub layout: env-local xyz + unit wxyz quaternion.  The
+    # value is ``None`` for the normal sampled-goal task.
+    fixed_goal_states: tuple[tuple[float, ...], ...] | None = None
+    # Static single-object tasks do not carry the training tool-pool catalog.
+    # This normalized scale feeds only the actor's object_scales observation;
+    # it is deliberately not a physical mesh scale (upstream objects.py).
+    object_scale: tuple[float, float, float] | None = None
 
     def build(self, env):
         return SimToolRealCommand(self, env)
@@ -249,6 +257,18 @@ class SimToolRealCommand(CommandTerm):
         )
         self.prev_episode_successes = np.zeros(self.num_envs, dtype=np.int64)
         self._last_curriculum_step = 0
+        self._fixed_goals: np.ndarray | None = None
+        if cfg.fixed_goal_states is not None:
+            goals = np.asarray(cfg.fixed_goal_states, dtype=np.float32)
+            if goals.ndim != 2 or goals.shape[1] != GOAL_DIM or goals.shape[0] == 0:
+                raise ValueError(
+                    "fixed_goal_states must be a non-empty (K, 7) position/quaternion table"
+                )
+            if not np.isfinite(goals).all():
+                raise ValueError("fixed_goal_states must contain finite values")
+            if not np.allclose(np.linalg.norm(goals[:, 3:7], axis=-1), 1.0, atol=1e-5):
+                raise ValueError("fixed_goal_states quaternions must be unit wxyz values")
+            self._fixed_goals = goals
         # Reset-path marker for the GoalViz commit gate (module docstring):
         # True only while ``reset()`` runs inside the env's reset transaction.
         self._in_reset = False
@@ -283,6 +303,13 @@ class SimToolRealCommand(CommandTerm):
             self.object_scale_per_env = scale_table[assign]
         else:
             self.object_scale_per_env = np.ones((self.num_envs, 3), dtype=np.float32)
+        if cfg.object_scale is not None:
+            static_scale = np.asarray(cfg.object_scale, dtype=np.float32)
+            if static_scale.shape != (3,) or not np.isfinite(static_scale).all():
+                raise ValueError("object_scale must be a finite 3-D vector")
+            if np.any(static_scale <= 0.0):
+                raise ValueError("object_scale entries must be positive")
+            self.object_scale_per_env[:] = static_scale[None, :]
         # ``object_scale_multiplier`` mirrors allocate_state_buffers:86-89
         # (seeded once at init); the stage-2 reset event re-samples it per
         # episode (reset_utils.py:415-418).
@@ -350,6 +377,15 @@ class SimToolRealCommand(CommandTerm):
         """Resample the goal pose and commit it to GoalViz (reset_utils.py:304-369)."""
         cfg = self.cfg
         rng = self._env.rng
+        if self._fixed_goals is not None:
+            # DexToolBench's IsaacGym path indexes trajectory_states by
+            # successes and terminates once all authored goals are reached.
+            # goal_count is zeroed on reset and incremented immediately before
+            # this call on an advance, so it is exactly the trajectory cursor.
+            indices = np.minimum(self.goal_count[env_ids], len(self._fixed_goals) - 1)
+            self.goal[env_ids, :3] = self._fixed_goals[indices, :3]
+            self.goal[env_ids, 3:] = self._fixed_goals[indices, 3:]
+            return
         if mode == "delta":
             # reset_utils.py:351-353 reads the previous pose back from the
             # GoalViz sim state, which the original keeps fresh by writing it

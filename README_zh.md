@@ -11,6 +11,7 @@
 | 能力 | 状态 |
 | --- | --- |
 | `SimToolReal` teacher 训练（RL-Games SAPG） | 双后端全规模运行；任务/学习器语义与原仓库做过标签对拍 |
+| `DexToolBench` 交互评估 | 上游 24 个 object/task 组合全部固化为静态 MJCF，MuJoCo 后端直载；关闭运行时 DR，保留原 Viser 交互布局 |
 | 物理后端 | MuJoCo（默认，纯 CPU）与 IsaacSim（GPU worker），同一份资产/任务定义，`--backend` 切换 |
 | 与原 IsaacLab 实现的标签一致性 | 同 seed 12,288 env run 的关键 TensorBoard 标签族不可区分 |
 | 回放 / 检查 | `simtoolreal-play`、与原仓库标签集一致的 TensorBoard 叠加 |
@@ -61,6 +62,30 @@ uv run tensorboard --logdir logs/rlgames_sapg
 ```
 
 产物落在 `logs/rlgames_sapg/SimToolReal/<run>/`（checkpoint、TensorBoard 事件、run 配置）。MuJoCo 线不需要 IsaacSim worker 运行时；IsaacSim 线的 worker 与学习器共用一张 GPU。task/backend 路由键由 CLI 锁定不可覆盖；规模与算法字段走 Hydra override，例如 `algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048`（num_actors 必须恰好组成 6 个探索块）。
+
+## DexToolBench 交互 Demo
+
+```bash
+# 零动作检查场景与任务
+uv run simtoolreal-dextoolbench-interactive
+
+# 确定性策略演示
+uv run simtoolreal-dextoolbench-interactive \
+  --config-path /path/to/config.yaml \
+  --checkpoint-path /path/to/model.pth
+```
+
+Launcher 保留原仓库的 category/object/task 下拉框、Viser 控件、sidebar、
+object/goal 显示和 worker 生命周期。每个任务通过 `SceneCfg.model_file`
+直接加载一份已提交的完整场景 MJCF；这条路径不运行 MJCF writer，也不使用
+SimToolReal 工具池。对齐矩阵见
+[`docs/dextoolbench-mujoco.md`](docs/dextoolbench-mujoco.md)。
+
+与原仓库的对齐由 `tests/dextoolbench/` 验证（`uv run pytest
+tests/dextoolbench`）：24 份已提交 MJCF 全部可编译，且具备上游 29 关节布局、
+`startArmHigher` keyframe 和训练侧的接触/摩擦通道语义；Viser goal 镜像在
+`/goal` 坐标系下只携带 MJCF 的 geom 局部位姿。上面的零动作 launcher 同时
+可当作与上游 Viser 界面的肉眼对照。
 
 ## 如何修改
 

@@ -1500,13 +1500,16 @@ name = "simtoolreal-unilab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "gymnasium" },
     { name = "mjbatch-uni" },
+    { name = "pillow" },
     { name = "tensorboard" },
     { name = "tensorboardx" },
     { name = "torch" },
     { name = "unilab" },
     { name = "unilab-simtoolreal-rl-games" },
     { name = "unisim-core", extra = ["mujoco"] },
+    { name = "viser" },
 ]
 
 [package.dev-dependencies]
@@ -1517,13 +1520,16 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "gymnasium", specifier = ">=0.29" },
     { name = "mjbatch-uni", git = "https://github.com/unilabsim/mjbatch_uni.git?rev=9da4dc59dccfaeedbbcd1f336553498dc983a99b" },
+    { name = "pillow", specifier = ">=10" },
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.14.0+cu130", index = "https://download.pytorch.org/whl/cu130" },
     { name = "unilab", specifier = ">=1.3.3" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
     { name = "unisim-core", extras = ["mujoco"], specifier = ">=1.7.10" },
+    { name = "viser", specifier = ">=1.1" },
 ]
 
 [package.metadata.requires-dev]
