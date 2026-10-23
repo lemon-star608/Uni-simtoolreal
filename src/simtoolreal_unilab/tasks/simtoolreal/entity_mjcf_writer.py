@@ -178,7 +178,11 @@ def _build_table_entity() -> ET.Element:
     ET.SubElement(mujoco_el, "compiler", {"angle": "radian"})
     mujoco_el.append(_scene_option_element())
     worldbody = ET.SubElement(mujoco_el, "worldbody")
-    body = ET.SubElement(worldbody, "body", {"name": "table", "pos": "0 0 0"})
+    body = ET.SubElement(
+        worldbody,
+        "body",
+        {"name": "table", "pos": "0 0 0", "simple": "false"},
+    )
     ET.SubElement(
         body,
         "geom",

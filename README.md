@@ -10,10 +10,10 @@ SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Mo
 
 | Capability | Status |
 | --- | --- |
-| `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository |
+| `SimToolReal` teacher training (RL-Games SAPG) | MuJoCo/TorchEnv training and short-run playback verified; the IsaacSim owner is migrated but needs a reinstalled UniSim 2.1 worker for real-GPU validation |
 | `DexToolBench` interactive evaluation | All 24 upstream object/task combinations as committed static MJCFs on the MuJoCo backend, with upstream no-DR eval settings and Viser launcher layout |
 | Physics backends | MuJoCo (default, pure CPU) and IsaacSim (GPU worker); one shared asset/task definition, switchable via `--backend` |
-| Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run |
+| Label parity vs the original IsaacLab implementation | Legacy label families retained; Torch RNG changes trajectories, so distribution parity still needs a fresh same-scale run |
 | Playback / inspection | `simtoolreal-play`, TensorBoard overlay with the original tag set |
 | Student / camera / sensor policies, deployment, sim2real | Not carried over; this repository contains no deployment code |
 
@@ -30,7 +30,7 @@ uv run simtoolreal-assets     # verify the vendored assets
 uv run simtoolreal-list-envs  # SimToolReal  mujoco / SimToolReal  isaacsim
 ```
 
-All dependencies resolve from the lockfile (unilab, unisim-core and mjbatch-uni from PyPI; torch 2.14.0+cu130) — no extra checkouts. This repository is source-install only and is not published to PyPI.
+All dependencies resolve from the lockfile. UniLab, UniSim and Torch come from PyPI; `mjbatch-uni` is pinned to the open per-variant body-BVH fix until that fix has an official release. This repository is source-install only and is not published to PyPI.
 
 One piece cannot ship inside `uv sync`: the IsaacSim worker runtime (NVIDIA's SDK is not redistributed). Install it once with `bash scripts/setup_isaacsim_env.sh` (vendored from UniLab's official installer, IsaacSim 5.1.0 + IsaacLab 2.3.0, idempotent); `simtoolreal-train`/`simtoolreal-play` detect it automatically. Escape hatch for another IsaacSim-capable interpreter: `export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`.
 
@@ -100,9 +100,9 @@ visual side-by-side check against the upstream Viser UI.
 | Tool pool and MJCF generation | `tasks/simtoolreal/tool_catalog.py`, `tool_mjcf_writer.py`, `entity_mjcf_writer.py` |
 | Entity bootstrap and variant binding | `tasks/simtoolreal/scene.py`, `env_cfg.py` |
 | Algorithm hyperparameters | `conf/rlgames_sapg/config.yaml` |
-| Behaviors layered on pinned UniLab | `src/simtoolreal_unilab/_compat/` (removed as upstream grows them) |
+| Torch quaternion/packed-read helpers | `tasks/simtoolreal/tensor_utils.py` |
 
-Dependency pins: `unilab >= 1.3.3` (PyPI release carrying [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636)), `unisim-core >= 1.7.10`, `mjbatch-uni >= 0.2.4`, `torch == 2.14.0+cu130` (unilab 1.3.3's own validation target). The vendored RL-Games runtime under `third_party/` is SHA-gated; never edit it. Run `make check` / `make test` before pushing.
+Dependency pins: `unilab == 1.5.0`, `unisim-core == 2.1.0`, `mjbatch-uni == 0.2.6.dev0` (PR [#41](https://github.com/unilabsim/mjbatch_uni/pull/41)), `torch == 2.14.0+cu130`. The vendored RL-Games runtime under `third_party/` is SHA-gated; never edit it. Run `make check` / `make test` before pushing.
 
 ## Credits
 

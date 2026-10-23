@@ -16,7 +16,7 @@ def preflight_config(cfg: DictConfig) -> None:
     """Reject unsupported execution/config modes before environment creation.
 
     Task- and backend-neutral: observation/action dimensions are validated by
-    the env adapter against the live ``NpEnv`` contract, so this layer only
+    the env adapter against the live ``TorchEnv`` contract, so this layer only
     pins the native SAPG structural invariants.
     """
     if str(_value(cfg, "algo.algo")) != "rlgames_sapg":

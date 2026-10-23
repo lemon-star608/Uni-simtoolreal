@@ -157,6 +157,18 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     # ``mjcf`` is the shared B-form route selected by both shipped owner
     # leaves; it is the only supported asset format.
     asset_format: str = _DEFAULT_ASSET_FORMAT
+    # UniSim 2.1's IsaacSim adapter accepts the original task's bounded PhysX
+    # solver contract, but UniLab 1.5.0's generic EnvCfg translator does not
+    # yet expose these fields. The task owner carries them and the task factory
+    # forwards them only when configured.
+    solver_position_iteration_count: int | None = None
+    solver_velocity_iteration_count: int | None = None
+    bounce_threshold_velocity: float | None = None
+    contact_offset: float | None = None
+    rest_offset: float | None = None
+    max_depenetration_velocity: float | None = None
+    gpu_max_rigid_contact_count: int | None = None
+    gpu_max_rigid_patch_count: int | None = None
 
     # Filled by ``validate()`` — after Hydra/registry overlays settle the pool
     # knobs and before the upstream factory guard reads the catalog — and read

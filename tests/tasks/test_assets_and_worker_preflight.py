@@ -40,7 +40,8 @@ def test_worker_preflight_autodetects_the_conventional_install(monkeypatch, tmp_
         monkeypatch.delenv(name, raising=False)
     fake = tmp_path / "venv" / "bin" / "python"
     fake.parent.mkdir(parents=True)
-    fake.write_text("#!/bin/sh\n")
+    fake.write_text("#!/bin/sh\necho 2.1.0\n")
+    fake.chmod(0o755)
     monkeypatch.setattr(preflight, "CONVENTIONAL_WORKER_PYTHON", fake)
     resolved = preflight.ensure_worker_runtime()
     assert resolved == str(fake)
@@ -49,7 +50,8 @@ def test_worker_preflight_autodetects_the_conventional_install(monkeypatch, tmp_
 
 def test_worker_preflight_explicit_interpreter_wins(monkeypatch, tmp_path):
     explicit = tmp_path / "explicit-python"
-    explicit.write_text("#!/bin/sh\n")
+    explicit.write_text("#!/bin/sh\necho 2.1.0\n")
+    explicit.chmod(0o755)
     monkeypatch.setenv("UNISIM_ISAACSIM_PYTHON", str(explicit))
     assert preflight.ensure_worker_runtime() == str(explicit)
 

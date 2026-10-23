@@ -11,17 +11,14 @@ requires-python = ">=3.11,<3.14"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
-  # Official PyPI release (>=1.3.3 carries the isaacsim solver + GPU buffer
-  # EnvCfg knobs, Motphys/UniLab#1620/#1636 — pin 总闭环).
-  "unilab>=1.3.3",
-  # Official PyPI release of unisim-core. >=1.7.10 carries the uniform_public_layout
-  # IsaacSim support (#307, M-J6 prerequisite) plus the INIT progress/spawn
-  # speedups; the [mujoco] extra pulls in the mujoco/mjbatch-uni pair the
-  # MuJoCo backend is pinned and tested against.
-  "unisim-core[mujoco]>=1.7.10",
-  # Direct dep: mujoco variant executors on unisim >=1.7.5 fail closed
-  # without the streaming VariantPackBuilder (mjbatch-uni >=0.2.4).
-  # Temporary PR branch for unilabsim/mjbatch_uni#40 (PR #41).
+  # TorchEnv Manager runtime baseline. UniLab 1.5.0 pins its tested
+  # unisim-core sibling and restores public env_ids reset semantics.
+  "unilab==1.5.0",
+  # UniSim 2.1.0 carries the tensor backend contract paired with UniLab 1.5;
+  # the [mujoco] extra pulls in the MuJoCo/mjbatch pair used by TorchEnv.
+  "unisim-core[mujoco]==2.1.0",
+  # Correct VariantPack broad-phase behavior for the 1,200-tool pool:
+  # per-variant body_bvh_aabb scatter (unilabsim/mjbatch_uni#40, PR #41).
   "mjbatch-uni==0.2.6.dev0",
   # Vendored, SHA-gated RL-Games SAPG runtime (see third_party/ and PATCHES.md).
   "unilab-simtoolreal-rl-games",
@@ -62,8 +59,8 @@ torch = [{ index = "pytorch-cu130", marker = "sys_platform == 'linux' and platfo
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
 exclude-dependencies = ["torchvision"]
 # The vendored runtime pins torch==2.7.0 in its (SHA-gated, immutable)
-# metadata; this project trains on the cu130 build instead (unilab 1.3.3
-# requires torch>=2.9,<2.15; 2.14.0 is upstream's own validation target).
+# metadata; this project trains on the cu130 build instead (unilab 1.5.0
+# supports torch>=2.9,<2.15; 2.14.0 is this repository's validation target).
 # The override keeps the vendored tree pristine while forcing our torch
 # resolution.
 override-dependencies = ["torch==2.14.0+cu130"]

@@ -623,17 +623,6 @@ wheels = [
 ]
 
 [[package]]
-name = "llvmlite"
-version = "0.49.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/43/27/72ae94ea5c8f7349ec1c229d4cd058feb799cbd0833ad6d1b47c919b37b7/llvmlite-0.49.0.tar.gz", hash = "sha256:00f16db782f4a13c78c5804aedc434e46794a77e89999a168f9401106270e50a", size = 194467, upload-time = "2026-08-11T16:26:00.489Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/80/0989432d12b7c86a6f5f380eb92eca7de779af9b34dedbd311b694d7da8d/llvmlite-0.49.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a8c0fc9d624bdc30a3d2db11eb2fb98f80fb209d20b37604eda516cd9b699cf4", size = 59890659, upload-time = "2026-08-11T16:23:37.346Z" },
-    { url = "https://files.pythonhosted.org/packages/be/3c/e97f69c62a2d972066d9a2612ce1f3de313035ac897a5b9f787cad8b55f7/llvmlite-0.49.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:6acba646d88abbc87d5c113a3d62c1fbf8b8fee11c6493f516803e30f21ae870", size = 59890658, upload-time = "2026-08-11T16:24:05.451Z" },
-    { url = "https://files.pythonhosted.org/packages/8e/1c/ca8ba47b057b793099784475499771780ec46839f2782f753a7079d23520/llvmlite-0.49.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ddc7aecd4f56397ed6e8f120ec5dcd5a1a8f0e6032ca4af413462792d4dca2e3", size = 59890659, upload-time = "2026-08-11T16:24:35.595Z" },
-]
-
-[[package]]
 name = "markdown"
 version = "3.10.3"
 source = { registry = "https://pypi.org/simple" }
@@ -819,22 +808,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/ac/92/410b7917d16ab54c0
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6e/53/ebfed7b689c338dd8ebeec9c0730c8d56821292f14e2536e5f3ef1a05744/ninja-1.13.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c", size = 183365, upload-time = "2026-08-30T15:49:34.53Z" },
     { url = "https://files.pythonhosted.org/packages/f5/5f/c511f2952f94ab2966d60edd9c34e744ea32f2724b1184b62270bde55b3a/ninja-1.13.2-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:915bd482c4be41c75120fd67a22e0bb3f0fbb3bbc5f95b89787deadd59e27ef2", size = 544460, upload-time = "2026-08-30T15:49:46.29Z" },
-]
-
-[[package]]
-name = "numba"
-version = "0.67.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "llvmlite" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/90/2544f4e3a61e501d6c9a5418fd4b905323222693d54a02cab0106a0af865/numba-0.67.0.tar.gz", hash = "sha256:cd75aa535b33fa05d9d930b1ae8af9f97a2881e96d72dfb38ec9b78284d9f851", size = 2836515, upload-time = "2026-08-11T23:04:00.174Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/78/3f3c45dbaec3cf02bbb1825731beca50f591227e95143d6bd7a64897641c/numba-0.67.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:8c80c847301dc33dc8f84a97a952004023d9a05578ae4512b087176264cc1960", size = 3827182, upload-time = "2026-08-11T23:03:19.684Z" },
-    { url = "https://files.pythonhosted.org/packages/bb/38/926757caaac18a66f057d7544a63620bf360a07d281c9f7ecadd2aa83963/numba-0.67.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:f63d43db06b4756424d6d2484737c902e0ae944a0eec3e8b0b4de2c695b15caa", size = 3884596, upload-time = "2026-08-11T23:03:27.688Z" },
-    { url = "https://files.pythonhosted.org/packages/a1/1c/c05609739cc41116d36e30cb2b41fb00f126bb52e1b0bac907051ad8a35d/numba-0.67.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:9c4953387c77864b596d8296e2cfbdef82b0eea4166ab4864b05d226c51143e0", size = 3892004, upload-time = "2026-08-11T23:03:35.797Z" },
 ]
 
 [[package]]
@@ -1526,9 +1499,9 @@ requires-dist = [
     { name = "tensorboard", specifier = ">=2.8" },
     { name = "tensorboardx", specifier = ">=2.5" },
     { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = "==2.14.0+cu130", index = "https://download.pytorch.org/whl/cu130" },
-    { name = "unilab", specifier = ">=1.3.3" },
+    { name = "unilab", specifier = "==1.5.0" },
     { name = "unilab-simtoolreal-rl-games", editable = "third_party/simtoolreal_rl_games" },
-    { name = "unisim-core", extras = ["mujoco"], specifier = ">=1.7.10" },
+    { name = "unisim-core", extras = ["mujoco"], specifier = "==2.1.0" },
     { name = "viser", specifier = ">=1.1" },
 ]
 
@@ -1737,7 +1710,7 @@ wheels = [
 
 [[package]]
 name = "unilab"
-version = "1.3.3"
+version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "etils" },
@@ -1749,9 +1722,9 @@ dependencies = [
     { name = "lark" },
     { name = "mediapy" },
     { name = "ninja" },
-    { name = "numba" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "omegaconf" },
     { name = "onnxruntime" },
     { name = "packaging" },
     { name = "prettytable" },
@@ -1768,9 +1741,9 @@ dependencies = [
     { name = "viser" },
     { name = "wandb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/89/b4/a7f3953d591f2b41b78705bbcd2a2f5d551ca1ddaa4a47c7052795ab506b/unilab-1.3.3.tar.gz", hash = "sha256:f18cd4ed2549081d35c1517113a8b9416848579328ca22c235ab5165a1826c90", size = 494417, upload-time = "2026-09-27T07:46:47.899Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/7b/b4a70ae7df33b83cdd415e7887b009edeffe73fd014c5c9d41e8c53b9584/unilab-1.5.0.tar.gz", hash = "sha256:13cde0defe41882236f2deab719d94543cfc5b5f6785b98f25d0435e82fbeb14", size = 756605, upload-time = "2026-10-22T04:00:10.4Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/04/f76e7cddf521b61f871083a162a7bdbbc90c13da9f0ef209b00450910a7a/unilab-1.3.3-py3-none-any.whl", hash = "sha256:1ec95c18ad22da20372336853cbbe8ad8080c1a27f557637de02c74bcd7e8f88", size = 635014, upload-time = "2026-09-27T07:46:45.926Z" },
+    { url = "https://files.pythonhosted.org/packages/63/e2/7d8ef3f610a30160b6aa2c3f13692f78e3359cf4959149e409c2025b107c/unilab-1.5.0-py3-none-any.whl", hash = "sha256:c7a3a2a5e7829f541eafaa86edc71370300d01501412a98cf57b9bfef3f36a09", size = 887504, upload-time = "2026-10-22T04:00:08.237Z" },
 ]
 
 [[package]]
@@ -1801,13 +1774,13 @@ requires-dist = [
 
 [[package]]
 name = "unisim-core"
-version = "1.7.10"
+version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/0d/099e8886ba5b6404e6ae26424e325b38e66031e257deec66ae974240a38b/unisim_core-1.7.10.tar.gz", hash = "sha256:249490d85839d2a64e7b48ce3a5d5330fd71233f6e77d5a90926613a1dd25299", size = 534116, upload-time = "2026-09-24T11:35:36.978Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/54/8bbfa4f671b4c26002983afeb88f24e548816de3ccb29112ac4b8ca9ae66/unisim_core-2.1.0.tar.gz", hash = "sha256:4353d0e01214954181a30b6e00442cf3f5e3bb45fba551cee2e6f35440db1d2d", size = 699562, upload-time = "2026-10-21T14:47:45.451Z" }
 
 [package.optional-dependencies]
 mujoco = [

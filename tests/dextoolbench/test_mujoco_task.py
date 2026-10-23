@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+import torch
 
+from simtoolreal_unilab.dextoolbench.worker import _state
 from simtoolreal_unilab.tasks.dextoolbench.catalog import find_task, load_trajectory
 from simtoolreal_unilab.tasks.dextoolbench.env_cfg import (
     build_dextoolbench_env_cfg_override,
@@ -53,24 +55,41 @@ def test_registry_builds_single_env_and_keeps_obs_action_contract(tmp_path, monk
         obs, _info = env.reset()
         assert obs["obs"].shape == (1, 140)
         assert obs["critic"].shape == (1, 162)
-        state = env.step(np.zeros((1, 29), dtype=np.float32))
+        state = env.step(torch.zeros((1, 29), dtype=torch.float32, device=env.device))
         assert state.obs["obs"].shape == (1, 140)
         assert np.isfinite(state.obs["obs"]).all()
         assert np.isfinite(state.reward).all()
+        worker_state = _state(env)
+        assert worker_state["joint_pos"].shape == (29,)
+        assert worker_state["object_pose_wxyz"].shape == (7,)
+        assert worker_state["goal_pose_wxyz"].shape == (7,)
 
         robot = env.scene["robot"]
         expected_arm = np.array([-1.571, 1.3964670740, 0.0, 1.5505329252, 0.0, 1.485, 1.308])
-        np.testing.assert_allclose(robot.data.default_joint_pos[0, :7], expected_arm, atol=1e-5)
+        defaults = robot.data.default_joint_pos(env.device)[0, :7].detach().cpu().numpy()
+        np.testing.assert_allclose(defaults, expected_arm, atol=1e-5)
         goal_hub = env.command_manager.get_term("goal")
-        np.testing.assert_allclose(goal_hub.object_scale_per_env[0], (2.5, 0.5625, 0.375))
+        np.testing.assert_allclose(
+            goal_hub.object_scale_per_env[0].detach().cpu().numpy(),
+            (2.5, 0.5625, 0.375),
+        )
         trajectory = load_trajectory(find_task("hammer", "claw_hammer", "swing_down"))
-        np.testing.assert_allclose(goal_hub.goal[0], trajectory["goals_wxyz"][0], atol=1e-6)
-        goal_hub._advance_goal(np.array([0], dtype=np.intp))  # noqa: SLF001
-        np.testing.assert_allclose(goal_hub.goal[0], trajectory["goals_wxyz"][1], atol=1e-6)
+        np.testing.assert_allclose(
+            goal_hub.goal[0].detach().cpu().numpy(), trajectory["goals_wxyz"][0], atol=1e-6
+        )
+        goal_hub._advance_goal(torch.tensor([0], device=env.device))  # noqa: SLF001
+        np.testing.assert_allclose(
+            goal_hub.goal[0].detach().cpu().numpy(), trajectory["goals_wxyz"][1], atol=1e-6
+        )
         assert goal_hub.goal_count[0] == 1
 
-        object_pose = env.scene["object"].data.root_link_pose_w[0].copy()
-        object_pose[:3] -= env.scene.env_origins[0, :3]
+        object = env.scene["object"]
+        object_pose = (
+            env.scene.read_plan.body_tensor_view(object, (goal_hub.object_body_name,))
+            .pos_w[0, 0]
+            .clone()
+        )
+        object_pose[:3] -= env.scene.env_origins(env.device)[0, :3]
         np.testing.assert_allclose(object_pose[:2], trajectory["start_pose_wxyz"][:2], atol=1e-5)
         assert object_pose[2] < trajectory["start_pose_wxyz"][2]
         assert object_pose[2] > trajectory["start_pose_wxyz"][2] - 0.03

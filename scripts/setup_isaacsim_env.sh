@@ -204,6 +204,12 @@ run_step 02_torch \
   --index-url https://download.pytorch.org/whl/cu128
 
 # ---------------------------------------------------------------------------
+# Step 2b: the host-side UniSim worker API. Keep this independent of the
+# learner environment; the worker venv intentionally keeps IsaacSim's torch.
+# ---------------------------------------------------------------------------
+run_step 02b_unisim pip_cmd install "unisim-core==2.1.0"
+
+# ---------------------------------------------------------------------------
 # Step 3: IsaacSim from the NVIDIA PyPI index (multi-GB; cached by pip on re-run)
 # ---------------------------------------------------------------------------
 step_isaacsim() {

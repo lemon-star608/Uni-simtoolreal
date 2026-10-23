@@ -305,14 +305,14 @@ def test_isaacsim_solver_knobs_match_original_repository(isaacsim):
     training").  solver_type=TGS and the friction offsets still have no
     UniSim channel — defaults apply there.
     """
-    assert isaacsim["env"]["isaacsim_solver_position_iteration_count"] == 8
-    assert isaacsim["env"]["isaacsim_solver_velocity_iteration_count"] == 0
-    assert isaacsim["env"]["isaacsim_bounce_threshold_velocity"] == 0.2
-    assert isaacsim["env"]["isaacsim_contact_offset"] == 0.002
-    assert isaacsim["env"]["isaacsim_rest_offset"] == 0.0
-    assert isaacsim["env"]["isaacsim_max_depenetration_velocity"] == 1000.0
-    assert isaacsim["env"]["isaacsim_gpu_max_rigid_contact_count"] == 2**24
-    assert isaacsim["env"]["isaacsim_gpu_max_rigid_patch_count"] == 2**23
+    assert isaacsim["env"]["solver_position_iteration_count"] == 8
+    assert isaacsim["env"]["solver_velocity_iteration_count"] == 0
+    assert isaacsim["env"]["bounce_threshold_velocity"] == 0.2
+    assert isaacsim["env"]["contact_offset"] == 0.002
+    assert isaacsim["env"]["rest_offset"] == 0.0
+    assert isaacsim["env"]["max_depenetration_velocity"] == 1000.0
+    assert isaacsim["env"]["gpu_max_rigid_contact_count"] == 2**24
+    assert isaacsim["env"]["gpu_max_rigid_patch_count"] == 2**23
 
 
 # --- tool pool knobs (SimToolReal.yaml:50-52; generate_objects.py:27) --------

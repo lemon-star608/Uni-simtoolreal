@@ -15,7 +15,7 @@ from typing import Any
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
-from unilab.base.config_adapter import BackendAdapter
+from unilab.base.config_adapter import EnvConfigAdapter
 
 from simtoolreal_unilab.config import CONF_ROOT
 
@@ -165,9 +165,9 @@ def build_dextoolbench_env_cfg_override(
         scene.entities = OmegaConf.create(_direct_scene_entities())
 
     package_root = Path(__file__).resolve().parents[2]
-    adapter = BackendAdapter(raw, root_dir=str(package_root))
+    adapter = EnvConfigAdapter(raw, root_dir=str(package_root))
     override = adapter.build_task_env_cfg_override()
-    # BackendAdapter's root is only used for play-profile paths here, but keep
+    # EnvConfigAdapter's root is only used for play-profile paths here, but keep
     # it at the package root so the behavior is deterministic in installed wheels.
     _pin_no_dr_and_fixed_task(override, task, trajectory)
     return override

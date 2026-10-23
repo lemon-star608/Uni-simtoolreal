@@ -168,6 +168,7 @@ env:
         site_names: [robot/left_thumb_fingertip, robot/left_index_fingertip, robot/left_middle_fingertip, robot/left_ring_fingertip, robot/left_pinky_fingertip]
       table:
         root_body_name: table/table
+        body_names: [table/table]
       object:
         root_body_name: object/object_root
         body_names: [object/object_root]

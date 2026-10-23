@@ -1,21 +1,15 @@
-"""SimToolReal reset and interval randomization terms.
-
-The implementations are NumPy translations of the original IsaacLab task's
-``reset_utils.py`` and ``action_utils.py``.  Scene entities are resolved only
-on the cold path; the terms use the public :class:`~unilab.base.entity.Entity`
-facade for state writes and body-wrench dispatch.  The robot-only skeleton can
-still be constructed while the multi-asset scene is being assembled: optional
-table/object entities are skipped until they are declared by the owner scene.
-"""
+"""SimToolReal Torch reset and interval randomization events."""
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any, cast
 
-import numpy as np
+import torch
 from unilab.base.entity import Entity
 from unilab.managers.manager_base import ManagerTermBase, ManagerTermBaseCfg
+from unilab.managers.rng import ManagerRng
 
 from .config import (
     ARM_DEFAULT_JOINT_POS,
@@ -26,18 +20,19 @@ from .config import (
     match_entity_names,
 )
 from .env_cfg import fixed_variant_plan_assignment
+from .tensor_utils import normalize_quat
 
 
-def _ids(env: Any, env_ids: np.ndarray | slice | None) -> np.ndarray:
+def _ids(env: Any, env_ids: torch.Tensor | slice | None) -> torch.Tensor:
     if env_ids is None:
-        return np.arange(env.num_envs, dtype=np.intp)
+        return torch.arange(env.num_envs, dtype=torch.int64, device=env.device)
     if isinstance(env_ids, slice):
-        return np.arange(env.num_envs, dtype=np.intp)[env_ids]
-    result = np.asarray(env_ids, dtype=np.intp).reshape(-1)
-    if np.any(result < 0) or np.any(result >= env.num_envs):
-        raise ValueError(f"environment ids are out of range: {result.tolist()}")
-    if np.unique(result).size != result.size:
-        raise ValueError(f"environment ids contain duplicates: {result.tolist()}")
+        return torch.arange(env.num_envs, dtype=torch.int64, device=env.device)[env_ids]
+    result = env_ids.reshape(-1)
+    if bool((result < 0).any()) or bool((result >= env.num_envs).any()):
+        raise ValueError("environment ids are out of range")
+    if result.unique().numel() != result.numel():
+        raise ValueError("environment ids contain duplicates")
     return result
 
 
@@ -49,12 +44,6 @@ def _entity(scene: Mapping[str, Any], name: str) -> Entity | None:
 
 
 def _declared_root_mode(env: Any, name: str) -> str | None:
-    """The entity's declared root mode (``entity_assets``), None when absent.
-
-    Entity-composed scenes reject root-velocity writes on kinematic entities
-    (unisim scene_layout validate_reset) — a kinematic root has no velocity
-    state, so skipping the zero write is semantics-preserving on both lines.
-    """
     scene = getattr(getattr(env, "cfg", None), "scene", None)
     for spec in getattr(scene, "entity_assets", ()) or ():
         spec_name = (
@@ -65,35 +54,52 @@ def _declared_root_mode(env: Any, name: str) -> str | None:
     return None
 
 
-def _unit_quaternions(rng: np.random.Generator, count: int) -> np.ndarray:
-    values = rng.standard_normal((count, 4)).astype(np.float32)
-    norms = np.linalg.norm(values, axis=-1, keepdims=True)
-    values /= np.maximum(norms, np.float32(1e-12))
-    return values
+def _initial_entity_pose(env: Any, name: str) -> torch.Tensor:
+    """Read one composed entity's fixed initial world pose."""
+    scene = getattr(getattr(env, "cfg", None), "scene", None)
+    for spec in getattr(scene, "entity_assets", ()) or ():
+        spec_name = (
+            getattr(spec, "name", None) if not isinstance(spec, Mapping) else spec.get("name")
+        )
+        if spec_name != name:
+            continue
+        state = getattr(spec, "initial_state", None)
+        if state is None and isinstance(spec, Mapping):
+            state = spec.get("initial_state")
+        if state is None:
+            break
+        position = getattr(state, "position", None)
+        quaternion = getattr(state, "quaternion", None)
+        if position is None and isinstance(state, Mapping):
+            position = state.get("position")
+            quaternion = state.get("quaternion")
+        if position is None or quaternion is None:
+            break
+        return torch.tensor(
+            tuple(position) + tuple(quaternion), dtype=torch.float32, device=env.device
+        )
+    raise ValueError(f"SimToolRealReset cannot resolve initial pose for entity {name!r}")
+
+
+def _unit_quaternions(rng: ManagerRng, count: int) -> torch.Tensor:
+    return normalize_quat(rng.standard_normal((count, 4)))
 
 
 def _log_uniform(
-    rng: np.random.Generator,
+    rng: ManagerRng,
     bounds: tuple[float, float],
     count: int,
     *,
     label: str,
-) -> np.ndarray:
-    lo, hi = (float(bounds[0]), float(bounds[1]))
-    if not np.isfinite((lo, hi)).all() or lo <= 0.0 or lo > hi:
+) -> torch.Tensor:
+    lo, hi = float(bounds[0]), float(bounds[1])
+    if not math.isfinite(lo) or not math.isfinite(hi) or lo <= 0.0 or lo > hi:
         raise ValueError(f"{label} must satisfy 0 < min <= max, got {bounds!r}")
-    return np.exp(rng.uniform(np.log(lo), np.log(hi), size=count)).astype(np.float32)
+    return torch.exp(rng.uniform(math.log(lo), math.log(hi), count))
 
 
 class SimToolRealReset(ManagerTermBase):
-    """Reset robot joints and, when declared, table and object roots.
-
-    The robot position distribution follows ``reset_utils.py:200-220``:
-    sample within the backend soft limits and interpolate from the canonical
-    default pose by separate arm/hand factors.  Root writes are staged in the
-    env-owned reset transaction, so they commit atomically with the generic
-    ``reset_scene_to_default`` event and the GoalViz command reset.
-    """
+    """Reset robot joints and optional table/object roots."""
 
     def __init__(self, cfg: ManagerTermBaseCfg, env: Any):
         super().__init__(env)
@@ -105,11 +111,9 @@ class SimToolRealReset(ManagerTermBase):
         default += [0.0] * len(HAND_JOINT_NAMES)
         params = cfg.params
         if bool(params.get("start_arm_higher", False)):
-            # DexToolBench evaluation uses the same +/- 10 degree offsets as
-            # upstream startArmHigher=True.
-            default[1] -= np.deg2rad(10.0)
-            default[3] += np.deg2rad(10.0)
-        self._default_pos = np.asarray(default, dtype=np.float32)
+            default[1] -= math.radians(10.0)
+            default[3] += math.radians(10.0)
+        self._default_pos = torch.tensor(default, dtype=torch.float32, device=env.device)
 
         defaults = ResetCfg()
         self._pos_noise_arm = float(
@@ -119,13 +123,14 @@ class SimToolRealReset(ManagerTermBase):
             params.get("dof_pos_noise_hand", defaults.reset_dof_pos_random_interval_fingers)
         )
         self._vel_noise = float(params.get("dof_vel_noise", defaults.reset_dof_vel_random_interval))
-        self._reset_position_noise = np.asarray(
+        self._reset_position_noise = torch.tensor(
             (
                 float(params.get("reset_position_noise_x", defaults.reset_position_noise_x)),
                 float(params.get("reset_position_noise_y", defaults.reset_position_noise_y)),
                 float(params.get("reset_position_noise_z", defaults.reset_position_noise_z)),
             ),
-            dtype=np.float32,
+            dtype=torch.float32,
+            device=env.device,
         )
         self._table_reset_z = float(params.get("table_reset_z", defaults.table_reset_z))
         self._table_reset_z_range = float(
@@ -135,12 +140,13 @@ class SimToolRealReset(ManagerTermBase):
             params.get("table_object_z_offset", defaults.table_object_z_offset)
         )
         fixed = params.get("fixed_start_pose", defaults.fixed_start_pose)
-        self._fixed_start_pose = None if fixed is None else np.asarray(fixed, dtype=np.float32)
+        self._fixed_start_pose = (
+            None if fixed is None else torch.tensor(fixed, dtype=torch.float32, device=env.device)
+        )
         if self._fixed_start_pose is not None and self._fixed_start_pose.shape != (7,):
             raise ValueError("fixed_start_pose must contain (x, y, z, qw, qx, qy, qz)")
         multiplier_range = params.get("object_scale_noise_multiplier_range", (1.0, 1.0))
-        multiplier_range = np.asarray(multiplier_range, dtype=np.float64)
-        if multiplier_range.shape != (2,) or not np.isfinite(multiplier_range).all():
+        if len(multiplier_range) != 2:
             raise ValueError("object_scale_noise_multiplier_range must be a finite pair")
         self._scale_range = (float(multiplier_range[0]), float(multiplier_range[1]))
         if self._scale_range[0] > self._scale_range[1]:
@@ -148,113 +154,152 @@ class SimToolRealReset(ManagerTermBase):
 
         self._table = _entity(env.scene, "table")
         self._object = _entity(env.scene, "object")
+        self._table_mocap = (
+            self._table is not None
+            and getattr(self._table, "_physical_entity", None) is not None
+            and _declared_root_mode(env, "table") == "kinematic"
+        )
+        self._table_mocap_bound = False
 
-    def _reset_robot(self, env: Any, ids: np.ndarray) -> None:
-        count = ids.size
-        scales = np.full(self._default_pos.size, self._pos_noise_hand, dtype=np.float32)
+    def _reset_robot(self, env: Any, ids: torch.Tensor) -> None:
+        count = ids.numel()
+        scales = torch.full_like(self._default_pos, self._pos_noise_hand)
         scales[: len(ARM_JOINT_NAMES)] = self._pos_noise_arm
         try:
-            raw_limits = np.asarray(self._robot.data.soft_joint_pos_limits, dtype=np.float32)
-            if raw_limits.shape == (self._default_pos.size, 2):
-                # EntityData exposes model limits once; expand only the rows
-                # being reset.  Lightweight IsaacLab-style fixtures may carry
-                # an explicit (num_envs, joints, 2) tensor instead.
-                limits = np.broadcast_to(raw_limits, (count, self._default_pos.size, 2))
-            else:
-                limits = raw_limits[ids]
+            raw_limits = self._robot.data.soft_joint_pos_limits(env.device).to(env.device)
         except (AttributeError, NotImplementedError):
-            limits = None
-        if limits is None:
-            positions = np.broadcast_to(self._default_pos, (count, self._default_pos.size)).copy()
+            raw_limits = None
+        if raw_limits is None:
+            positions = self._default_pos[None, :].expand(count, -1).clone()
         else:
-            expected = (count, self._default_pos.size, 2)
-            if limits.shape != expected:
+            expected_limit_shape = (*self._default_pos.shape, 2)
+            if tuple(raw_limits.shape) != expected_limit_shape:
                 raise ValueError(
                     "SimToolRealReset soft joint limits have shape "
-                    f"{limits.shape}; expected {expected}"
+                    f"{tuple(raw_limits.shape)}; expected {expected_limit_shape}"
                 )
-            sampled = env.rng.uniform(limits[..., 0], limits[..., 1]).astype(np.float32)
+            limits = raw_limits[None, :, :].expand(count, -1, -1)
+            sampled = env.rng.uniform(
+                limits[..., 0], limits[..., 1], (count, self._default_pos.numel())
+            )
             positions = self._default_pos[None, :] + scales[None, :] * (
                 sampled - self._default_pos[None, :]
             )
-            positions = np.clip(positions, limits[..., 0], limits[..., 1])
+            positions = torch.clamp(positions, min=limits[..., 0], max=limits[..., 1])
         velocities = env.rng.uniform(
-            -self._vel_noise, self._vel_noise, size=(count, self._default_pos.size)
-        ).astype(np.float32)
-        self._robot.write_joint_state_to_sim(
-            positions, velocities, joint_ids=self._joint_ids, env_ids=ids
+            -self._vel_noise, self._vel_noise, (count, self._default_pos.numel())
         )
+        full_positions = torch.zeros(
+            (env.num_envs, self._default_pos.numel()), dtype=torch.float32, device=env.device
+        )
+        full_velocities = torch.zeros_like(full_positions)
+        full_positions[ids] = positions
+        full_velocities[ids] = velocities
+        reset_mask = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        reset_mask[ids] = True
+        reset_state = getattr(env, "_reset_state", None)
+        transaction = getattr(reset_state, "_packed_reset_transaction", None)
+        if reset_state is not None and transaction is not None:
+            # UniLab 1.5's public Entity mask wrapper does not yet cover mapped
+            # physical-entity joints. Both direct and composed scenes expose
+            # the same public state columns, so stage the canonical columns in
+            # the backend-owned packed transaction and mark the owner boundary.
+            self._robot._materialize_reset_joint_indices()
+            qpos_columns = self._robot._reset_joint_qpos_ids[list(self._joint_ids)]
+            qvel_columns = self._robot._reset_joint_qvel_ids[list(self._joint_ids)]
+            transaction.write_state_mask(
+                reset_mask,
+                qpos_columns=qpos_columns,
+                qpos_values=full_positions,
+                qvel_columns=qvel_columns,
+                qvel_values=full_velocities,
+            )
+            reset_state._tensor_has_writes = True
+            reset_state._requesting_terms.add("SimToolRealReset.write_joint_state")
+        else:
+            self._robot.write_joint_state_to_sim_mask(
+                full_positions, full_velocities, reset_mask, joint_ids=self._joint_ids
+            )
+        action_term = env.action_manager.get_term("joint_pos")
+        seed_reset_targets = getattr(action_term, "seed_reset_targets", None)
+        if callable(seed_reset_targets):
+            seed_reset_targets(ids, positions)
 
-    def _reset_table_and_object(self, env: Any, ids: np.ndarray) -> None:
+    def _reset_table_and_object(self, env: Any, ids: torch.Tensor) -> None:
         if self._table is None and self._object is None:
             return
-        count = ids.size
+        count = ids.numel()
         if self._table is None:
-            # Scenes without a table entity (legacy fixtures) keep the table
-            # z fixed at table_reset_z and skip the noise draw.
-            table_z = np.full(count, self._table_reset_z, dtype=np.float32)
+            table_z = torch.full(
+                (count,), self._table_reset_z, dtype=torch.float32, device=env.device
+            )
         else:
-            # M-J5: the table is a kinematic entity again on both lines, so
-            # the z randomization (ResetCfg.table_reset_z ± range) is back on
-            # the MuJoCo line through the entity reset channel.
             table_z = self._table_reset_z + env.rng.uniform(
-                -self._table_reset_z_range, self._table_reset_z_range, size=count
-            ).astype(np.float32)
-            table_pose = np.array(self._table.read_reset_root_pose(ids), copy=True)
+                -self._table_reset_z_range, self._table_reset_z_range, count
+            )
+            table_pose = _initial_entity_pose(env, "table")[None, :].expand(count, -1).clone()
             table_pose[:, 2] = table_z
-            self._table.write_root_link_pose_to_sim(table_pose, env_ids=ids)
-            if _declared_root_mode(env, "table") != "kinematic":
-                # Kinematic roots carry no velocity state; the zero write is a
-                # no-op the entity-composed scene contract rejects outright.
-                self._table.write_root_link_velocity_to_sim(
-                    np.zeros((count, 6), dtype=np.float32), env_ids=ids
+            if self._table_mocap:
+                if not self._table_mocap_bound:
+                    assert self._table is not None
+                    self._table.bind_mocap_pose_write(
+                        self._table.root_body_name, term_name="simtoolreal_table_reset"
+                    )
+                    self._table_mocap_bound = True
+                self._table.write_mocap_pose_to_sim(
+                    table_pose.detach().cpu().numpy(),
+                    ids,
+                    term_name="simtoolreal_table_reset",
                 )
+            else:
+                reset_mask = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+                reset_mask[ids] = True
+                table_state = torch.zeros(
+                    (env.num_envs, 13), dtype=torch.float32, device=env.device
+                )
+                table_state[:, 6] = 1.0
+                table_state[ids, :7] = table_pose
+                self._table.write_root_state_tensor_to_sim(table_state, reset_mask)
 
         if self._object is None:
             return
         if self._fixed_start_pose is not None:
-            object_pose = np.broadcast_to(self._fixed_start_pose, (count, 7)).copy()
+            object_pose = self._fixed_start_pose[None, :].expand(count, -1).clone()
         else:
-            noise = env.rng.uniform(-1.0, 1.0, size=(count, 3)).astype(np.float32)
-            object_pose = np.empty((count, 7), dtype=np.float32)
-            object_pose[:, 0] = noise[:, 0] * self._reset_position_noise[0]
-            object_pose[:, 1] = noise[:, 1] * self._reset_position_noise[1]
-            object_pose[:, 2] = (
-                table_z + self._table_object_z_offset + noise[:, 2] * self._reset_position_noise[2]
-            )
+            noise = env.rng.uniform(-1.0, 1.0, (count, 3))
+            object_pose = torch.empty((count, 7), dtype=torch.float32, device=env.device)
+            object_pose[:, :3] = noise * self._reset_position_noise
+            object_pose[:, 2] += table_z + self._table_object_z_offset
             object_pose[:, 3:] = _unit_quaternions(env.rng, count)
-        object_pose[:, :3] += np.asarray(env.scene.env_origins[ids], dtype=np.float32)
-        self._object.write_root_link_pose_to_sim(object_pose, env_ids=ids)
-        self._object.write_root_link_velocity_to_sim(
-            np.zeros((count, 6), dtype=np.float32), env_ids=ids
-        )
+        object_pose[:, :3] += env.scene.env_origins(env.device)[ids]
+        object_state = torch.zeros((env.num_envs, 13), dtype=torch.float32, device=env.device)
+        object_state[:, 6] = 1.0
+        object_state[ids, :7] = object_pose
+        reset_mask = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        reset_mask[ids] = True
+        self._object.write_root_state_tensor_to_sim(object_state, reset_mask)
         try:
             hub = env.command_manager.get_term("goal")
         except (AttributeError, KeyError, ValueError):
             hub = None
         if hub is not None:
-            hub.object_init_z[ids] = object_pose[:, 2] - env.scene.env_origins[ids, 2]
+            origins = env.scene.env_origins(env.device)
+            hub.object_init_z[ids] = object_pose[:, 2] - origins[ids, 2]
             hub.object_scale_multiplier[ids] = env.rng.uniform(
-                self._scale_range[0], self._scale_range[1], size=(count, 3)
-            ).astype(np.float32)
+                self._scale_range[0], self._scale_range[1], (count, 3)
+            )
 
     def __call__(self, env: Any, env_ids, **params) -> None:
         del params
         ids = _ids(env, env_ids)
-        if ids.size == 0:
+        if ids.numel() == 0:
             return
         self._reset_robot(env, ids)
         self._reset_table_and_object(env, ids)
 
 
 class SimToolRealWrenchEvent(ManagerTermBase):
-    """Sample an object wrench on interval triggers.
-
-    This mirrors ``action_utils.py:77-130``.  Force and torque are sampled as
-    standard-normal vectors multiplied by object mass and the configured
-    scales; trigger probabilities are log-uniform and the lift latch gates the
-    active channels.  The adapter owns the actual world-frame write.
-    """
+    """Sample and dispatch object wrenches on interval triggers."""
 
     def __init__(self, cfg: ManagerTermBaseCfg, env: Any):
         super().__init__(env)
@@ -272,15 +317,9 @@ class SimToolRealWrenchEvent(ManagerTermBase):
         self._force_only_when_lifted = bool(params.get("force_only_when_lifted", only_lifted))
         self._torque_only_when_lifted = bool(params.get("torque_only_when_lifted", only_lifted))
         self._object_mass = float(params.get("object_mass", 1.0))
-        if not np.isfinite(self._object_mass) or self._object_mass < 0.0:
+        if not math.isfinite(self._object_mass) or self._object_mass < 0.0:
             raise ValueError("object_mass must be finite and non-negative")
-        self._object_masses: np.ndarray | None = None
-        # Variant mass priority (D5): the task-side catalog mass table filled
-        # by SimToolRealEnvCfg.validate (both asset formats) is authoritative;
-        # the backend readback facade (IsaacSim line legacy) is the fallback,
-        # and an explicit term-level object_mass remains for lightweight
-        # fixtures.  A scene without the object entity keeps the scalar
-        # fallback: the term never dispatches without it.
+        self._object_masses: torch.Tensor | None = None
         if "object_mass" not in params:
             assignments = fixed_variant_plan_assignment(
                 getattr(env, "cfg", None), int(env.num_envs)
@@ -288,115 +327,98 @@ class SimToolRealWrenchEvent(ManagerTermBase):
             table = tuple(getattr(getattr(env, "cfg", None), "tool_pool_masses", ()) or ())
             if assignments is not None and table:
                 if len(table) < int(assignments.max()) + 1:
-                    raise ValueError(
-                        "task-side tool pool mass table is shorter than the variant "
-                        f"assignment requires: {len(table)} vs {int(assignments.max()) + 1}"
-                    )
-                masses = np.asarray(table, dtype=np.float32)[assignments]
-                self._object_masses = np.asarray(masses, dtype=np.float32)
+                    raise ValueError("task-side tool pool mass table is too short")
+                assignment_tensor = torch.as_tensor(
+                    assignments, dtype=torch.int64, device=env.device
+                )
+                self._object_masses = torch.as_tensor(
+                    table, dtype=torch.float32, device=env.device
+                ).index_select(0, assignment_tensor)
             elif assignments is not None and self._object is not None:
                 readback = getattr(self._object, "fixed_variant_mass", None)
                 if readback is not None:
-                    masses = np.asarray(readback, dtype=np.float32)
-                    if masses.ndim != 1 or not np.isfinite(masses).all() or np.any(masses < 0.0):
-                        raise ValueError(
-                            "fixed variant mass readback must be finite non-negative 1-D values"
-                        )
-                    if masses.shape[0] != env.num_envs:
-                        raise ValueError(
-                            "fixed variant mass readback must have one entry per environment; "
-                            f"got {masses.shape[0]}, expected {env.num_envs}"
-                        )
+                    masses = torch.as_tensor(readback, dtype=torch.float32, device=env.device)
+                    if masses.ndim != 1 or not bool(torch.isfinite(masses).all()):
+                        raise ValueError("fixed variant mass readback is invalid")
+                    if bool((masses < 0).any()) or masses.shape[0] != env.num_envs:
+                        raise ValueError("fixed variant mass readback has invalid rows")
                     self._object_masses = masses
-        body_names = params.get("body_names", ("object_root",))
-        self._local_body_ids = self._backend_body_ids = np.empty(0, dtype=np.int32)
-        if self._object is not None:
-            # Task config names bodies because they are stable across URDF
-            # conversion.  Entity.bind_body_wrench consumes local integer
-            # selectors, so resolve the names once on the cold path; the tiny
-            # fallback keeps lightweight test doubles compatible.
-            requested = (body_names,) if isinstance(body_names, str) else body_names
-            # Entity-composed scenes qualify body names (``object/object_root``);
-            # match the canonical names against the entity declaration.
-            requested = match_entity_names(
-                declared_names(self._object, "body"), requested, label="body"
-            )
-            resolver = getattr(self._object, "find_bodies", None)
-            if resolver is not None and all(isinstance(name, str) for name in requested):
-                requested = resolver(requested, preserve_order=True)[0]
-            self._local_body_ids, self._backend_body_ids = self._object.bind_body_wrench(
-                requested, torque=True, term_name="simtoolreal_wrench_dr"
-            )
-        self._forces = np.zeros((env.num_envs, self._backend_body_ids.size, 3), dtype=np.float32)
-        self._torques = np.zeros_like(self._forces)
-        self._force_prob = np.zeros(env.num_envs, dtype=np.float32)
-        self._torque_prob = np.zeros(env.num_envs, dtype=np.float32)
 
-    def reset(self, env_ids: np.ndarray | slice | None = None) -> None:
+        body_names = params.get("body_names", ("object_root",))
+        if self._object is not None:
+            requested = (body_names,) if isinstance(body_names, str) else tuple(body_names)
+            requested = tuple(
+                match_entity_names(declared_names(self._object, "body"), requested, label="body")
+            )
+            requested_ids = self._object.find_bodies(requested, preserve_order=True)[0]
+            self._local_body_ids, self._backend_body_ids = self._object.bind_body_wrench(
+                requested_ids, torque=True, term_name="simtoolreal_wrench_dr"
+            )
+        else:
+            self._local_body_ids = torch.empty(0, dtype=torch.int64, device=env.device)
+            self._backend_body_ids = []
+        body_count = len(self._backend_body_ids)
+        self._forces = torch.zeros(
+            (env.num_envs, body_count, 3), dtype=torch.float32, device=env.device
+        )
+        self._torques = torch.zeros_like(self._forces)
+        self._force_prob = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
+        self._torque_prob = torch.zeros_like(self._force_prob)
+
+    def reset(self, env_ids: torch.Tensor | slice | None = None) -> None:
         ids = _ids(self._env, env_ids)
-        self._forces[ids] = 0.0
-        self._torques[ids] = 0.0
-        if ids.size:
+        self._forces[ids].zero_()
+        self._torques[ids].zero_()
+        if ids.numel():
             self._force_prob[ids] = _log_uniform(
-                self._env.rng, self._force_prob_range, ids.size, label="force_prob_range"
+                self._env.rng, self._force_prob_range, ids.numel(), label="force_prob_range"
             )
             self._torque_prob[ids] = _log_uniform(
-                self._env.rng, self._torque_prob_range, ids.size, label="torque_prob_range"
+                self._env.rng, self._torque_prob_range, ids.numel(), label="torque_prob_range"
             )
 
     def __call__(self, env: Any, env_ids, **params) -> None:
         del params
-        if self._object is None or self._backend_body_ids.size == 0:
+        if self._object is None or len(self._backend_body_ids) == 0:
             return
         ids = _ids(env, env_ids)
-        if ids.size == 0:
+        if ids.numel() == 0:
             return
         dt = float(getattr(env, "step_dt", 0.0))
         if self._force_decay > 0.0:
             self._forces[ids] *= self._force_decay ** (dt / self._force_decay_interval)
         else:
-            self._forces[ids] = 0.0
+            self._forces[ids].zero_()
         if self._torque_decay > 0.0:
             self._torques[ids] *= self._torque_decay ** (dt / self._torque_decay_interval)
         else:
-            self._torques[ids] = 0.0
+            self._torques[ids].zero_()
 
-        count = ids.size
-        shape = (count, self._backend_body_ids.size, 3)
-        fire_force = env.rng.random(count) < self._force_prob[ids]
-        fire_torque = env.rng.random(count) < self._torque_prob[ids]
-        if np.any(fire_force):
-            sampled = (
-                env.rng.standard_normal(shape).astype(np.float32)
-                * (
-                    self._object_mass
-                    if self._object_masses is None
-                    else self._object_masses[ids][:, None, None]
-                )
-                * self._force_scale
-            )
+        shape = (ids.numel(), len(self._backend_body_ids), 3)
+        fire_force = env.rng.random(ids.numel()) < self._force_prob[ids]
+        fire_torque = env.rng.random(ids.numel()) < self._torque_prob[ids]
+        mass = (
+            self._object_mass
+            if self._object_masses is None
+            else self._object_masses[ids][:, None, None]
+        )
+        if bool(fire_force.any()):
+            sampled = env.rng.standard_normal(shape) * mass * self._force_scale
             self._forces[ids[fire_force]] = sampled[fire_force]
-        if np.any(fire_torque):
-            sampled = (
-                env.rng.standard_normal(shape).astype(np.float32)
-                * (
-                    self._object_mass
-                    if self._object_masses is None
-                    else self._object_masses[ids][:, None, None]
-                )
-                * self._torque_scale
-            )
+        if bool(fire_torque.any()):
+            sampled = env.rng.standard_normal(shape) * mass * self._torque_scale
             self._torques[ids[fire_torque]] = sampled[fire_torque]
 
         try:
             hub = env.command_manager.get_term("goal")
-            lifted = np.asarray(hub.lifted[ids], dtype=bool)
+            lifted = hub.lifted[ids]
         except (AttributeError, KeyError, ValueError):
-            lifted = np.ones(count, dtype=bool)
+            lifted = torch.ones(ids.numel(), dtype=torch.bool, device=env.device)
+        not_lifted = ids[~lifted]
         if self._force_only_when_lifted:
-            self._forces[ids[~lifted]] = 0.0
+            self._forces[not_lifted].zero_()
         if self._torque_only_when_lifted:
-            self._torques[ids[~lifted]] = 0.0
+            self._torques[not_lifted].zero_()
 
         self._object.apply_body_wrench_to_sim(
             self._forces[ids],

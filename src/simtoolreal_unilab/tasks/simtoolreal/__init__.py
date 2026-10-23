@@ -17,6 +17,38 @@ from .scene import register_resolvers
 register_resolvers()
 
 
+def _forward_isaacsim_solver_kwargs() -> None:
+    """Bridge the task-owned PhysX knobs until UniLab's generic owner grows them."""
+    from unilab.envs import manager_based_rl_env as module
+
+    if getattr(module.env_backend_kwargs, "_simtoolreal_physx_bridge", False):
+        return
+    original = module.env_backend_kwargs
+
+    def adapter(cfg):
+        kwargs = original(cfg)
+        for name in (
+            "solver_position_iteration_count",
+            "solver_velocity_iteration_count",
+            "bounce_threshold_velocity",
+            "contact_offset",
+            "rest_offset",
+            "max_depenetration_velocity",
+            "gpu_max_rigid_contact_count",
+            "gpu_max_rigid_patch_count",
+        ):
+            value = getattr(cfg, name, None)
+            if value is not None:
+                kwargs[name] = value
+        return kwargs
+
+    adapter._simtoolreal_physx_bridge = True
+    module.env_backend_kwargs = adapter
+
+
+_forward_isaacsim_solver_kwargs()
+
+
 def _make_env_with_entity_binding(cfg, num_envs: int = 1, backend_type: str = "mujoco"):
     """Factory wrapper: bind the entity variant plan, then the stock factory.
 

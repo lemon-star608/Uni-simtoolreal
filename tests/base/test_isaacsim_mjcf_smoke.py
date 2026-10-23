@@ -2,7 +2,7 @@
 
 Small pool (tool_pool_num_per_type=1 -> 12 tool variants) and num_envs=8,
 built through the production wiring (Hydra compose of the isaacsim owner
-leaf -> BackendAdapter override -> registry.make with
+leaf -> EnvConfigAdapter override -> registry.make with
 sim_backend="isaacsim").  No mocks: the UniSim IsaacSim worker composes the
 mapped entity scene (B form: robot/table/floor/object entity assets
 + the object entity variant binding) and steps PhysX on the GPU.
@@ -15,6 +15,7 @@ without them (the ``isaacsim`` marker).
 from __future__ import annotations
 
 import os
+import subprocess
 
 import numpy as np
 import pytest
@@ -31,13 +32,26 @@ def _worker_available() -> bool:
         return True
     from simtoolreal_unilab._isaacsim_worker import CONVENTIONAL_WORKER_PYTHON
 
-    return CONVENTIONAL_WORKER_PYTHON.is_file()
+    if not CONVENTIONAL_WORKER_PYTHON.is_file():
+        return False
+    probe = subprocess.run(
+        [
+            str(CONVENTIONAL_WORKER_PYTHON),
+            "-c",
+            "import importlib.metadata as m; print(m.version('unisim-core'))",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    return probe.returncode == 0 and probe.stdout.strip().startswith("2.1.")
 
 
 def _build_env(tmp_path):
     from hydra import compose, initialize_config_dir
     from unilab.base import registry
-    from unilab.base.config_adapter import BackendAdapter
+    from unilab.base.config_adapter import EnvConfigAdapter
 
     import simtoolreal_unilab.tasks  # noqa: F401  (registers env + resolvers)
     from simtoolreal_unilab._isaacsim_worker import ensure_worker_runtime
@@ -46,7 +60,7 @@ def _build_env(tmp_path):
     ensure_worker_runtime()
     with initialize_config_dir(str(CONF_ROOT), version_base=None):
         cfg = compose(config_name="config", overrides=["task=simtoolreal/isaacsim"])
-    adapter = BackendAdapter(cfg, root_dir=str(tmp_path))
+    adapter = EnvConfigAdapter(cfg, root_dir=str(tmp_path))
     override = adapter.build_task_env_cfg_override()
     override["tool_pool_num_per_type"] = NUM_PER_TYPE
     override["tool_pool_root"] = str(tmp_path / "pool")

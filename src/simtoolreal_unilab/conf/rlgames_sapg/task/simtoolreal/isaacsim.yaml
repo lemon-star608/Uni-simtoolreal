@@ -156,6 +156,7 @@ env:
         # reads the sites on either line.
       table:
         root_body_name: table/table
+        body_names: [table/table]
       object:
         root_body_name: object/object_root
         body_names: [object/object_root]
@@ -169,20 +170,20 @@ env:
   # iterations and the bounce threshold are the explicitly tuned values;
   # contact/rest offsets and the depenetration velocity cap are the IsaacLab
   # defaults the original relied on implicitly, pinned explicitly here.
-  isaacsim_solver_position_iteration_count: 8
-  isaacsim_solver_velocity_iteration_count: 0
-  isaacsim_bounce_threshold_velocity: 0.2
-  isaacsim_contact_offset: 0.002
-  isaacsim_rest_offset: 0.0
-  isaacsim_max_depenetration_velocity: 1000.0
+  solver_position_iteration_count: 8
+  solver_velocity_iteration_count: 0
+  bounce_threshold_velocity: 0.2
+  contact_offset: 0.002
+  rest_offset: 0.0
+  max_depenetration_velocity: 1000.0
   # GPU rigid contact/patch stream buffer capacities from the original
   # training's _default_sim_cfg (simtoolreal_env_cfg.py:515-535), which pins
   # 2^24/2^23 with the note "Lab defaults overflow: Patch buffer overflow
   # detected kills training".  Routed through UniSim's PhysxSolverConfig
   # (unilabsim/unisim#292); PhysX carb settings, so the worker reports the
   # authored value instead of a USD readback.
-  isaacsim_gpu_max_rigid_contact_count: 16777216
-  isaacsim_gpu_max_rigid_patch_count: 8388608
+  gpu_max_rigid_contact_count: 16777216
+  gpu_max_rigid_patch_count: 8388608
   # Retired declarations, kept as the record of where they went:
   # - physx solver_type=TGS / friction offsets: outside UniSim's solver knob
   #   set (no channel; defaults apply).

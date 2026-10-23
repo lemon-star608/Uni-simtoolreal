@@ -70,9 +70,6 @@ env:
       tolerance_curriculum_success_threshold: 3.0
       object_scale_noise_multiplier_range: [1.0, 1.0]
   events:
-    reset_scene_to_default:
-      func: unilab.envs.mdp.reset_scene_to_default
-      mode: reset
     reset_robot:
       func: simtoolreal_unilab.tasks.simtoolreal.events.SimToolRealReset
       mode: reset

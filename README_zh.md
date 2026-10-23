@@ -10,10 +10,10 @@
 
 | 能力 | 状态 |
 | --- | --- |
-| `SimToolReal` teacher 训练（RL-Games SAPG） | 双后端全规模运行；任务/学习器语义与原仓库做过标签对拍 |
+| `SimToolReal` teacher 训练（RL-Games SAPG） | MuJoCo/TorchEnv 训练与短程回放已验证；IsaacSim owner 已迁移，还需重装 UniSim 2.1 worker 做真实 GPU 验证 |
 | `DexToolBench` 交互评估 | 上游 24 个 object/task 组合全部固化为静态 MJCF，MuJoCo 后端直载；关闭运行时 DR，保留原 Viser 交互布局 |
 | 物理后端 | MuJoCo（默认，纯 CPU）与 IsaacSim（GPU worker），同一份资产/任务定义，`--backend` 切换 |
-| 与原 IsaacLab 实现的标签一致性 | 同 seed 12,288 env run 的关键 TensorBoard 标签族不可区分 |
+| 与原 IsaacLab 实现的标签一致性 | 保留 legacy 标签族；Torch RNG 会改变轨迹，分布级对拍仍需新的同规模 run |
 | 回放 / 检查 | `simtoolreal-play`、与原仓库标签集一致的 TensorBoard 叠加 |
 | student / 相机 / 传感器策略、部署、sim2real | 未迁移；本仓库不含部署代码 |
 
@@ -30,7 +30,7 @@ uv run simtoolreal-assets     # 校验 vendored 资产
 uv run simtoolreal-list-envs  # SimToolReal  mujoco / SimToolReal  isaacsim
 ```
 
-依赖全部由 lockfile 解析（unilab、unisim-core、mjbatch-uni 走 PyPI；torch 2.14.0+cu130）——无需额外克隆。本仓库仅以源码形式分发，不发布到 PyPI。
+依赖全部由 lockfile 解析（unilab、unisim-core、torch 走 PyPI；`mjbatch-uni` 在官方发布前暂 pin 到逐 variant body-BVH 修复 PR）。本仓库仅以源码形式分发，不发布到 PyPI。
 
 `uv sync` 装不了的一件东西是 IsaacSim worker 运行时（NVIDIA SDK 不再分发）。运行一次 `bash scripts/setup_isaacsim_env.sh`（vendor 自 UniLab 官方安装器，IsaacSim 5.1.0 + IsaacLab 2.3.0，幂等）；`simtoolreal-train`/`simtoolreal-play` 会自动发现。想换别的 IsaacSim 解释器：`export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`。
 
@@ -97,9 +97,9 @@ tests/dextoolbench`）：24 份已提交 MJCF 全部可编译，且具备上游 
 | 工具池与 MJCF 生成 | `tasks/simtoolreal/tool_catalog.py`、`tool_mjcf_writer.py`、`entity_mjcf_writer.py` |
 | 实体 bootstrap 与变体绑定 | `tasks/simtoolreal/scene.py`、`env_cfg.py` |
 | 算法超参 | `conf/rlgames_sapg/config.yaml` |
-| 叠在官方 pin 上的行为 | `src/simtoolreal_unilab/_compat/`（上游长出即移除） |
+| Torch 四元数 / packed-read 辅助 | `tasks/simtoolreal/tensor_utils.py` |
 
-依赖 pin：`unilab >= 1.3.3`（PyPI 正式版，含 [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636)）、`unisim-core >= 1.7.10`、`mjbatch-uni >= 0.2.4`、`torch == 2.14.0+cu130`（unilab 1.3.3 自家的验证目标版本）。`third_party/` 下的 vendored RL-Games 运行时 SHA 锁定，禁止编辑。推送前跑 `make check` / `make test`。
+依赖 pin：`unilab == 1.5.0`、`unisim-core == 2.1.0`、`mjbatch-uni == 0.2.6.dev0`（[PR #41](https://github.com/unilabsim/mjbatch_uni/pull/41)）、`torch == 2.14.0+cu130`。`third_party/` 下的 vendored RL-Games 运行时 SHA 锁定，禁止编辑。推送前跑 `make check` / `make test`。
 
 ## 致谢
 

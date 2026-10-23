@@ -8,6 +8,7 @@ from multiprocessing.connection import Connection
 from typing import Any
 
 import numpy as np
+import torch
 
 CONTROL_DT = 1.0 / 60.0
 
@@ -17,12 +18,27 @@ def _state(env: Any) -> dict[str, np.ndarray]:
 
     robot = env.scene["robot"]
     object_entity = env.scene["object"]
-    origin = np.asarray(env.scene.env_origins[0], dtype=np.float32)
-    object_pose = np.asarray(object_entity.data.root_link_pose_w[0], dtype=np.float32)
+    origin = env.scene.env_origins(env.device)[0].detach().cpu().numpy().astype(np.float32)
+    object_view = env.scene.read_plan.body_tensor_view(
+        object_entity, (goal_command(env).object_body_name,)
+    )
+    object_pose = (
+        torch.cat((object_view.pos_w[0, 0], object_view.quat_w[0, 0]))
+        .detach()
+        .cpu()
+        .numpy()
+        .astype(np.float32)
+        .copy()
+    )
     object_pose[:3] -= origin[:3]
     hub = goal_command(env)
     return {
-        "joint_pos": np.asarray(robot.data.joint_pos[0], dtype=np.float32),
+        "joint_pos": env.scene.read_plan.joint_tensor_view(robot)
+        .joint_pos[0]
+        .detach()
+        .cpu()
+        .numpy()
+        .astype(np.float32),
         "object_pose_wxyz": object_pose,
         "goal_pose_wxyz": np.asarray(hub.goal[0], dtype=np.float32),
     }
@@ -38,7 +54,7 @@ def _episode(
     if policy is not None:
         policy.reset()
     obs, _info = env.reset()
-    state = env.step(np.zeros((1, 29), dtype=np.float32))
+    state = env.step(torch.zeros((1, 29), dtype=torch.float32, device=env.device))
     obs = state.obs["obs"]
     hub = goal_command(env)
     max_goals = len(hub._fixed_goals)  # noqa: SLF001 - fixed by this worker's config
@@ -65,9 +81,10 @@ def _episode(
         started = time.perf_counter()
         current_state = _state(env)
         if policy is None:
-            action = np.zeros((1, 29), dtype=np.float32)
+            action = torch.zeros((1, 29), dtype=torch.float32, device=env.device)
         else:
-            action = policy.get_action(np.asarray(obs[0], dtype=np.float32))[None]
+            numpy_action = policy.get_action(obs[0].detach().cpu().numpy().astype(np.float32))
+            action = torch.from_numpy(numpy_action[None]).to(device=env.device, dtype=torch.float32)
         state = env.step(action)
         obs = state.obs["obs"]
         done = bool(state.terminated[0] or state.truncated[0])
@@ -122,7 +139,7 @@ def sim_worker(
             )
 
         obs, _info = env.reset()
-        state = env.step(np.zeros((1, 29), dtype=np.float32))
+        state = env.step(torch.zeros((1, 29), dtype=torch.float32, device=env.device))
         del obs, state
         conn.send(("ready", _state(env)))
 
