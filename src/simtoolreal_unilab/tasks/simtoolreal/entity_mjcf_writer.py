@@ -181,7 +181,7 @@ def _build_table_entity() -> ET.Element:
     body = ET.SubElement(
         worldbody,
         "body",
-        {"name": "table", "pos": "0 0 0", "simple": "false"},
+        {"name": "table", "pos": "0 0 0"},
     )
     ET.SubElement(
         body,

@@ -38,7 +38,7 @@ def _resolve_entity_bootstrap(name: str) -> str:
         Path(os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "")).expanduser()
         if os.environ.get("SIMTOOLREAL_GENERATED_ASSETS_ROOT", "").strip()
         else Path(tempfile.gettempdir()) / "simtoolreal_generated_assets"
-    ) / "entity_bootstrap_v2"
+    ) / "entity_bootstrap_v3"
     paths = {
         "robot": root / "robot.xml",
         "table": root / "table.xml",

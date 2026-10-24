@@ -49,6 +49,58 @@ def test_reset_and_step_obs_contract(env):
     assert bool(torch.isfinite(state.reward).all())
 
 
+def test_policy_joint_positions_remain_normalized(env):
+    obs, _info = env.reset()
+    robot = env.scene["robot"]
+    raw = torch.from_numpy(env._backend._qpos_view[:, :29]).to(
+        device=env.device, dtype=torch.float32
+    )
+    limits = robot.data.soft_joint_pos_limits(env.device)
+    expected = 2.0 * (raw - limits[:, 0]) / (limits[:, 1] - limits[:, 0]) - 1.0
+    torch.testing.assert_close(obs["obs"][:, :29], expected, rtol=0.0, atol=1e-6)
+
+
+def test_bootstrap_reset_starts_every_episode_counter_at_zero(env):
+    env.reset()
+    assert torch.equal(env._state.info["steps"], torch.zeros_like(env.episode_length_buf))
+    assert torch.equal(env.episode_length_buf, torch.zeros_like(env.episode_length_buf))
+
+
+def test_packed_body_reads_match_final_mujoco_kinematics(env):
+    env.reset()
+    state = env.step(torch.zeros((NUM_ENVS, 29), dtype=torch.float32, device=env.device))
+    assert bool(torch.isfinite(state.obs["obs"]).all())
+
+    backend = env._backend
+    scratch = mujoco.MjData(backend._model)
+    scratch.qpos[:] = backend._qpos_view[0]
+    mujoco.mj_forward(backend._model, scratch)
+    origin = env.scene.env_origins(env.device)[0]
+    robot_name = "robot/iiwa14_link_7"
+    object_name = "object/object_root"
+    robot_id = mujoco.mj_name2id(backend._model, mujoco.mjtObj.mjOBJ_BODY, robot_name)
+    object_id = mujoco.mj_name2id(backend._model, mujoco.mjtObj.mjOBJ_BODY, object_name)
+    robot_pos = (
+        env.scene.read_plan.body_tensor_view(env.scene["robot"], (robot_name,)).pos_w[0, 0] - origin
+    )
+    object_pos = (
+        env.scene.read_plan.body_tensor_view(env.scene["object"], (object_name,)).pos_w[0, 0]
+        - origin
+    )
+    torch.testing.assert_close(
+        robot_pos,
+        torch.tensor(scratch.xpos[robot_id], dtype=torch.float32, device=env.device),
+        rtol=0.0,
+        atol=1e-6,
+    )
+    torch.testing.assert_close(
+        object_pos,
+        torch.tensor(scratch.xpos[object_id], dtype=torch.float32, device=env.device),
+        rtol=0.0,
+        atol=1e-6,
+    )
+
+
 def test_reset_joints_land_in_sampling_envelope(env):
     env.reset()
     robot = env.scene["robot"]

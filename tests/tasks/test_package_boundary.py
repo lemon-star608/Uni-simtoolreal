@@ -38,6 +38,7 @@ _ALLOWED_STDLIB = {
     "pathlib",
     "re",
     "typing",
+    "types",
     "collections",
     "itertools",
     "json",

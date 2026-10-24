@@ -147,6 +147,9 @@ class _Geometry:
         if len(joint_ids) != NUM_JOINTS:
             raise ValueError(f"SimToolReal expected {NUM_JOINTS} joints, got {len(joint_ids)}")
         self.joint_ids = index_tensor(joint_ids, env.device)
+        limits = self.robot.data.soft_joint_pos_limits(env.device).index_select(0, self.joint_ids)
+        self.joint_lower = limits[:, 0]
+        self.joint_upper = limits[:, 1]
         self.palm_body_name = self.hub.palm_body_name
         self.fingertip_body_names = self.hub.fingertip_body_names
         self.robot_body_names = (self.palm_body_name, *self.fingertip_body_names)
@@ -155,9 +158,14 @@ class _Geometry:
 
     def joint_state(self) -> tuple[torch.Tensor, torch.Tensor]:
         state = require_joint_view(self.env, self.robot)
-        return state.joint_pos.index_select(1, self.joint_ids), state.joint_vel.index_select(
-            1, self.joint_ids
+        joint_pos = state.joint_pos.index_select(1, self.joint_ids)
+        joint_vel = state.joint_vel.index_select(1, self.joint_ids)
+        # The original policy frame normalizes joint positions to [-1, 1]
+        # (obs_utils.py:136-150); only velocity and previous targets stay raw.
+        joint_pos = (
+            2.0 * (joint_pos - self.joint_lower) / (self.joint_upper - self.joint_lower) - 1.0
         )
+        return joint_pos, joint_vel
 
     def robot_body_state(self):
         return require_body_view(self.env, self.robot, self.robot_body_names)
