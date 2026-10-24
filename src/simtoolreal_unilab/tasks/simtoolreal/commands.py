@@ -66,7 +66,7 @@ def sample_delta_goal_pose(
     axis = axis / torch.linalg.vector_norm(axis, dim=-1, keepdim=True).clamp_min(1e-12)
     angle = (rng.uniform(0.0, 1.0, n) * 2.0 - 1.0) * (delta_rotation_degrees * (math.pi / 180.0))
     dq = quat_from_angle_axis(angle, axis)
-    return quat_mul(dq, prev_quat_wxyz), new_pos
+    return new_pos, quat_mul(dq, prev_quat_wxyz)
 
 
 @dataclass(kw_only=True)
