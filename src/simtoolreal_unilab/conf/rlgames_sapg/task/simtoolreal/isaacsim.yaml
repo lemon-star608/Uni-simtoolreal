@@ -161,6 +161,10 @@ env:
         root_body_name: object/object_root
         body_names: [object/object_root]
   isaacsim_device_id: 0
+  # UniLab 1.5's IsaacSim adapter exposes its DEVICE_RESIDENT TorchEnv
+  # lifecycle only through CUDA IPC. The worker owns Isaac tensors while the
+  # SAPG learner shares the same GPU.
+  isaacsim_tensor_cuda_ipc: true
   # Large 1200-tool pools spend most of their cold-start time in IsaacSim
   # clone/materialization; keep the worker handshake generous for training.
   isaacsim_worker_timeout_s: 1800.0

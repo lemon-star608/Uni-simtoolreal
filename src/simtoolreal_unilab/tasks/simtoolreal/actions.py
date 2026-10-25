@@ -132,7 +132,7 @@ class SimToolRealAction(ActionTerm):
         self._prev_targets.copy_(self._cur_targets)
 
     def apply_actions(self) -> None:
-        self._entity.set_joint_position_target(self._cur_targets, joint_ids=self._joint_ids_t)
+        self._entity.set_joint_position_target(self._cur_targets, joint_ids=self._joint_ids)
 
     def seed_reset_targets(self, env_ids: torch.Tensor, positions: torch.Tensor) -> None:
         """Receive the joint positions staged by SimToolReal's reset event.
