@@ -19,6 +19,7 @@ import subprocess
 
 import numpy as np
 import pytest
+import torch
 
 NUM_ENVS = 8
 NUM_PER_TYPE = 1  # 12 variants
@@ -103,9 +104,11 @@ def test_reset_joints_land_near_home(env):
     """
     obs, info = env.reset()
     robot = env.scene["robot"]
-    q = np.asarray(robot.data.joint_pos)  # (num_envs, 29), canonical order
-    default = np.asarray(robot.data.default_joint_pos)  # (num_envs, 29), home
-    limits = np.asarray(robot.data.soft_joint_pos_limits)  # (29, 2)
+    q = (
+        env.scene.read_plan.joint_tensor_view(robot).joint_pos.detach().cpu().numpy()
+    )  # (num_envs, 29), canonical order
+    default = robot.data.default_joint_pos(env.device)[0].detach().cpu().numpy()  # (29,), home
+    limits = robot.data.soft_joint_pos_limits(env.device).detach().cpu().numpy()  # (29, 2)
     lo = default - 0.1 * (default - limits[:, 0])
     hi = default + 0.1 * (limits[:, 1] - default)
     assert (q >= lo - 1e-4).all() and (q <= hi + 1e-4).all()
@@ -115,7 +118,7 @@ def test_reset_joints_land_near_home(env):
 
 def test_step_100_no_nan(env):
     for _ in range(100):
-        state = env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+        state = env.step(torch.zeros((NUM_ENVS, 29), dtype=torch.float32, device=env.device))
     assert all(np.isfinite(value).all() for value in state.obs.values())
     assert np.isfinite(state.reward).all()
 
@@ -143,7 +146,7 @@ def test_wrench_event_measurably_perturbs_object(env):
     """Force the interval wrench to fire and compare against a control phase."""
     env.reset()
     for _ in range(90):  # let the object settle onto the table
-        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
+        env.step(torch.zeros((NUM_ENVS, 29), dtype=torch.float32, device=env.device))
 
     term = env.event_manager._mode_class_term_cfgs["interval"][0].func
     # The production owner YAML disables wrench DR for the 2026-09-30 no-DR
@@ -155,18 +158,19 @@ def test_wrench_event_measurably_perturbs_object(env):
     term._torque_scale = 2.0
     hub = env.command_manager.get_term("goal")
     hub.lifted[:] = True
-    term._force_prob[:] = 0.0
-    term._torque_prob[:] = 0.0
+    term._force_prob.zero_()
+    term._torque_prob.zero_()
     for _ in range(10):
-        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
-    control = np.asarray(env.scene["object"].data.root_link_vel_w)[:, :3]
+        env.step(torch.zeros((NUM_ENVS, 29), dtype=torch.float32, device=env.device))
+    object_view = env.scene.read_plan.body_tensor_view(env.scene["object"], (hub.object_body_name,))
+    control = object_view.lin_vel_w[:, 0, :].detach().cpu().numpy()
     control = np.linalg.norm(control, axis=1).mean()
 
-    term._force_prob[:] = 1.0
-    term._torque_prob[:] = 1.0
+    term._force_prob.fill_(1.0)
+    term._torque_prob.fill_(1.0)
     for _ in range(10):
-        env.step(np.zeros((NUM_ENVS, 29), dtype=np.float32))
-    active = np.asarray(env.scene["object"].data.root_link_vel_w)[:, :3]
+        env.step(torch.zeros((NUM_ENVS, 29), dtype=torch.float32, device=env.device))
+    active = object_view.lin_vel_w[:, 0, :].detach().cpu().numpy()
     active = np.linalg.norm(active, axis=1).mean()
 
     assert active > 10 * max(control, 1e-3), (
