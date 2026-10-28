@@ -11,9 +11,7 @@ from simtoolreal_unilab.tasks.simtoolreal import config as simtoolreal_config
 def test_simtoolreal_registered_backends():
     registry.ensure_registries()
     meta = registry._envs["SimToolReal"]
-    assert set(meta.env_factory_dict) == {"isaacsim", "mujoco"}, (
-        "isaacsim is the merge anchor; mujoco landed in M-J2 after the L2 smoke gate"
-    )
+    assert set(meta.env_factory_dict) == {"mujoco"}
 
 
 def test_canonical_layout_constants():
@@ -38,9 +36,7 @@ def test_tool_catalog_default_pool_size():
 
 
 def test_obs_width_pins_match_obs_cfg_field_lists():
-    """140/162 are code-asserted at assembly; here the hand-computed pins are
-    tied to the configured field lists (DESIGN.md section 1, obs_utils.py:
-    35-54 field sizes over simtoolreal_env_cfg.py:112-143 lists)."""
+    """Tie the hand-computed width pins to the configured field lists."""
     from simtoolreal_unilab.tasks.simtoolreal import observations as obs_mod
 
     obs = simtoolreal_config.ObsCfg()

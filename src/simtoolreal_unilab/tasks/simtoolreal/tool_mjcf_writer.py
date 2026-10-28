@@ -1,19 +1,11 @@
 """MJCF serialization for the SimToolReal tool catalog.
 
-Written as the MJCF counterpart of the retired URDF writer (roadmap M-J1,
-decision D2; the URDF runtime line is frozen at tag ``urdf-anchor``): the
-same ``ToolSpec`` samples become single-body MJCF files instead of URDF
-files.  Geometry mapping follows the MJCF knowledge recorded in the old
-tree's ``unilab/envs/manipulation/simtoolreal/tool_assets.py`` (cylinders
-emit as capsules with a -pi/2 y-rotation, visual/collision geom pairs,
-``%.17g`` floats), re-expressed as whole-file template generation — no
-string surgery on a host scene.  Mass/inertia come straight from
-``ToolSpec`` (``tool_catalog._compute_mass_and_inertia``, the same pure
-function the URDF writer used), so the compiled ``body_mass``/
-``body_inertia`` match the URDF line value-for-value.  Inline comments
-cite the original ``generate_objects.py`` line numbers.
+Each ``ToolSpec`` becomes one single-body MJCF entity source. Cylinders emit
+as capsules with a -pi/2 y-rotation, geometry uses visual/collision pairs, and
+floating values preserve full precision. Mass and inertia come directly from
+``ToolSpec``.
 
-M-J2 same-layout rule: the UniSim MuJoCo batch executor requires every fixed
+Same-layout rule: the UniSim MuJoCo batch executor requires every fixed
 variant to share one public layout (same entity names and counts; per-variant
 ``geom_type``/``geom_size``/``geom_quat``/inertial arrays are natively
 supported).  Every tool therefore emits exactly four geom slots —
@@ -39,8 +31,7 @@ from .tool_catalog import OBJECT_BASE_SIZE, ToolSpec
 # Root body/joint naming follows this repository's canonical object namespace
 # (``tool_urdf_writer._OBJECT_ROOT_LINK``; the owner YAML's object entity
 # declares root_body_name=object_root): one floating body ``object_root`` with
-# a freejoint, appended to the scene worldbody.  The old tree's MJCF called it
-# ``object``; the rename keeps the entity contract identical across lines.
+# a freejoint, appended to the scene worldbody.
 _OBJECT_BODY = "object_root"
 _OBJECT_FREEJOINT = "object_root_joint"
 
@@ -71,8 +62,7 @@ def _friction() -> str:
     """Geom friction triple for tool bodies (tuning item, D6).
 
     Sliding coefficient is the owner YAML's frozen object friction; torsional
-    and rolling keep the MuJoCo defaults (the owner YAML's Isaac-side triples
-    carry no torsion/roll term).  Written explicitly, as the old tree did.
+    and rolling keep the MuJoCo defaults.
     """
     slide = load_owner_physics().object_slide_friction
     return f"{_fmt(slide)} {_fmt(TORSIONAL_FRICTION_DEFAULT)} {_fmt(ROLLING_FRICTION_DEFAULT)}"
@@ -149,7 +139,7 @@ def tool_mjcf_text(spec: ToolSpec) -> str:
             f"{spec.head_scale} and {spec.head_density})"
         )
     geoms = _handle_geoms(spec) + _head_geoms(spec)
-    # Standalone files are B-form entity-composition sources (M-J5):
+    # Standalone files are entity-composition sources:
     # unisim's compose_scene requires identical global options across every
     # source, so each tool carries the scene option block verbatim (the
     # composer overwrites timestep with sim_dt anyway).
@@ -182,12 +172,9 @@ def _tool_filename(spec: ToolSpec, idx: int) -> str:
 def write_tool_mjcf(spec: ToolSpec, path: Path) -> Path:
     """Serialize one ``ToolSpec`` to a standalone MJCF file.
 
-    Same validation contract as the retired URDF writer's
-    (generate_objects.py:262-285): headless specs emit placeholder head
-    slots (module docstring's same-layout rule); headed specs emit the
-    handle+head composite.  The ``<inertial>`` fields are the ToolSpec's
-    own mass/com/diaginertia (the composite parallel-axis math of
-    generate_objects.py:206-218 lives in ``tool_catalog.build_tool_catalog``).
+    Headless specs emit placeholder head slots to preserve the same-layout
+    rule; headed specs emit the handle+head composite. The ``<inertial>``
+    fields are the ToolSpec's own mass, center-of-mass, and diagonal inertia.
     """
     path.write_text(tool_mjcf_text(spec))
     return path
@@ -200,10 +187,8 @@ def write_tool_catalog_mjcfs(
 ) -> tuple[list[str], list[tuple[float, float, float]]]:
     """Write one MJCF per catalog entry into ``out_dir``.
 
-    Batch counterpart of the retired URDF batch writer (generate_objects.py:
-    302-399 minus sampling): same filename template with an ``.xml`` suffix,
-    same stale-file cleanup (for ``.xml``), same return contract — file paths
-    paired with handle scales normalized by ``object_base_size``.
+    Write one file per catalog entry, remove stale ``.xml`` files, and return
+    file paths paired with handle scales normalized by ``object_base_size``.
     """
     out_dir = Path(out_dir)
     if out_dir.exists():

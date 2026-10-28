@@ -1,16 +1,8 @@
-"""SimToolReal task configuration mirrors (backend-neutral, step-0 skeleton).
-
-Field-by-field mirror of the original repository's
-``isaacsimenvs/tasks/simtoolreal/simtoolreal_env_cfg.py`` (snapshot 313d5aea)
-and ``isaacsimenvs/cfg/task/SimToolReal.yaml``.  Dead code from the original
-repository is deliberately not ported (``HAND_JOINT_FRICTION``,
-``scene_utils.py:104-120``, is unused upstream).
+"""Typed SimToolReal MuJoCo task configuration.
 
 These dataclasses are the typed owner of the task parameters; the Hydra owner
 YAML (``conf/rlgames_sapg/task/simtoolreal/base.yaml``) repeats the values at
-the term level, and ``tests/tasks/test_simtoolreal_owner_yaml_parity.py``
-pins the owner YAML against the original repository's frozen values
-(per-value parity pinning; the values themselves come from the original repository).
+the term level.
 """
 
 from __future__ import annotations
@@ -403,11 +395,10 @@ def match_entity_names(
     The frozen tables in this module use bare source names
     (``iiwa14_joint_1``, ``object_root``).  Entity-composed scenes qualify
     every name with the physical-entity prefix (``robot/iiwa14_joint_1``,
-    unisim ``compile_scene_layout``), while the IsaacSim line declares the
-    bare names — so manager terms resolve selectors against the entity's
-    *declared* names, matching on the final path segment.  ``declared=None``
-    (undeclared selectors, lightweight fixtures) passes the canonical names
-    through unchanged.
+    unisim ``compile_scene_layout``), so manager terms resolve selectors against
+    the entity's *declared* names, matching on the final path segment.
+    ``declared=None`` (undeclared selectors, lightweight fixtures) passes the
+    canonical names through unchanged.
     """
     if declared is None:
         return list(canonical)

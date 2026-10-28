@@ -154,11 +154,11 @@ class SimToolRealReset(ManagerTermBase):
 
         self._table = _entity(env.scene, "table")
         self._object = _entity(env.scene, "object")
-        self._table_mocap = (
-            self._table is not None
-            and getattr(self._table, "_physical_entity", None) is not None
-            and _declared_root_mode(env, "table") == "kinematic"
-        )
+        if self._table is not None and (
+            getattr(self._table, "_physical_entity", None) is None
+            or _declared_root_mode(env, "table") != "kinematic"
+        ):
+            raise ValueError("SimToolRealReset requires the kinematic MuJoCo table entity")
         self._table_mocap_bound = False
 
     def _reset_robot(self, env: Any, ids: torch.Tensor) -> None:
@@ -239,27 +239,17 @@ class SimToolRealReset(ManagerTermBase):
             )
             table_pose = _initial_entity_pose(env, "table")[None, :].expand(count, -1).clone()
             table_pose[:, 2] = table_z
-            if self._table_mocap:
-                if not self._table_mocap_bound:
-                    assert self._table is not None
-                    self._table.bind_mocap_pose_write(
-                        self._table.root_body_name, term_name="simtoolreal_table_reset"
-                    )
-                    self._table_mocap_bound = True
-                self._table.write_mocap_pose_to_sim(
-                    table_pose.detach().cpu().numpy(),
-                    ids,
-                    term_name="simtoolreal_table_reset",
+            if not self._table_mocap_bound:
+                assert self._table is not None
+                self._table.bind_mocap_pose_write(
+                    self._table.root_body_name, term_name="simtoolreal_table_reset"
                 )
-            else:
-                reset_mask = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
-                reset_mask[ids] = True
-                table_state = torch.zeros(
-                    (env.num_envs, 13), dtype=torch.float32, device=env.device
-                )
-                table_state[:, 6] = 1.0
-                table_state[ids, :7] = table_pose
-                self._table.write_root_state_tensor_to_sim(table_state, reset_mask)
+                self._table_mocap_bound = True
+            self._table.write_mocap_pose_to_sim(
+                table_pose.detach().cpu().numpy(),
+                ids,
+                term_name="simtoolreal_table_reset",
+            )
 
         if self._object is None:
             return

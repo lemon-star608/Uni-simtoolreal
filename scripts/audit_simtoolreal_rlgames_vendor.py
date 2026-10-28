@@ -162,7 +162,7 @@ def _render_patches(patches: list[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _check_compatibility_patches(
+def _check_declared_patches(
     vendor_root: Path,
     manifest: dict[str, Any],
     entries_by_path: dict[str, dict[str, Any]],
@@ -294,7 +294,7 @@ def _check_python_files(vendor_root: Path, manifest: dict[str, Any]) -> tuple[in
     # integrity barrier, so the total size must not reject mutated trees.
     python_byte_count = sum(path.stat().st_size for path in actual_by_path.values())
 
-    patches = _check_compatibility_patches(vendor_root, manifest, entries_by_path)
+    patches = _check_declared_patches(vendor_root, manifest, entries_by_path)
     for relative_path in sorted(expected_paths):
         path = actual_by_path[relative_path]
         entry = entries_by_path[relative_path]

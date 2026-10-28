@@ -1,17 +1,7 @@
 # @package _global_
-# Canonical SimToolReal Manager-Based task declaration (RL-Games SAPG owner).
-# Backend-neutral: all task semantics and frozen owner physics truth live
-# here; backend leaves carry identity, backend knobs, explicitly disabled
-# terms, and the whole `scene:` block (M-J2: the pinned SceneCfg owns no
-# entity_assets/ground_plane/physx fields, so the IsaacSim-line scene
-# declaration lives in isaacsim.yaml and the MuJoCo line declares its own
-# composed-MJCF scene in mujoco.yaml).
-#
-# Sources (field-level mirror, see DESIGN.md section 1 and config.py):
-#   simtoolreal/isaacsimenvs/tasks/simtoolreal/simtoolreal_env_cfg.py
-#   simtoolreal/isaacsimenvs/cfg/task/SimToolReal.yaml
-# Step-1 assemblies are in place: the terms below are the real
-# observation/reward/termination/event ports, not zero-frame placeholders.
+# Canonical SimToolReal Manager-Based task declaration for the RL-Games SAPG
+# owner. Task semantics and frozen owner physics truth live here; the MuJoCo
+# leaf declares the composed entity scene.
 env:
   # sim_dt = 1/120, ctrl_dt = 1/60 (decimation 2), 600 policy steps = 10 s.
   sim_dt: 0.008333333333333333
@@ -142,10 +132,8 @@ env:
   tool_pool_root: null
   tool_pool_enabled: true
 
-# Frozen owner physics truth (task data, not a scene declaration).  The MJCF
-# writers read these through tasks/simtoolreal/owner_physics.py; the owner-YAML
-# parity tests pin every value against the original repository's tables.
-# They used to live in the IsaacSim leaf's fork-era entity_assets section.
+# Frozen owner physics truth (task data, not a scene declaration). The MJCF
+# writers read these through tasks/simtoolreal/owner_physics.py.
 owner_physics:
   robot:
     contact_friction: [0.5, 0.5, 0.0]

@@ -20,11 +20,9 @@ algo:
   obs_normalization: ${rl_games.params.config.normalize_input}
 
 training:
-  # Keep the root owner coherent with its default task leaf
-  # (`task: simtoolreal/isaacsim`): direct Hydra composition must not expose
-  # a template task/backend through fields that the leaf later overrides.
+  # Keep direct Hydra composition coherent with the fixed MuJoCo task leaf.
   task_name: SimToolReal
-  sim_backend: isaacsim
+  sim_backend: mujoco
   smoke: false
   device: cuda:0
   logger: tensorboard

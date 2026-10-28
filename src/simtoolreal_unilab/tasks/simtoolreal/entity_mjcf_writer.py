@@ -1,11 +1,8 @@
-"""Entity-split MJCF output (B form) shared by both SimToolReal backends.
+"""Entity-split MJCF output for SimToolReal.
 
-Both registered backends consume these per-entity sources through the official
-M2 channel (unisim ``entity_assets`` + ``EntityVariantBinding``): IsaacSim's
-mapped worker composes and converts the entity scene, while MuJoCo composes the
-same sources and compiles its VariantPack.  The A form (task-side composed
-single models) served as the parity oracle for the M-J5 switch and is retired.
-This module writes the asset set from the single sources of truth
+MuJoCo consumes these per-entity sources through the official composition
+channel (unisim ``entity_assets`` + ``EntityVariantBinding``) and compiles its
+VariantPack. This module writes the asset set from the single sources of truth
 (``build_robot_mjcf``, the vendored table URDF, the tool catalog) — no second
 copy of any number.  GoalViz is deliberately absent: the headless command hub
 owns the authoritative goal and the B-form scene does not materialize a
@@ -121,16 +118,8 @@ def _diagonalize_fullinertia(
 def _normalize_inertials(root: ET.Element) -> None:
     """Rewrite every body's ``<inertial>`` in the diagonal spelling.
 
-    The IsaacSim worker's scene staging (unisim subprocess_ipc
-    scene_materialization ``prepare_worker_scene``) rewrites per-body
-    inertials as ``diaginertia``+``iquat`` without clearing a source
-    ``fullinertia`` attribute, and MjSpec rejects the mixed spelling
-    ("fullinertia and diagonal inertia cannot both be specified") — an
-    upstream staging gap for fullinertia-carrying sources.  Emitting the
-    diagonal form (the eigen-decomposition of the same tensor, which is what
-    the mujoco compiler reduces fullinertia to at build time, so the compiled
-    model is unchanged) keeps one numerics source while satisfying the
-    staging's diagonal-only contract.
+    Emitting the eigen-decomposition of each tensor keeps one numerics source
+    and avoids mixing ``fullinertia`` with the diagonal inertia spelling.
     """
     for inertial in root.iter("inertial"):
         full = inertial.get("fullinertia")
@@ -211,7 +200,6 @@ def _build_floor_entity() -> ET.Element:
             "name": "floor",
             "type": "plane",
             "size": "0 0 0.05",
-            # Same transcribed value as the old tree's scene.xml floor geom.
             "friction": "1.0 0.005 0.0001",
         },
     )
@@ -255,12 +243,8 @@ def write_entity_set(
                 "asset_format": "mjcf",
                 "kind": "articulation",
                 "root_mode": "fixed",
-                # self_collision is not declared on the mujoco leaf: the MJCF
-                # compose path is fail-closed on the toggle and keeps the
-                # source-authored exclusions (robot.xml carries all 35).  The
-                # The IsaacSim leaf declares it explicitly; the MuJoCo compose
-                # path instead keeps the source-authored excludes and omits the
-                # unsupported toggle.
+                # The MJCF compose path keeps the source-authored exclusions
+                # (robot.xml carries all 35) and omits the unsupported toggle.
                 "default_keyframe_name": "home",
             },
             "table": {
