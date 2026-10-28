@@ -20,18 +20,16 @@ def test_create_run_directory_uses_native_prefix_and_deterministic_collision_suf
         create_training_run_dir,
     )
 
-    first = create_training_run_dir(
-        tmp_path, sim_backend="isaacsim", timestamp="2026-08-21_12-00-00"
-    )
+    first = create_training_run_dir(tmp_path, sim_backend="mujoco", timestamp="2026-08-21_12-00-00")
     second = create_training_run_dir(
-        tmp_path, sim_backend="isaacsim", timestamp="2026-08-21_12-00-00"
+        tmp_path, sim_backend="mujoco", timestamp="2026-08-21_12-00-00"
     )
     evaluation = create_evaluation_run_dir(
-        tmp_path, sim_backend="isaacsim", timestamp="2026-08-21_12-00-00"
+        tmp_path, sim_backend="mujoco", timestamp="2026-08-21_12-00-00"
     )
-    assert first.name == "0_2026-08-21_12-00-00_isaacsim"
-    assert second.name == "0_2026-08-21_12-00-00_isaacsim_01"
-    assert evaluation.name == "eval_2026-08-21_12-00-00_isaacsim"
+    assert first.name == "0_2026-08-21_12-00-00_mujoco"
+    assert second.name == "0_2026-08-21_12-00-00_mujoco_01"
+    assert evaluation.name == "eval_2026-08-21_12-00-00_mujoco"
 
 
 def test_latest_run_and_checkpoint_selection_are_deterministic(tmp_path):

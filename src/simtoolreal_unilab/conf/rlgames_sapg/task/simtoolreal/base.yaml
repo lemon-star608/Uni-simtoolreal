@@ -125,7 +125,6 @@ env:
   # The task owner materializes this deterministic pool and declares it as
   # fixed model variants; the env factory builds the scene's variant plan
   # before the worker is spawned.  Keep these values in the owner YAML so
-  # smoke runs can override the pool size without changing task code.
   tool_pool_num_per_type: 100
   tool_pool_seed: 42
   tool_pool_target_entity: object

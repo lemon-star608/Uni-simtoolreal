@@ -1,4 +1,4 @@
-"""Real MuJoCo smoke for SimToolReal's UniLab 1.5 Torch runtime."""
+"""Real MuJoCo runtime contract for SimToolReal on UniLab 1.5."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _build_env(tmp_path):
 
 @pytest.fixture(scope="module")
 def env(tmp_path_factory):
-    built = _build_env(tmp_path_factory.mktemp("mujoco_smoke"))
+    built = _build_env(tmp_path_factory.mktemp("mujoco_runtime"))
     yield built
     built.close()
 

@@ -23,7 +23,6 @@ training:
   # Keep direct Hydra composition coherent with the fixed MuJoCo task leaf.
   task_name: SimToolReal
   sim_backend: mujoco
-  smoke: false
   device: cuda:0
   logger: tensorboard
   wandb_project: unilab

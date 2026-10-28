@@ -14,13 +14,28 @@ from simtoolreal_unilab import config as package_config
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCAN_ROOTS = (
     REPO_ROOT / "src/simtoolreal_unilab",
-    REPO_ROOT / "tests/base",
-    REPO_ROOT / "tests/tasks",
+    REPO_ROOT / "tests",
     REPO_ROOT / "scripts",
+    REPO_ROOT / "docs",
+    REPO_ROOT / ".github",
 )
-SCAN_FILES = (REPO_ROOT / "pyproject.toml",)
+SCAN_FILES = (
+    REPO_ROOT / "README.md",
+    REPO_ROOT / "README_zh.md",
+    REPO_ROOT / "AGENTS.md",
+    REPO_ROOT / "pyproject.toml",
+    REPO_ROOT / "Makefile",
+)
 TEXT_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".md"}
-BANNED = ("isaacsim", "isaacgym", "isaac sim", "npenv", "np_env", "_compat")
+BANNED = (
+    "isaac" + "sim",
+    "isaac" + "gym",
+    "isaac" + " sim",
+    "np" + "env",
+    "np_" + "env",
+    "_" + "compat",
+    "smo" + "ke",
+)
 
 
 def test_first_party_runtime_and_tests_have_no_removed_runtime_terms():

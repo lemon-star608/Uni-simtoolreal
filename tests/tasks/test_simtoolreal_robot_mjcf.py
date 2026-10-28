@@ -500,7 +500,7 @@ def test_fk_parity_matches_compiled_urdf(robot_model, urdf_model):
         _assert_fk_close(robot_model, urdf_model, q, q, tol=1e-9)
 
 
-def test_step_smoke_no_nan(robot_model, composed_model):
+def test_step_contract_remains_finite(robot_model, composed_model):
     for model in (robot_model, composed_model):
         data = mujoco.MjData(model)
         mujoco.mj_resetData(model, data)

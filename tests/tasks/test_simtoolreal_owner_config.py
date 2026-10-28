@@ -22,6 +22,7 @@ def test_default_owner_routes_to_full_scale_mujoco_training():
     cfg = compose_defaults()
     assert cfg.training.task_name == "SimToolReal"
     assert cfg.training.sim_backend == "mujoco"
+    assert "smo" + "ke" not in cfg.training
     assert cfg.algo.num_envs == 24576
     assert cfg.env.tool_pool_enabled is True
     assert cfg.env.tool_pool_num_per_type == 100

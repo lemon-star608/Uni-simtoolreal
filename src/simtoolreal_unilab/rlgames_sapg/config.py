@@ -29,21 +29,13 @@ def preflight_config(cfg: DictConfig) -> None:
     block = int(native.expl_coef_block_size)
     # The vendored PpoPlayerContinuous hardcodes six exploration blocks for
     # playback (rl_games/algos_torch/players.py "TODO: remove the hardcoded
-    # value 6").  Production runs keep exactly six blocks.  A deliberately
-    # explicit smoke flag permits smaller rollout shapes for environment
-    # acceptance; smoke runs disable playback and any checkpoint they emit is
-    # an acceptance artifact, never a production baseline.
-    smoke = bool(OmegaConf.select(cfg, "training.smoke", default=False))
-    if smoke and not bool(OmegaConf.select(cfg, "training.no_play", default=False)):
-        raise ValueError("training.smoke requires training.no_play=true")
+    # value 6"). Production runs keep exactly six blocks.
     if (
         actors != native_actors
         or block <= 0
         or native_actors % block
-        or (not smoke and native_actors // block != 6)
+        or native_actors // block != 6
     ):
-        if smoke:
-            raise ValueError("smoke num_actors must be divisible by a positive exploration block")
         raise ValueError("num_actors must form exactly six exploration blocks")
     horizon = int(native.horizon_length)
     sequence = int(native.seq_length)
