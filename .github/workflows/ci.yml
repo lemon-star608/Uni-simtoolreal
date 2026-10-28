@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [mujoco-v1]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Lint
+        run: |
+          uv run ruff check src tests scripts
+          uv run ruff format --check src tests scripts
+      - name: Asset manifest gate
+        run: uv run simtoolreal-assets
+      - name: Test
+        run: uv run pytest -q

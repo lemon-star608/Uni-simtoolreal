@@ -1,0 +1,25 @@
+<mujoco model="dextoolbench_claw_hammer">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="object_visual" file="../../../objects/hammer/claw_hammer/claw_hammer.obj" />
+    <mesh name="object_collision_0" file="../../../objects/hammer/claw_hammer/collision_0.obj" />
+    <mesh name="object_collision_1" file="../../../objects/hammer/claw_hammer/collision_1.obj" />
+    <mesh name="object_collision_2" file="../../../objects/hammer/claw_hammer/collision_2.obj" />
+    <mesh name="object_collision_3" file="../../../objects/hammer/claw_hammer/collision_3.obj" />
+    <mesh name="object_collision_4" file="../../../objects/hammer/claw_hammer/collision_4.obj" />
+    <texture name="object_texture" type="2d" file="../../../objects/hammer/claw_hammer/material_0.png" />
+    <material name="object_material" texture="object_texture" texuniform="true" />
+  </asset>
+  <worldbody>
+    <body name="object_root" pos="0 0 0.63">
+      <freejoint name="object_root_joint" />
+      <inertial pos="0.0710074 -0.000954556 3.40549e-06" mass="0.0478283" fullinertia="1.32166e-05 0.000180518 0.000189688 1.09048e-06 5.47561e-07 -6.00857e-08" />
+      <geom name="object_visual_geom" type="mesh" mesh="object_visual" group="2" material="object_material" contype="0" conaffinity="0" density="0" />
+      <geom name="object_collision_geom_0" type="mesh" mesh="object_collision_0" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_1" type="mesh" mesh="object_collision_1" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_2" type="mesh" mesh="object_collision_2" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_3" type="mesh" mesh="object_collision_3" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_4" type="mesh" mesh="object_collision_4" friction="0.5 0.005 0.0001" group="3" density="0" />
+    </body>
+  </worldbody>
+</mujoco>
