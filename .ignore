@@ -1,0 +1,4 @@
+# Vendored third-party snapshots are hash-pinned; formatters/linters must not
+# rewrite them. Ruff honors `.ignore` (like ripgrep), so the vendored tree
+# stays tracked in git while `make format` / `make check` skip it.
+third_party/simtoolreal_rl_games/

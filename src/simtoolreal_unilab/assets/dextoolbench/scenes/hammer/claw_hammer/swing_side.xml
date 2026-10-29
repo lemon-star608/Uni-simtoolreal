@@ -1,0 +1,15 @@
+<mujoco model="DexToolBench_hammer_claw_hammer_swing_side">
+  <include file="../../../common/robot.xml" />
+  <include file="../../../objects/hammer/claw_hammer/object.xml" />
+  <worldbody>
+    <geom name="floor" type="plane" size="0 0 0.05" friction="1.0 0.005 0.0001" rgba="0.22 0.24 0.26 1" />
+    <body name="table" pos="0 0 0.38">
+      <geom name="table_box" type="box" size="0.2375 0.2 0.15" pos="0 0 0" friction="0.5 0.005 0.0001" rgba="0.82 0.56 0.35 1" />
+      <geom name="table_prop_1" type="box" size="0.015 0.2 0.2" pos="0.355 -0.05 0.33" friction="0.5 0.005 0.0001" rgba="0.72 0.48 0.28 1" />
+      <geom name="table_prop_2" type="box" size="0.045 0.015 0.015" pos="0.295 -0.01 0.31" friction="0.5 0.005 0.0001" rgba="0.66 0.68 0.70 1" />
+    </body>
+  </worldbody>
+  <keyframe>
+    <key name="dextoolbench_home" qpos="-1.571 1.39646707 0 1.55053293 0 1.485 1.308 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.098955551 0.0728731022 0.577433684 0.0155263281 0.0174786676 -0.999711923 -0.00543138279" ctrl="-1.571 1.39646707 0 1.55053293 0 1.485 1.308 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
+  </keyframe>
+</mujoco>

@@ -1,0 +1,297 @@
+# @package _global_
+# Canonical SimToolReal Manager-Based task declaration for the RL-Games SAPG
+# owner. Task semantics and frozen owner physics truth live here; the MuJoCo
+# leaf declares the composed entity scene.
+env:
+  # sim_dt = 1/120, ctrl_dt = 1/60 (decimation 2), 600 policy steps = 10 s.
+  sim_dt: 0.008333333333333333
+  ctrl_dt: 0.016666666666666666
+  max_episode_seconds: 10.0
+  observations:
+    policy:
+      terms:
+        # Actor frame with DR disabled.  This matches the 2026-09-30
+        # SimToolReal baseline: no observation latency, object-state noise, or
+        # joint-velocity noise during teacher training.
+        simtoolreal:
+          func: simtoolreal_unilab.tasks.simtoolreal.observations.SimToolRealPolicyObservation
+          params:
+            use_object_state_delay_noise: false
+            object_state_delay_max: 0
+            object_state_xyz_noise_std: 0.0
+            object_state_rotation_noise_degrees: 0.0
+            joint_velocity_obs_noise_std: 0.0
+            use_obs_delay: false
+            obs_delay_max: 0
+            clamp_abs_observations: 10.0
+    critic:
+      terms:
+        # Critic frame: clean state path, no actor-side noise/delay.
+        simtoolreal:
+          func: simtoolreal_unilab.tasks.simtoolreal.observations.SimToolRealCriticObservation
+          params:
+            clamp_abs_observations: 10.0
+  actions:
+    joint_pos:
+      _target_: simtoolreal_unilab.tasks.simtoolreal.actions.SimToolRealActionCfg
+      entity_name: robot
+      arm_moving_average: 0.1
+      hand_moving_average: 0.1
+      dof_speed_scale: 1.5
+      # Keep action DR disabled for the 2026-09-30 no-DR baseline.
+      use_action_delay: false
+      action_delay_max: 0
+  commands:
+    goal:
+      _target_: simtoolreal_unilab.tasks.simtoolreal.commands.SimToolRealCommandCfg
+      # Goal advancement is success-driven, not time-driven; park the timer.
+      resampling_time_range: [1000000.0, 1000000.0]
+      goal_sampling_type: delta
+      delta_goal_distance: 0.1
+      delta_rotation_degrees: 90.0
+      target_volume_mins: [-0.35, -0.2, 0.6]
+      target_volume_maxs: [0.35, 0.2, 0.95]
+      target_volume_region_scale: 1.0
+      success_tolerance: 0.075
+      target_success_tolerance: 0.01
+      success_steps: 10
+      tolerance_curriculum_increment: 0.9
+      tolerance_curriculum_interval: 3000
+      tolerance_curriculum_success_threshold: 3.0
+      object_scale_noise_multiplier_range: [1.0, 1.0]
+  events:
+    reset_robot:
+      func: simtoolreal_unilab.tasks.simtoolreal.events.SimToolRealReset
+      mode: reset
+      params:
+        dof_pos_noise_arm: 0.1
+        dof_pos_noise_hand: 0.1
+        dof_vel_noise: 0.5
+    # Wrench DR (action_utils.py:77-130).  The event term owns sampling and
+    # lift gating; the backend owns the world-frame body-wrench write.  The
+    # multi-asset owner scene must declare the ``object`` entity before this
+    # path becomes active.
+    wrench_dr:
+      func: simtoolreal_unilab.tasks.simtoolreal.events.SimToolRealWrenchEvent
+      mode: interval
+      # The original repository applies the wrench sample every policy step
+      # (apply_wrench_dr runs from _pre_physics_step, simtoolreal_env.py:64-66),
+      # so the interval is one control step.  0.08 s is the original's
+      # force_decay_interval — a decay time constant, unused at decay=0 — and
+      # must not set the trigger cadence (the original applies it every policy step).
+      interval_range_s: [0.016666666666666666, 0.016666666666666666]
+      params:
+        # Zero scales disable wrench DR while retaining the original event
+        # topology and lift gate (the 2026-09-30 baseline configuration).
+        force_scale: 0.0
+        force_prob_range: [0.001, 0.1]
+        torque_scale: 0.0
+        torque_prob_range: [0.001, 0.1]
+        only_when_lifted: true
+  terminations:
+    # Order matters: the success tracker writes the pending_success snapshot
+    # before the reward manager runs (DESIGN.md section 6.5 protocol).
+    success_tracker:
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.SuccessTracker
+      # Success criterion (obs_utils.py:190-205); fixed-size keypoint branch
+      # only (SimToolReal.yaml:89), same geometry as the keypoint reward term.
+      params:
+        {
+          success_steps: 10,
+          force_consecutive: false,
+          keypoint_scale: 1.5,
+          fixed_size: [0.141, 0.03025, 0.0271],
+        }
+    fall:
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.Fall
+      params: { fall_height: 0.1 }
+    hand_far:
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.HandFar
+      params: { hand_far_distance: 1.5 }
+    max_consecutive_successes:
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.MaxConsecutiveSuccesses
+      params: { max_consecutive_successes: 50 }
+    time_out:
+      # Task variant masking pending_success (termination_utils.py:50-51, 65);
+      # SAPG value_bootstrap=True treats it as truncation.
+      func: simtoolreal_unilab.tasks.simtoolreal.terminations.time_out
+      time_out: true
+  # The original DirectRLEnv applies no dt scaling (direct_rl_env.py:393
+  # assigns the _get_rewards() result directly), so reward_buf keeps the
+  # original magnitudes; reward terms are unscaled (dt scaling is off).
+  scale_rewards_by_dt: false
+  policy_observation_group: policy
+  critic_observation_group: critic
+  # The task owner materializes this deterministic pool and declares it as
+  # fixed model variants; the env factory builds the scene's variant plan
+  # before the worker is spawned.  Keep these values in the owner YAML so
+  tool_pool_num_per_type: 100
+  tool_pool_seed: 42
+  tool_pool_target_entity: object
+  tool_pool_root: null
+  tool_pool_enabled: true
+
+# Frozen owner physics truth (task data, not a scene declaration). The MJCF
+# writers read these through tasks/simtoolreal/owner_physics.py.
+owner_physics:
+  robot:
+    contact_friction: [0.5, 0.5, 0.0]
+    contact_friction_by_body:
+      - body_name: left_index_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_middle_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_ring_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_thumb_DP
+        friction: [1.5, 1.5, 0.0]
+      - body_name: left_pinky_DP
+        friction: [1.5, 1.5, 0.0]
+    actuator_gain_overrides:
+      - joint_name: iiwa14_joint_1
+        stiffness: 600.0
+        damping: 27.027026473513512
+      - joint_name: iiwa14_joint_2
+        stiffness: 600.0
+        damping: 27.027026473513512
+      - joint_name: iiwa14_joint_3
+        stiffness: 500.0
+        damping: 24.672186769721083
+      - joint_name: iiwa14_joint_4
+        stiffness: 400.0
+        damping: 22.067474708266914
+      - joint_name: iiwa14_joint_5
+        stiffness: 200.0
+        damping: 9.752538131173853
+      - joint_name: iiwa14_joint_6
+        stiffness: 200.0
+        damping: 9.147747263670984
+      - joint_name: iiwa14_joint_7
+        stiffness: 200.0
+        damping: 9.147747263670984
+      - joint_name: left_1_thumb_CMC_FE
+        stiffness: 6.95
+        damping: 0.28676845
+        armature: 0.0032
+      - joint_name: left_thumb_CMC_AA
+        stiffness: 13.2
+        damping: 0.40845109
+        armature: 0.0032
+      - joint_name: left_thumb_MCP_FE
+        stiffness: 4.76
+        damping: 0.20394083
+        armature: 0.00265
+      - joint_name: left_thumb_MCP_AA
+        stiffness: 6.62
+        damping: 0.24044435
+        armature: 0.00265
+      - joint_name: left_thumb_IP
+        stiffness: 0.9
+        damping: 0.04190723
+        armature: 0.0006
+      - joint_name: left_2_index_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859232
+        armature: 0.00265
+      - joint_name: left_index_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595532
+        armature: 0.00265
+      - joint_name: left_index_PIP
+        stiffness: 0.9
+        damping: 0.04243185
+        armature: 0.0006
+      - joint_name: left_index_DIP
+        stiffness: 0.9
+        damping: 0.03504461
+        armature: 0.00042
+      - joint_name: left_3_middle_MCP_FE
+        stiffness: 4.76
+        damping: 0.2085923
+        armature: 0.00265
+      - joint_name: left_middle_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595532
+        armature: 0.00265
+      - joint_name: left_middle_PIP
+        stiffness: 0.9
+        damping: 0.04243185
+        armature: 0.0006
+      - joint_name: left_middle_DIP
+        stiffness: 0.9
+        damping: 0.03504461
+        armature: 0.00042
+      - joint_name: left_4_ring_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859226
+        armature: 0.00265
+      - joint_name: left_ring_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595528
+        armature: 0.00265
+      - joint_name: left_ring_PIP
+        stiffness: 0.9
+        damping: 0.04243183
+        armature: 0.0006
+      - joint_name: left_ring_DIP
+        stiffness: 0.9
+        damping: 0.0350446
+        armature: 0.00042
+      - joint_name: left_5_pinky_CMC
+        stiffness: 1.38
+        damping: 0.02782345
+        armature: 0.00012
+      - joint_name: left_pinky_MCP_FE
+        stiffness: 4.76
+        damping: 0.20859229
+        armature: 0.00265
+      - joint_name: left_pinky_MCP_AA
+        stiffness: 6.62
+        damping: 0.24595528
+        armature: 0.00265
+      - joint_name: left_pinky_PIP
+        stiffness: 0.9
+        damping: 0.04243183
+        armature: 0.0006
+      - joint_name: left_pinky_DIP
+        stiffness: 0.9
+        damping: 0.0350446
+        armature: 0.00042
+  table:
+    contact_friction: [0.5, 0.5, 0.0]
+  object:
+    contact_friction: [0.5, 0.5, 0.0]
+
+# Seven-term reward set (config.RewardCfg; old-repo reward: section values).
+# Terms return raw values; weights carry the original *_scale factors and
+# scale_rewards_by_dt: false keeps reward_buf at the original DirectRLEnv
+# magnitudes (reward terms are unscaled; dt scaling is off).
+reward:
+  lift_progress:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.LiftProgress
+    weight: 20.0
+    params: { bonus_threshold: 0.15 }
+  lifting_bonus:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.LiftingBonus
+    weight: 300.0
+    params: { bonus_threshold: 0.15 }
+  fingertip_distance_delta:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.FingertipDistanceDelta
+    weight: 50.0
+    params: { bonus_threshold: 0.15 }
+  keypoint_distance_delta:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.KeypointDistanceDelta
+    weight: 200.0
+    # §3.5: reward/success keypoints use the fixed-size branch
+    # (reset_utils.py:79-83), not the per-env-scale observation branch.
+    params: { bonus_threshold: 0.15, keypoint_scale: 1.5, fixed_size: [0.141, 0.03025, 0.0271] }
+  arm_joint_velocity_penalty:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.ArmJointVelocityPenalty
+    weight: -0.03
+  hand_joint_velocity_penalty:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.HandJointVelocityPenalty
+    weight: -0.003
+  reach_bonus:
+    func: simtoolreal_unilab.tasks.simtoolreal.rewards.ReachBonus
+    weight: 1000.0
+    params: { success_steps: 10, force_consecutive: false }

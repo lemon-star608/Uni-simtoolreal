@@ -1,0 +1,82 @@
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13"]
+build-backend = "uv_build"
+
+[project]
+name = "simtoolreal-unilab"
+version = "0.1.0"
+description = "SimToolReal MuJoCo teacher training and DexToolBench evaluation on UniLab and UniSim"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+  "unilab==1.5.0",
+  "unisim-core[mujoco]==2.1.0",
+  "mujoco==3.11.0",
+  "torch==2.14.0+cu130",
+  "mjbatch-uni==0.2.6.dev0",
+  "unilab-simtoolreal-rl-games",
+  "gymnasium>=1.0,<2",
+  "viser>=1.1",
+  "pillow>=10",
+  "tensorboard>=2.8",
+  "tensorboardX>=2.5",
+]
+
+[project.entry-points."unilab.tasks"]
+simtoolreal_unilab = "simtoolreal_unilab.tasks"
+
+[project.scripts]
+simtoolreal-train = "simtoolreal_unilab.cli:train_main"
+simtoolreal-assets = "simtoolreal_unilab.assets:main"
+simtoolreal-play = "simtoolreal_unilab.cli:play_main"
+simtoolreal-dextoolbench-interactive = "simtoolreal_unilab.dextoolbench.interactive:main"
+
+[dependency-groups]
+dev = ["pytest>=9", "ruff>=0.15"]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+mjbatch-uni = { git = "https://github.com/unilabsim/mjbatch_uni.git", rev = "9da4dc59dccfaeedbbcd1f336553498dc983a99b" }
+unilab-simtoolreal-rl-games = { path = "third_party/simtoolreal_rl_games", editable = true }
+torch = { index = "pytorch-cu130" }
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+exclude-dependencies = ["torchvision"]
+# The vendored runtime pins torch==2.7.0 in its (SHA-gated, immutable)
+# metadata; this project trains on the cu130 build instead (unilab 1.5.0
+# supports torch>=2.9,<2.15; 2.14.0 is this repository's validation target).
+# The override keeps the vendored tree pristine while forcing our torch
+# resolution.
+override-dependencies = ["torch==2.14.0+cu130"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+# Mirrors the upstream UniLab rule set the moved code was written under.
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = [
+    "E501",
+    "N806",
+    "E402",
+    "F401",
+    "N801",
+    "F821",
+    "E741",
+    "N802",
+    "N803",
+    "N812",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"

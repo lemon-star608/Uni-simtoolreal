@@ -1,0 +1,515 @@
+{
+  "manifest_version": 2,
+  "source_repository": "https://github.com/tylerlum/simtoolreal.git",
+  "source_head": "2a9917533bfea70419ed2667a511d7238e5b3abc",
+  "source_parent_path": "rl_games/rl_games",
+  "source_parent_tree": "7a6a0bb090998d00565aaefa6ab9f2b3d356ace2",
+  "selection": {
+    "included_glob": "**/*.py",
+    "python_file_count": 72,
+    "excluded_yaml_file_count": 122
+  },
+  "license": {
+    "path": "LICENSE",
+    "source_path": "rl_games/LICENSE",
+    "source_blob": "313ca229e6ca879466f94bff49362fb65667e22f",
+    "sha256": "46565837dec017dc2f8df9fbbb6904fb3e62dc9b91c9efd9bb8d0b22eacc47d5"
+  },
+  "source_packaging": {
+    "source_path": "rl_games/pyproject.toml",
+    "source_blob": "185e2b8f8b4b7437344026216e241562c49b698b",
+    "sha256": "0f02830fbaef0dd6d040c028dc8e2c6975de9d3a3adc80dc5a521b3b0e9b9487"
+  },
+  "compatibility_allowlist": [
+    {
+      "path": "rl_games/algos_torch/players.py",
+      "pristine_blob": "e511462f11acdba00ac7d1af3b8730194b349761",
+      "pristine_sha256": "10e71a5bf243460b5192ecc6b24e1c37d94a8886ef4977967b1b63b8702f8438",
+      "patched_sha256": "bfbeda07fe71f179788f2984f65583a68e80066a6abb1372fb11ccb4ce85173c",
+      "reason": "Replace the eager legacy Gym import with Gymnasium for the native continuous player import closure.",
+      "covering_test": "tests/algos/rlgames_sapg/test_import.py::test_native_runner_agent_central_value_builder_and_player_are_vendored"
+    },
+    {
+      "path": "rl_games/common/a2c_common.py",
+      "pristine_blob": "d3e778231faf5eac8ec5768c631b2ffd36fabaab",
+      "pristine_sha256": "a94ac0bf09c6c2253784a0dc2b6508c4cf0d3ab04d86d71e3483250f082aaf54",
+      "patched_sha256": "07b58e70bdb3634be6450e3f518e96d79ce0f5097f1363369f732383f2b27a6d",
+      "reason": "Replace the eager legacy Gym import with Gymnasium and terminate the previously unterminated Source file with a newline; tensor formulas and control flow are unchanged.",
+      "covering_test": "tests/algos/rlgames_sapg/test_import.py::test_native_runner_agent_central_value_builder_and_player_are_vendored"
+    },
+    {
+      "path": "rl_games/common/env_configurations.py",
+      "pristine_blob": "01102be2ba85a219113ca43dac4aa88027a335c8",
+      "pristine_sha256": "47fd976b412382ff5ca0f01488fbcccb2d9e610c3e8a5d4f13ca2ee9fe2bcdc7",
+      "patched_sha256": "3587096d857addf865698e0de5c4ab960aeeaff14bf4fe25b859533ba4e5c879",
+      "reason": "Replace the eager legacy Gym and wrapper imports with Gymnasium and terminate the previously unterminated Source file with a newline; optional legacy environment factories retain their local Gym imports and registration logic is unchanged.",
+      "covering_test": "tests/vendor/test_simtoolreal_rl_games_vendor.py::test_editable_install_does_not_pollute_vendor_inventory"
+    },
+    {
+      "path": "rl_games/common/experience.py",
+      "pristine_blob": "e447af4fd49447fe1084e00cde37ce1d1c1d026e",
+      "pristine_sha256": "943afd12f34729972d3a35e12b7673f1a5bc96faf57b5065fefe56343a57b871",
+      "patched_sha256": "4f120a84884884c85a600881513a4bc6d8e8ca93ff0b005ee4da3e0d32bdf6ee",
+      "reason": "Use Gymnasium spaces and NumPy's supported np.bool_ scalar alias in replay and action-mask buffers; shapes and dtypes are unchanged.",
+      "covering_test": "tests/algos/rlgames_sapg/test_import.py::test_removed_numpy_bool_aliases_keep_replay_and_action_mask_dtypes"
+    },
+    {
+      "path": "rl_games/common/player.py",
+      "pristine_blob": "83162989a8217dbfb4b053e67fb7c07edb79a08b",
+      "pristine_sha256": "0118466077c35e8f2e2209ff9083620b0b18a76d6e1ef677d115b3d28e059296",
+      "patched_sha256": "2bfef880376ae518b301508ad6591cf22808b86819d69306aa3e6a91a0ef700a",
+      "reason": "Replace the eager legacy Gym import with Gymnasium for the native base-player import closure.",
+      "covering_test": "tests/algos/rlgames_sapg/test_import.py::test_native_runner_agent_central_value_builder_and_player_are_vendored"
+    },
+    {
+      "path": "rl_games/common/vecenv.py",
+      "pristine_blob": "646da55527ec9344da2809b26fd5fee7c68ee74c",
+      "pristine_sha256": "48d63fce4c7300e2dd4f4f3962236899c25e0f409c9470bc60a095e3d86444a3",
+      "patched_sha256": "e8d61e25e13b661d3543d14eef8e57056dd915ca62f6fbd0c880c922d6e539c4",
+      "reason": "Replace the eager legacy Gym import with Gymnasium and terminate the previously unterminated Source file with a newline; vector-environment routing is unchanged.",
+      "covering_test": "tests/vendor/test_simtoolreal_rl_games_vendor.py::test_editable_install_does_not_pollute_vendor_inventory"
+    },
+    {
+      "path": "rl_games/common/wrappers.py",
+      "pristine_blob": "a62e0855d6cf8f965f9d2f26ae8a1771bd7754de",
+      "pristine_sha256": "b8091f49ac9233aabcfa18bb0f706ff3a66798c975205ea0afe1648083eb2569",
+      "patched_sha256": "fd9424ef1b3b564978f58a6a607b5ed5cf29bd5def9ec82a4b39601c34a08a04",
+      "reason": "Replace legacy Gym and spaces imports with Gymnasium and remove one redundant trailing blank line; wrapper control flow is unchanged.",
+      "covering_test": "tests/vendor/test_simtoolreal_rl_games_vendor.py::test_editable_install_does_not_pollute_vendor_inventory"
+    }
+  ],
+  "python_files": [
+    {
+      "path": "rl_games/__init__.py",
+      "source_path": "rl_games/rl_games/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/algos_torch/__init__.py",
+      "source_path": "rl_games/rl_games/algos_torch/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/algos_torch/a2c_continuous.py",
+      "source_path": "rl_games/rl_games/algos_torch/a2c_continuous.py",
+      "source_blob": "191e38e1704cccb150d75d166ad962b217f6d868",
+      "sha256": "b083a5c6a43b369e1da16755c4aff546b2d94e198b1c4479dbad2b48f95d806f"
+    },
+    {
+      "path": "rl_games/algos_torch/a2c_discrete.py",
+      "source_path": "rl_games/rl_games/algos_torch/a2c_discrete.py",
+      "source_blob": "fc1bda892a8975f4505c6651dd8a43f53220e787",
+      "sha256": "513e77df9c8cb9311e42e4899cfa789aaff044c3eeffeabb8aeba04d77334b68"
+    },
+    {
+      "path": "rl_games/algos_torch/central_value.py",
+      "source_path": "rl_games/rl_games/algos_torch/central_value.py",
+      "source_blob": "7e63d9dd3e98204a7456ad777683702e537b844d",
+      "sha256": "245ca25d5fad86ab83a2228471cc97a592adc09007d4c1f523737fd8f6559a6a"
+    },
+    {
+      "path": "rl_games/algos_torch/d2rl.py",
+      "source_path": "rl_games/rl_games/algos_torch/d2rl.py",
+      "source_blob": "27c6a5343b804ce16fbd069dfba16e3365f4dc3b",
+      "sha256": "9cbe2efea126690f3fbe6eceac8d0eceb866e217f1a553e5ba91a0d07bbd4a4f"
+    },
+    {
+      "path": "rl_games/algos_torch/flatten.py",
+      "source_path": "rl_games/rl_games/algos_torch/flatten.py",
+      "source_blob": "eeb884858a8c6976e3ebaf20fcc34a3ea2591487",
+      "sha256": "be68ff046052d7d68e7f92dea21ee1908e1650df739bcafeab0bc9d8fff0481c"
+    },
+    {
+      "path": "rl_games/algos_torch/layers.py",
+      "source_path": "rl_games/rl_games/algos_torch/layers.py",
+      "source_blob": "77fb0af05653118a1a61c95dc11c283d5726ca10",
+      "sha256": "4f43d09b171cc5e7a72399ee77a90973049f13a72fe3632ec6570ea21d14fd45"
+    },
+    {
+      "path": "rl_games/algos_torch/model_builder.py",
+      "source_path": "rl_games/rl_games/algos_torch/model_builder.py",
+      "source_blob": "911dd8dd9cf955f68c3f0ff6b4ce97ebd17dbbc3",
+      "sha256": "67f63a42e057bcf57f0c5239fdbd72bf7f6fc77134e9d728e4d21ef4bc0d581f"
+    },
+    {
+      "path": "rl_games/algos_torch/models.py",
+      "source_path": "rl_games/rl_games/algos_torch/models.py",
+      "source_blob": "470201ba2702d5657529a9a937454de33b21dcfe",
+      "sha256": "0b1cfe90ba56622b2c9dcf439235e3c97b95fad4503dcf00b21b45e32983fbec"
+    },
+    {
+      "path": "rl_games/algos_torch/moving_mean_std.py",
+      "source_path": "rl_games/rl_games/algos_torch/moving_mean_std.py",
+      "source_blob": "363da8f48b90d424b9140d215fade60f75ad15b1",
+      "sha256": "5ca24c71d5591b21586e9bc6db608d9a9eaf37939a2f9ed6e33fd4fe608f28a7"
+    },
+    {
+      "path": "rl_games/algos_torch/network_builder.py",
+      "source_path": "rl_games/rl_games/algos_torch/network_builder.py",
+      "source_blob": "f6c13bc38ca61b64dcc488ffaccca066c3b5f5a2",
+      "sha256": "fa064f68a41236fb69aeb019f073a321ebd40c8bfe2a9efe0e2796a039e4461b"
+    },
+    {
+      "path": "rl_games/algos_torch/players.py",
+      "source_path": "rl_games/rl_games/algos_torch/players.py",
+      "source_blob": "e511462f11acdba00ac7d1af3b8730194b349761",
+      "sha256": "10e71a5bf243460b5192ecc6b24e1c37d94a8886ef4977967b1b63b8702f8438"
+    },
+    {
+      "path": "rl_games/algos_torch/running_mean_std.py",
+      "source_path": "rl_games/rl_games/algos_torch/running_mean_std.py",
+      "source_blob": "18d8470974eebb344c852982f4296179e841e5fc",
+      "sha256": "78c3a0e1195998987f6f1081eb2838c0a4132013c50d6ad88e225954017e082e"
+    },
+    {
+      "path": "rl_games/algos_torch/sac_agent.py",
+      "source_path": "rl_games/rl_games/algos_torch/sac_agent.py",
+      "source_blob": "621b35764a26a1d5eb064ae03ce1f1a285df86dc",
+      "sha256": "3e76f7e8d8d5c99f37022bd8295fc258ff7713a71d4ae068bd97900ace8f50ca"
+    },
+    {
+      "path": "rl_games/algos_torch/sac_helper.py",
+      "source_path": "rl_games/rl_games/algos_torch/sac_helper.py",
+      "source_blob": "5fa17da877d26bf85aae727efe3d14a21cbeed76",
+      "sha256": "7f1309126849886531d70b39cd5ad8efdbd0072e35e41d64f96a2f13b1c8eae3"
+    },
+    {
+      "path": "rl_games/algos_torch/self_play_manager.py",
+      "source_path": "rl_games/rl_games/algos_torch/self_play_manager.py",
+      "source_blob": "2b02e4ed8d236b4b4c648730726a548e911cd90d",
+      "sha256": "da9eda16bb48a1464dcb07749264891dfe63e7cee6f84ce6c459151a09592758"
+    },
+    {
+      "path": "rl_games/algos_torch/torch_ext.py",
+      "source_path": "rl_games/rl_games/algos_torch/torch_ext.py",
+      "source_blob": "7c3d2bb5913f0d02570d5044f29dd8f30854a8ba",
+      "sha256": "f15329205887eb496efdd98e6248ee8bb5104edd7de2d6da74ff4042e652ced1"
+    },
+    {
+      "path": "rl_games/common/__init__.py",
+      "source_path": "rl_games/rl_games/common/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/common/a2c_common.py",
+      "source_path": "rl_games/rl_games/common/a2c_common.py",
+      "source_blob": "d3e778231faf5eac8ec5768c631b2ffd36fabaab",
+      "sha256": "a94ac0bf09c6c2253784a0dc2b6508c4cf0d3ab04d86d71e3483250f082aaf54"
+    },
+    {
+      "path": "rl_games/common/algo_observer.py",
+      "source_path": "rl_games/rl_games/common/algo_observer.py",
+      "source_blob": "181bce5c25fb35dab45507087d306bf0cba8114c",
+      "sha256": "87f00911460c9cab211bfb85172c62b818333f37dbb6e26daad21034ea97848d"
+    },
+    {
+      "path": "rl_games/common/categorical.py",
+      "source_path": "rl_games/rl_games/common/categorical.py",
+      "source_blob": "6eb2af477e29a9e8372e1219ed1725b359cad5f6",
+      "sha256": "f8078f46af943e2799fb61d111a89f83072770b5ebca0180f95a0d934ed3c6ae"
+    },
+    {
+      "path": "rl_games/common/common_losses.py",
+      "source_path": "rl_games/rl_games/common/common_losses.py",
+      "source_blob": "04c00644d6b43eb7fae09116dc0a2801f0c45a7b",
+      "sha256": "97c9a5df6095f881c21affd316ce479b3f069cfbf705e6c9877eb5c8e64c915a"
+    },
+    {
+      "path": "rl_games/common/custom_utils.py",
+      "source_path": "rl_games/rl_games/common/custom_utils.py",
+      "source_blob": "3ddefce253e8325b50cca03751a14a0e722133a7",
+      "sha256": "9c9f6918376b111f6e16c2b5731451edb809dab697f6353fae48d17a2ef76e72"
+    },
+    {
+      "path": "rl_games/common/datasets.py",
+      "source_path": "rl_games/rl_games/common/datasets.py",
+      "source_blob": "025f199e3c996872af0da42b9654077d37ae7b35",
+      "sha256": "3253fb6a1a31ee9396d675f0efbd7a472880024f883fea50d34f5bdabd05e21c"
+    },
+    {
+      "path": "rl_games/common/diagnostics.py",
+      "source_path": "rl_games/rl_games/common/diagnostics.py",
+      "source_blob": "18297460a7b90295f4efd37b07febfeea2ad9496",
+      "sha256": "987ad53cf905453363d649a476a37b4b1813e7967dae8d23ad3e19152cad5cad"
+    },
+    {
+      "path": "rl_games/common/divergence.py",
+      "source_path": "rl_games/rl_games/common/divergence.py",
+      "source_blob": "d9edf244c9fa11b1f1cfc75769012192c9703766",
+      "sha256": "3b0ec78faa97460f739091c237de0ba385f4ac07d0e4a4d6fcf3f0f78805e139"
+    },
+    {
+      "path": "rl_games/common/env_configurations.py",
+      "source_path": "rl_games/rl_games/common/env_configurations.py",
+      "source_blob": "01102be2ba85a219113ca43dac4aa88027a335c8",
+      "sha256": "47fd976b412382ff5ca0f01488fbcccb2d9e610c3e8a5d4f13ca2ee9fe2bcdc7"
+    },
+    {
+      "path": "rl_games/common/experience.py",
+      "source_path": "rl_games/rl_games/common/experience.py",
+      "source_blob": "e447af4fd49447fe1084e00cde37ce1d1c1d026e",
+      "sha256": "943afd12f34729972d3a35e12b7673f1a5bc96faf57b5065fefe56343a57b871"
+    },
+    {
+      "path": "rl_games/common/experiment.py",
+      "source_path": "rl_games/rl_games/common/experiment.py",
+      "source_blob": "abbebb8335a769ff0677e648ab424ae6a6fd0f2e",
+      "sha256": "ab3b5f16c2192292c30ac5fd70053caf985de585b75749e84b1bbd1952547bac"
+    },
+    {
+      "path": "rl_games/common/extensions/__init__.py",
+      "source_path": "rl_games/rl_games/common/extensions/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/common/extensions/distributions.py",
+      "source_path": "rl_games/rl_games/common/extensions/distributions.py",
+      "source_blob": "4cbde8e039a32ce7eee1c26c6c75c1e685517994",
+      "sha256": "e438eba1425d2e114281520ff41e1eeecf580c8af6d2b315619b94d855989cf5"
+    },
+    {
+      "path": "rl_games/common/file_utils.py",
+      "source_path": "rl_games/rl_games/common/file_utils.py",
+      "source_blob": "10b621a56fe6a437cc8199552b4f3f295385bec7",
+      "sha256": "1f3d08bbc4de7bc6a3c868917e552961538fd41289a3b4baa37ed105d94c654e"
+    },
+    {
+      "path": "rl_games/common/interval_summary_writer.py",
+      "source_path": "rl_games/rl_games/common/interval_summary_writer.py",
+      "source_blob": "56c6eac3b3d786340a5ba298773c52d3d07c9fd4",
+      "sha256": "1f82b55613c086d90cde9d388dd3d97e35c3971b4d5a8d5c27c3aa532ac4d31a"
+    },
+    {
+      "path": "rl_games/common/ivecenv.py",
+      "source_path": "rl_games/rl_games/common/ivecenv.py",
+      "source_blob": "97c43cb47b5bc19dba7c58741858945d1a39caab",
+      "sha256": "b27b45c3a566219625e09ca21346b21960c05e1a8b800a804427c80104f7aa36"
+    },
+    {
+      "path": "rl_games/common/layers/__init__.py",
+      "source_path": "rl_games/rl_games/common/layers/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/common/layers/action.py",
+      "source_path": "rl_games/rl_games/common/layers/action.py",
+      "source_blob": "a841eeddd05d79fcf18ec2c3961c1e9775ae1a90",
+      "sha256": "992ea6be14648093b4bac3f5ad27b3d5843e8a3a7ed206e77b1189acebe53f42"
+    },
+    {
+      "path": "rl_games/common/layers/recurrent.py",
+      "source_path": "rl_games/rl_games/common/layers/recurrent.py",
+      "source_blob": "42c7afdcb3f71e135f1da3efffc27869866bff7d",
+      "sha256": "513a0cada38071444a8b2459690db904426b0913c568b66ec8a721338210f023"
+    },
+    {
+      "path": "rl_games/common/layers/value.py",
+      "source_path": "rl_games/rl_games/common/layers/value.py",
+      "source_blob": "d0ae52d0190120fc0498445f1559901838292c7f",
+      "sha256": "9dd98ffcb8191e59b61da280d6e76d5cf5f704de8b5f7fff9b42630ecb9682e3"
+    },
+    {
+      "path": "rl_games/common/object_factory.py",
+      "source_path": "rl_games/rl_games/common/object_factory.py",
+      "source_blob": "4cd97f98fd51de7a2eb0f187f53706f690391c32",
+      "sha256": "e34f96477828f611d8c96aa79215c625a991aa60fb59ff10afc94c205fdf06e1"
+    },
+    {
+      "path": "rl_games/common/player.py",
+      "source_path": "rl_games/rl_games/common/player.py",
+      "source_blob": "83162989a8217dbfb4b053e67fb7c07edb79a08b",
+      "sha256": "0118466077c35e8f2e2209ff9083620b0b18a76d6e1ef677d115b3d28e059296"
+    },
+    {
+      "path": "rl_games/common/rollouts.py",
+      "source_path": "rl_games/rl_games/common/rollouts.py",
+      "source_blob": "1d5409031eddda5453ac15312adb3e6d6ad8290b",
+      "sha256": "5d61c066a7920defccf3237b7cf3e7ef123d7ed30c075fabb881023b5eb5265f"
+    },
+    {
+      "path": "rl_games/common/schedulers.py",
+      "source_path": "rl_games/rl_games/common/schedulers.py",
+      "source_blob": "78a89ebc432906ecd408366976557c4a1ab92134",
+      "sha256": "5c75d9851accf305f6417976169bb8eaffd5a77687282a3d1b3a2e90e35c8f94"
+    },
+    {
+      "path": "rl_games/common/segment_tree.py",
+      "source_path": "rl_games/rl_games/common/segment_tree.py",
+      "source_blob": "f70af7796f844e524d5d7ecb7ec6b3b1df6ca720",
+      "sha256": "4160d90eb0ebe1eff4aa02d041fff5f79dc2dff672869655e23d1a2299beb753"
+    },
+    {
+      "path": "rl_games/common/test_utils.py",
+      "source_path": "rl_games/rl_games/common/test_utils.py",
+      "source_blob": "e6d3a55e3f3d6b450ebac2e61d4c3cc802fdd1d3",
+      "sha256": "c165344c92e8394440c4d665fe3640b3e6440ad72bbf5fa93919aebe11a77245"
+    },
+    {
+      "path": "rl_games/common/tr_helpers.py",
+      "source_path": "rl_games/rl_games/common/tr_helpers.py",
+      "source_blob": "0e81cca76be007384bddffd5d63050b5550d1644",
+      "sha256": "4a8da52119a4c13f76f9f4cfd73a82e86925e18cd4635e0665aef11472377c60"
+    },
+    {
+      "path": "rl_games/common/transforms/__init__.py",
+      "source_path": "rl_games/rl_games/common/transforms/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/common/transforms/soft_augmentation.py",
+      "source_path": "rl_games/rl_games/common/transforms/soft_augmentation.py",
+      "source_blob": "c5638fd56fdc20ba8d93eef0f548cd35815b0df7",
+      "sha256": "1d7fb10e668b330e711a58c3e79e249387ecaf7c29434ae63ff4cea6b1910259"
+    },
+    {
+      "path": "rl_games/common/transforms/transforms.py",
+      "source_path": "rl_games/rl_games/common/transforms/transforms.py",
+      "source_blob": "5ed3d3578ac6de9128a3c441f17e7aec34ed54ee",
+      "sha256": "1d37e6a56fde242a9662db1b789f0e340ee7df398e14666fc249756bf0c3a0a2"
+    },
+    {
+      "path": "rl_games/common/vecenv.py",
+      "source_path": "rl_games/rl_games/common/vecenv.py",
+      "source_blob": "646da55527ec9344da2809b26fd5fee7c68ee74c",
+      "sha256": "48d63fce4c7300e2dd4f4f3962236899c25e0f409c9470bc60a095e3d86444a3"
+    },
+    {
+      "path": "rl_games/common/wrappers.py",
+      "source_path": "rl_games/rl_games/common/wrappers.py",
+      "source_blob": "a62e0855d6cf8f965f9d2f26ae8a1771bd7754de",
+      "sha256": "b8091f49ac9233aabcfa18bb0f706ff3a66798c975205ea0afe1648083eb2569"
+    },
+    {
+      "path": "rl_games/distributed/__init__.py",
+      "source_path": "rl_games/rl_games/distributed/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/envs/__init__.py",
+      "source_path": "rl_games/rl_games/envs/__init__.py",
+      "source_blob": "69a343a68ab51ebe3b2c14b9f6bfcdc44e67b061",
+      "sha256": "05a0f9983784c7dfa28fd196b7274d79b5f45f5d16bdd30a595f618721d4da11"
+    },
+    {
+      "path": "rl_games/envs/brax.py",
+      "source_path": "rl_games/rl_games/envs/brax.py",
+      "source_blob": "31c7629f025b8ef019f668aa74a0d9d4c1ddfe2f",
+      "sha256": "6cb57d4f15382f6e36556833e7442ec40ad58da97250cb24f0c78cc2fd480dda"
+    },
+    {
+      "path": "rl_games/envs/connect4_network.py",
+      "source_path": "rl_games/rl_games/envs/connect4_network.py",
+      "source_blob": "4ef521189743caed297d6f416dbd8ca0accb104d",
+      "sha256": "4fdfc3211f455e925148f2915ae9189e1044fe93ab2a29117ec6dea4753b56c2"
+    },
+    {
+      "path": "rl_games/envs/connect4_selfplay.py",
+      "source_path": "rl_games/rl_games/envs/connect4_selfplay.py",
+      "source_blob": "913e1e2ae8a50c813e18784a73e18ed5f616ba2f",
+      "sha256": "2453452fdd76e13dfdde6edeb30065feea4e68414477a82bee6550e6d5d64c47"
+    },
+    {
+      "path": "rl_games/envs/cule.py",
+      "source_path": "rl_games/rl_games/envs/cule.py",
+      "source_blob": "954fbadb29ade9610dc7212b65e1b392a46304eb",
+      "sha256": "c628793b7542d93a8c817de4364729e465c823ba919408c256aa5a13da0f7e72"
+    },
+    {
+      "path": "rl_games/envs/diambra/diambra.py",
+      "source_path": "rl_games/rl_games/envs/diambra/diambra.py",
+      "source_blob": "e2e5963314c13f31ab18066b477ddaced064575f",
+      "sha256": "bdfe862607d1028991f226377b87236020b19c62b429a0f2a38b0608d947764a"
+    },
+    {
+      "path": "rl_games/envs/envpool.py",
+      "source_path": "rl_games/rl_games/envs/envpool.py",
+      "source_blob": "f80ab7a9a9b06e4c2cfa87ee59020e038a8c4b88",
+      "sha256": "ab405396d44ed9f91f43eb9cf77387ca47a520d5ab9dde5e68cab9e79f45140b"
+    },
+    {
+      "path": "rl_games/envs/multiwalker.py",
+      "source_path": "rl_games/rl_games/envs/multiwalker.py",
+      "source_blob": "de3ab71a2aa6be6b54aec9a6d0ff0dc3fb896d0a",
+      "sha256": "367795c2a9f349cda8a233759670776cfcf233c43b11c52c9b7acd659974cd24"
+    },
+    {
+      "path": "rl_games/envs/slimevolley_selfplay.py",
+      "source_path": "rl_games/rl_games/envs/slimevolley_selfplay.py",
+      "source_blob": "11e9cb135272fce0a1afd6cca69becdccb8a1ecf",
+      "sha256": "7f9748e5ce6e86a89d749958c5cbe99dd20adda412c2720b138f7ea77cc2be45"
+    },
+    {
+      "path": "rl_games/envs/smac_env.py",
+      "source_path": "rl_games/rl_games/envs/smac_env.py",
+      "source_blob": "a4039e551cabfaf727e6b451d7babcb6b24edbaf",
+      "sha256": "e69a001ad307701b64acda20ce7fe8e653bec1cbc22a9bd83f547fcc57fc8fa2"
+    },
+    {
+      "path": "rl_games/envs/test/__init__.py",
+      "source_path": "rl_games/rl_games/envs/test/__init__.py",
+      "source_blob": "f28ce9a2ce51021ce89aa581369f32e994c3bda5",
+      "sha256": "8daf005568e1e04f64a85ba56ae0a65881cbd5997bab60afb67692747ef27661"
+    },
+    {
+      "path": "rl_games/envs/test/example_env.py",
+      "source_path": "rl_games/rl_games/envs/test/example_env.py",
+      "source_blob": "0c9ce95063b4ea8440e0a84573946fd267a5f7ed",
+      "sha256": "d927cd7864e7b6f5a0b6724ef492188ef486da5cffce70dbc5ee2f045aa12d1a"
+    },
+    {
+      "path": "rl_games/envs/test/rnn_env.py",
+      "source_path": "rl_games/rl_games/envs/test/rnn_env.py",
+      "source_blob": "faa4e17e2d8cce2baccdd361e757902592b3e77e",
+      "sha256": "75fcf90dccd5e945337a2b6f9c9447cdd1986f84aeb3f13cc851ac6b6c328a37"
+    },
+    {
+      "path": "rl_games/envs/test/test_asymmetric_env.py",
+      "source_path": "rl_games/rl_games/envs/test/test_asymmetric_env.py",
+      "source_blob": "6fec93edebe29f6dddc0ab464c1fc8412e4dd7e0",
+      "sha256": "3777ff540f872d9aeba6fefa4b651a9b7ff05374b88ddc0a3b94e49af624786b"
+    },
+    {
+      "path": "rl_games/envs/test_network.py",
+      "source_path": "rl_games/rl_games/envs/test_network.py",
+      "source_blob": "6170ebb73cb0e656dcf4a352229adae18eff2716",
+      "sha256": "5f8df0b6ca58aa2c612f8e3699ce462eeea94b68f7bca7564ba6fb36489446ce"
+    },
+    {
+      "path": "rl_games/interfaces/__init__.py",
+      "source_path": "rl_games/rl_games/interfaces/__init__.py",
+      "source_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rl_games/interfaces/base_algorithm.py",
+      "source_path": "rl_games/rl_games/interfaces/base_algorithm.py",
+      "source_blob": "0edf45040e2e9a984a77e37c0769cde0f06ff7ed",
+      "sha256": "29fdaf9353cb2493e9efa6a2321a0d4f2c966003f8ba8ba8697a96b0c9b64265"
+    },
+    {
+      "path": "rl_games/networks/__init__.py",
+      "source_path": "rl_games/rl_games/networks/__init__.py",
+      "source_blob": "1c99d866e50c761ea2a24992b5385cb5c26c74ff",
+      "sha256": "608ed45e8e06d297fd6898c9395f8bec38d5186927606884d5d1f65fb1a61454"
+    },
+    {
+      "path": "rl_games/networks/tcnn_mlp.py",
+      "source_path": "rl_games/rl_games/networks/tcnn_mlp.py",
+      "source_blob": "345034bf545c8e0249075396ad37273b0515bfd9",
+      "sha256": "ed93a6fd8fde37fb7b4cf143e11cb28dd58de8fd284f546617e32df44626c84e"
+    },
+    {
+      "path": "rl_games/torch_runner.py",
+      "source_path": "rl_games/rl_games/torch_runner.py",
+      "source_blob": "d20bce421bdf4d018bd254e5769c0f97ffd0e0d1",
+      "sha256": "1f388530f24b7f4f4bcfd862b83f2473636b50f14a81afb6b5dbae8a384a7397"
+    }
+  ]
+}

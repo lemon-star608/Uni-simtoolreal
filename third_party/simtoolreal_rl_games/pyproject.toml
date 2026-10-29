@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "unilab-simtoolreal-rl-games"
+version = "1.6.1+simtoolreal.2a991753.compat2"
+description = "Compatibility-patched SimToolReal Source RL-Games Python snapshot"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Denys Makoviichuk", email = "trrrrr97@gmail.com" },
+    { name = "Viktor Makoviichuk", email = "victor.makoviychuk@gmail.com" },
+]
+dependencies = [
+    "gym==0.26.2",
+    "gymnasium>=1.0,<2",
+    "numpy>=1.24",
+    "omegaconf>=2.3",
+    "tensorboard>=2.8",
+    "tensorboardX>=2.5",
+    "torch==2.7.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["rl_games"]

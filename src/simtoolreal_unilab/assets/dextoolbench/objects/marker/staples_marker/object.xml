@@ -1,0 +1,21 @@
+<mujoco model="dextoolbench_staples_marker">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="object_visual" file="../../../objects/marker/staples_marker/staples_marker.obj" />
+    <mesh name="object_collision_0" file="../../../objects/marker/staples_marker/collision_0.obj" />
+    <mesh name="object_collision_1" file="../../../objects/marker/staples_marker/collision_1.obj" />
+    <mesh name="object_collision_2" file="../../../objects/marker/staples_marker/collision_2.obj" />
+    <texture name="object_texture" type="2d" file="../../../objects/marker/staples_marker/material_0.png" />
+    <material name="object_material" texture="object_texture" texuniform="true" />
+  </asset>
+  <worldbody>
+    <body name="object_root" pos="0 0 0.63">
+      <freejoint name="object_root_joint" />
+      <inertial pos="0.0257038 -6.72565e-07 -1.50602e-06" mass="0.0128554" fullinertia="5.05352e-07 1.78585e-05 1.78618e-05 -2.16234e-09 1.86721e-09 -2.17513e-10" />
+      <geom name="object_visual_geom" type="mesh" mesh="object_visual" group="2" material="object_material" contype="0" conaffinity="0" density="0" />
+      <geom name="object_collision_geom_0" type="mesh" mesh="object_collision_0" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_1" type="mesh" mesh="object_collision_1" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_2" type="mesh" mesh="object_collision_2" friction="0.5 0.005 0.0001" group="3" density="0" />
+    </body>
+  </worldbody>
+</mujoco>
