@@ -1,4 +1,4 @@
-# SimToolReal UniLab
+# Uni-simtoolreal
 
 [English](README.md)
 
@@ -6,7 +6,7 @@
 | --- | --- |
 | <img src="docs/demos/demo-3.gif" alt="SimToolReal demonstration" width="360"> | <img src="docs/demos/demo-4.gif" alt="SimToolReal demonstration" width="360"> |
 
-SimToolReal UniLab 在 UniLab 与 UniSim 上训练 SimToolReal teacher policy，使用 RL-Games SAPG；训练出的 checkpoint 可在 24 个随仓库提交的 DexToolBench 场景中评估。训练使用 KUKA iiwa14 机械臂与 SHARPA 手，覆盖确定性的 1,200 工具 MJCF 池。评估直接在 MuJoCo 中加载提交的静态场景。
+Uni-simtoolreal 在 UniLab 与 UniSim 上训练 SimToolReal teacher policy，使用 RL-Games SAPG；训练出的 checkpoint 可在 24 个随仓库提交的 DexToolBench 场景中评估。训练使用 KUKA iiwa14 机械臂与 SHARPA 手，覆盖确定性的 1,200 工具 MJCF 池。评估直接在 MuJoCo 中加载提交的静态场景。
 
 ## 范围
 
