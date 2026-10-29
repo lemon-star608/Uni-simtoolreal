@@ -55,8 +55,8 @@ uv run simtoolreal-dextoolbench-interactive
 
 ```bash
 uv run simtoolreal-dextoolbench-interactive \
-  --config-path logs/rlgames_sapg/SimToolReal/<run>/run_config.json \
-  --checkpoint-path /path/to/checkpoint.pth
+  --run logs/rlgames_sapg/SimToolReal/<run> \
+  --checkpoint last
 ```
 
 Launcher 提供 upstream 的 category/object/task 选择器、Viser 控件、物体与目标渲染，以及评估生命周期。参见 [DexToolBench MuJoCo 评估](docs/dextoolbench-mujoco.md)。

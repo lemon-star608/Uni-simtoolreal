@@ -55,8 +55,8 @@ Run deterministic policy evaluation with a training run configuration and checkp
 
 ```bash
 uv run simtoolreal-dextoolbench-interactive \
-  --config-path logs/rlgames_sapg/SimToolReal/<run>/run_config.json \
-  --checkpoint-path /path/to/checkpoint.pth
+  --run logs/rlgames_sapg/SimToolReal/<run> \
+  --checkpoint last
 ```
 
 The launcher provides the upstream category/object/task selectors, Viser controls, object and goal rendering, and evaluation lifecycle. See [DexToolBench MuJoCo evaluation](docs/dextoolbench-mujoco.md).

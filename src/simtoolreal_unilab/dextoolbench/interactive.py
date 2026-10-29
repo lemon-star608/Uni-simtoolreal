@@ -21,6 +21,11 @@ _SIDEBAR_IMG_PATH = (
     / "dextoolbench"
     / "dextoolbench_objects_sidebar.png"
 )
+_RUN_CONFIG = Path("run_config.json")
+_RUN_CHECKPOINTS = {
+    "last": Path("last") / "model.pth",
+    "best": Path("best") / "model.pth",
+}
 _SIDEBAR_IMG: np.ndarray | None = None
 if _SIDEBAR_IMG_PATH.exists():
     from PIL import Image as PILImage
@@ -387,14 +392,59 @@ def main() -> None:
         description="DexToolBench Interactive Policy Demo (static MJCF + MuJoCo)"
     )
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--config-path", default=None, help="Policy YAML")
-    parser.add_argument("--checkpoint-path", default=None, help="Policy checkpoint")
+    parser.add_argument(
+        "--run",
+        type=Path,
+        default=None,
+        help="training run directory containing run_config.json",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        choices=sorted(_RUN_CHECKPOINTS),
+        default=None,
+        help="checkpoint selector to use with --run",
+    )
+    parser.add_argument(
+        "--config-path",
+        type=Path,
+        default=None,
+        help="explicit resolved policy config (JSON or YAML)",
+    )
+    parser.add_argument(
+        "--checkpoint-path",
+        type=Path,
+        default=None,
+        help="explicit policy checkpoint",
+    )
     args = parser.parse_args()
-    if bool(args.config_path) != bool(args.checkpoint_path):
-        parser.error("provide both --config-path and --checkpoint-path, or neither")
+
+    if args.run is not None:
+        if args.config_path is not None or args.checkpoint_path is not None:
+            parser.error("use either --run/--checkpoint or explicit policy paths, not both")
+        if args.checkpoint is None:
+            parser.error("--run requires --checkpoint last or --checkpoint best")
+
+        run_dir = args.run.expanduser().resolve()
+        config_path = run_dir / _RUN_CONFIG
+        checkpoint_path = run_dir / _RUN_CHECKPOINTS[args.checkpoint]
+        relative_checkpoint = _RUN_CHECKPOINTS[args.checkpoint].as_posix()
+        if not run_dir.is_dir():
+            parser.error(f"training run directory does not exist: {run_dir}")
+        if not config_path.is_file():
+            parser.error(f"training run config does not exist: {config_path}")
+        if not checkpoint_path.is_file():
+            parser.error(f"training checkpoint does not exist: {run_dir / relative_checkpoint}")
+    else:
+        if args.checkpoint is not None:
+            parser.error("--checkpoint requires --run")
+        if bool(args.config_path) != bool(args.checkpoint_path):
+            parser.error("provide both --config-path and --checkpoint-path, or neither")
+        config_path = args.config_path
+        checkpoint_path = args.checkpoint_path
+
     InteractiveDemo(
-        config_path=args.config_path,
-        checkpoint_path=args.checkpoint_path,
+        config_path=None if config_path is None else str(config_path),
+        checkpoint_path=None if checkpoint_path is None else str(checkpoint_path),
         port=args.port,
     ).run()
 

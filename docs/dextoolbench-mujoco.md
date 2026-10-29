@@ -32,11 +32,11 @@ The launcher starts the MuJoCo worker, renders the selected scene in Viser, and 
 
 ```bash
 uv run simtoolreal-dextoolbench-interactive \
-  --config-path logs/rlgames_sapg/SimToolReal/<run>/run_config.json \
-  --checkpoint-path /path/to/checkpoint.pth
+  --run logs/rlgames_sapg/SimToolReal/<run> \
+  --checkpoint last
 ```
 
-Provide both arguments or neither. The policy loader accepts the resolved Hydra configuration persisted by a SimToolReal run, unwraps its `run`/`config` envelope, reads `rl_games.params`, and restores the supplied checkpoint on CPU. The player adapts the metadata to one environment and pins the deterministic SAPG exploration coefficient block.
+`--checkpoint` accepts `last` or `best` and resolves the matching file inside the run directory. The policy loader reads the run's persisted `run_config.json`, unwraps its `run`/`config` envelope, reads `rl_games.params`, and restores the selected checkpoint on CPU. The player adapts the metadata to one environment and pins the deterministic SAPG exploration coefficient block.
 
 ## Assets
 
