@@ -1,0 +1,121 @@
+<mujoco model="dextoolbench_handle_eraser">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="object_visual" file="../../../objects/eraser/handle_eraser/handle_eraser.obj" />
+    <mesh name="object_collision_0" file="../../../objects/eraser/handle_eraser/collision_0.obj" />
+    <mesh name="object_collision_1" file="../../../objects/eraser/handle_eraser/collision_1.obj" />
+    <mesh name="object_collision_2" file="../../../objects/eraser/handle_eraser/collision_2.obj" />
+    <mesh name="object_collision_3" file="../../../objects/eraser/handle_eraser/collision_3.obj" />
+    <mesh name="object_collision_4" file="../../../objects/eraser/handle_eraser/collision_4.obj" />
+    <mesh name="object_collision_5" file="../../../objects/eraser/handle_eraser/collision_5.obj" />
+    <mesh name="object_collision_6" file="../../../objects/eraser/handle_eraser/collision_6.obj" />
+    <mesh name="object_collision_7" file="../../../objects/eraser/handle_eraser/collision_7.obj" />
+    <mesh name="object_collision_8" file="../../../objects/eraser/handle_eraser/collision_8.obj" />
+    <mesh name="object_collision_9" file="../../../objects/eraser/handle_eraser/collision_9.obj" />
+    <mesh name="object_collision_10" file="../../../objects/eraser/handle_eraser/collision_10.obj" />
+    <mesh name="object_collision_11" file="../../../objects/eraser/handle_eraser/collision_11.obj" />
+    <mesh name="object_collision_12" file="../../../objects/eraser/handle_eraser/collision_12.obj" />
+    <mesh name="object_collision_13" file="../../../objects/eraser/handle_eraser/collision_13.obj" />
+    <mesh name="object_collision_14" file="../../../objects/eraser/handle_eraser/collision_14.obj" />
+    <mesh name="object_collision_15" file="../../../objects/eraser/handle_eraser/collision_15.obj" />
+    <mesh name="object_collision_16" file="../../../objects/eraser/handle_eraser/collision_16.obj" />
+    <mesh name="object_collision_17" file="../../../objects/eraser/handle_eraser/collision_17.obj" />
+    <mesh name="object_collision_18" file="../../../objects/eraser/handle_eraser/collision_18.obj" />
+    <mesh name="object_collision_19" file="../../../objects/eraser/handle_eraser/collision_19.obj" />
+    <mesh name="object_collision_20" file="../../../objects/eraser/handle_eraser/collision_20.obj" />
+    <mesh name="object_collision_21" file="../../../objects/eraser/handle_eraser/collision_21.obj" />
+    <mesh name="object_collision_22" file="../../../objects/eraser/handle_eraser/collision_22.obj" />
+    <mesh name="object_collision_23" file="../../../objects/eraser/handle_eraser/collision_23.obj" />
+    <mesh name="object_collision_24" file="../../../objects/eraser/handle_eraser/collision_24.obj" />
+    <mesh name="object_collision_25" file="../../../objects/eraser/handle_eraser/collision_25.obj" />
+    <mesh name="object_collision_26" file="../../../objects/eraser/handle_eraser/collision_26.obj" />
+    <mesh name="object_collision_27" file="../../../objects/eraser/handle_eraser/collision_27.obj" />
+    <mesh name="object_collision_28" file="../../../objects/eraser/handle_eraser/collision_28.obj" />
+    <mesh name="object_collision_29" file="../../../objects/eraser/handle_eraser/collision_29.obj" />
+    <mesh name="object_collision_30" file="../../../objects/eraser/handle_eraser/collision_30.obj" />
+    <mesh name="object_collision_31" file="../../../objects/eraser/handle_eraser/collision_31.obj" />
+    <mesh name="object_collision_32" file="../../../objects/eraser/handle_eraser/collision_32.obj" />
+    <mesh name="object_collision_33" file="../../../objects/eraser/handle_eraser/collision_33.obj" />
+    <mesh name="object_collision_34" file="../../../objects/eraser/handle_eraser/collision_34.obj" />
+    <mesh name="object_collision_35" file="../../../objects/eraser/handle_eraser/collision_35.obj" />
+    <mesh name="object_collision_36" file="../../../objects/eraser/handle_eraser/collision_36.obj" />
+    <mesh name="object_collision_37" file="../../../objects/eraser/handle_eraser/collision_37.obj" />
+    <mesh name="object_collision_38" file="../../../objects/eraser/handle_eraser/collision_38.obj" />
+    <mesh name="object_collision_39" file="../../../objects/eraser/handle_eraser/collision_39.obj" />
+    <mesh name="object_collision_40" file="../../../objects/eraser/handle_eraser/collision_40.obj" />
+    <mesh name="object_collision_41" file="../../../objects/eraser/handle_eraser/collision_41.obj" />
+    <mesh name="object_collision_42" file="../../../objects/eraser/handle_eraser/collision_42.obj" />
+    <mesh name="object_collision_43" file="../../../objects/eraser/handle_eraser/collision_43.obj" />
+    <mesh name="object_collision_44" file="../../../objects/eraser/handle_eraser/collision_44.obj" />
+    <mesh name="object_collision_45" file="../../../objects/eraser/handle_eraser/collision_45.obj" />
+    <mesh name="object_collision_46" file="../../../objects/eraser/handle_eraser/collision_46.obj" />
+    <mesh name="object_collision_47" file="../../../objects/eraser/handle_eraser/collision_47.obj" />
+    <mesh name="object_collision_48" file="../../../objects/eraser/handle_eraser/collision_48.obj" />
+    <mesh name="object_collision_49" file="../../../objects/eraser/handle_eraser/collision_49.obj" />
+    <mesh name="object_collision_50" file="../../../objects/eraser/handle_eraser/collision_50.obj" />
+    <mesh name="object_collision_51" file="../../../objects/eraser/handle_eraser/collision_51.obj" />
+    <mesh name="object_collision_52" file="../../../objects/eraser/handle_eraser/collision_52.obj" />
+    <texture name="object_texture" type="2d" file="../../../objects/eraser/handle_eraser/material_0.png" />
+    <material name="object_material" texture="object_texture" texuniform="true" />
+  </asset>
+  <worldbody>
+    <body name="object_root" pos="0 0 0.63">
+      <freejoint name="object_root_joint" />
+      <inertial pos="-0.0040676 -2.3488e-05 -0.0448931" mass="0.163362" fullinertia="9.91539e-05 0.000391977 0.000366139 -4.67575e-06 3.66962e-06 -7.33056e-07" />
+      <geom name="object_visual_geom" type="mesh" mesh="object_visual" group="2" material="object_material" contype="0" conaffinity="0" density="0" />
+      <geom name="object_collision_geom_0" type="mesh" mesh="object_collision_0" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_1" type="mesh" mesh="object_collision_1" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_2" type="mesh" mesh="object_collision_2" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_3" type="mesh" mesh="object_collision_3" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_4" type="mesh" mesh="object_collision_4" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_5" type="mesh" mesh="object_collision_5" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_6" type="mesh" mesh="object_collision_6" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_7" type="mesh" mesh="object_collision_7" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_8" type="mesh" mesh="object_collision_8" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_9" type="mesh" mesh="object_collision_9" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_10" type="mesh" mesh="object_collision_10" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_11" type="mesh" mesh="object_collision_11" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_12" type="mesh" mesh="object_collision_12" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_13" type="mesh" mesh="object_collision_13" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_14" type="mesh" mesh="object_collision_14" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_15" type="mesh" mesh="object_collision_15" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_16" type="mesh" mesh="object_collision_16" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_17" type="mesh" mesh="object_collision_17" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_18" type="mesh" mesh="object_collision_18" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_19" type="mesh" mesh="object_collision_19" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_20" type="mesh" mesh="object_collision_20" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_21" type="mesh" mesh="object_collision_21" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_22" type="mesh" mesh="object_collision_22" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_23" type="mesh" mesh="object_collision_23" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_24" type="mesh" mesh="object_collision_24" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_25" type="mesh" mesh="object_collision_25" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_26" type="mesh" mesh="object_collision_26" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_27" type="mesh" mesh="object_collision_27" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_28" type="mesh" mesh="object_collision_28" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_29" type="mesh" mesh="object_collision_29" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_30" type="mesh" mesh="object_collision_30" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_31" type="mesh" mesh="object_collision_31" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_32" type="mesh" mesh="object_collision_32" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_33" type="mesh" mesh="object_collision_33" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_34" type="mesh" mesh="object_collision_34" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_35" type="mesh" mesh="object_collision_35" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_36" type="mesh" mesh="object_collision_36" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_37" type="mesh" mesh="object_collision_37" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_38" type="mesh" mesh="object_collision_38" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_39" type="mesh" mesh="object_collision_39" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_40" type="mesh" mesh="object_collision_40" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_41" type="mesh" mesh="object_collision_41" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_42" type="mesh" mesh="object_collision_42" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_43" type="mesh" mesh="object_collision_43" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_44" type="mesh" mesh="object_collision_44" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_45" type="mesh" mesh="object_collision_45" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_46" type="mesh" mesh="object_collision_46" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_47" type="mesh" mesh="object_collision_47" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_48" type="mesh" mesh="object_collision_48" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_49" type="mesh" mesh="object_collision_49" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_50" type="mesh" mesh="object_collision_50" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_51" type="mesh" mesh="object_collision_51" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_52" type="mesh" mesh="object_collision_52" friction="0.5 0.005 0.0001" group="3" density="0" />
+    </body>
+  </worldbody>
+</mujoco>

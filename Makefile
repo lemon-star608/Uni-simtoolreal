@@ -1,4 +1,4 @@
-.PHONY: check test test-all build
+.PHONY: check test build
 
 check:
 	git diff --check
@@ -7,9 +7,6 @@ check:
 
 test:
 	uv run --no-sync pytest -q
-
-test-all:
-	uv run --no-sync pytest -q -m ''
 
 build:
 	uv build

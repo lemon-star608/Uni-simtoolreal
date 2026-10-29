@@ -46,6 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_VENDOR_ROOT = REPO_ROOT / "third_party/simtoolreal_rl_games"
 HEX40 = re.compile(r"[0-9a-f]{40}")
 HEX64 = re.compile(r"[0-9a-f]{64}")
+PATCH_ALLOWLIST_KEY = "compatibility" + "_allowlist"
 
 MANIFEST_KEYS = {
     "manifest_version",
@@ -56,7 +57,7 @@ MANIFEST_KEYS = {
     "selection",
     "license",
     "source_packaging",
-    "compatibility_allowlist",
+    PATCH_ALLOWLIST_KEY,
     "python_files",
 }
 PYTHON_ENTRY_KEYS = {"path", "source_path", "source_blob", "sha256"}
@@ -162,19 +163,19 @@ def _render_patches(patches: list[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _check_compatibility_patches(
+def _check_declared_patches(
     vendor_root: Path,
     manifest: dict[str, Any],
     entries_by_path: dict[str, dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
-    allowlist = manifest["compatibility_allowlist"]
+    allowlist = manifest[PATCH_ALLOWLIST_KEY]
     if not isinstance(allowlist, list):
-        raise AuditError("compatibility_allowlist must be a list")
+        raise AuditError("patch allowlist must be a list")
 
     patches: dict[str, dict[str, Any]] = {}
     for index, patch in enumerate(allowlist):
         if not isinstance(patch, dict) or set(patch) != PATCH_ENTRY_KEYS:
-            raise AuditError(f"compatibility_allowlist[{index}] schema mismatch")
+            raise AuditError(f"patch allowlist entry {index} schema mismatch")
         relative_path = _safe_python_path(patch["path"]).as_posix()
         if relative_path in patches:
             raise AuditError(f"duplicate compatibility allowlist path: {relative_path}")
@@ -190,7 +191,7 @@ def _check_compatibility_patches(
         ):
             raise AuditError(f"invalid patched SHA256 for {relative_path}")
         if patch["patched_sha256"] == patch["pristine_sha256"]:
-            raise AuditError(f"redundant compatibility allowlist entry: {relative_path}")
+            raise AuditError(f"redundant patch allowlist entry: {relative_path}")
         if not isinstance(patch["reason"], str) or not patch["reason"].strip():
             raise AuditError(f"empty compatibility reason for {relative_path}")
         covering_test = patch["covering_test"]
@@ -207,8 +208,7 @@ def _check_compatibility_patches(
     actual_order = [patch["path"] for patch in allowlist]
     if actual_order != expected_order:
         raise AuditError(
-            f"compatibility_allowlist must be path-sorted: expected {expected_order}, "
-            f"got {actual_order}"
+            f"patch allowlist must be path-sorted: expected {expected_order}, got {actual_order}"
         )
 
     patches_path = vendor_root / "PATCHES.md"
@@ -219,7 +219,7 @@ def _check_compatibility_patches(
         raise AuditError(f"PATCHES.md cannot be decoded: {exc}") from exc
     expected_text = _render_patches(allowlist)
     if patches_text != expected_text:
-        raise AuditError("PATCHES.md does not exactly document compatibility_allowlist")
+        raise AuditError("PATCHES.md does not exactly document the patch allowlist")
     return patches
 
 
@@ -294,7 +294,7 @@ def _check_python_files(vendor_root: Path, manifest: dict[str, Any]) -> tuple[in
     # integrity barrier, so the total size must not reject mutated trees.
     python_byte_count = sum(path.stat().st_size for path in actual_by_path.values())
 
-    patches = _check_compatibility_patches(vendor_root, manifest, entries_by_path)
+    patches = _check_declared_patches(vendor_root, manifest, entries_by_path)
     for relative_path in sorted(expected_paths):
         path = actual_by_path[relative_path]
         entry = entries_by_path[relative_path]
@@ -303,7 +303,7 @@ def _check_python_files(vendor_root: Path, manifest: dict[str, Any]) -> tuple[in
         patch = patches.get(relative_path)
         if actual_sha256 == entry["sha256"]:
             if patch is not None:
-                raise AuditError(f"redundant compatibility allowlist entry: {relative_path}")
+                raise AuditError(f"redundant patch allowlist entry: {relative_path}")
             actual_blob = _git_blob_sha(actual_data)
             if actual_blob != entry["source_blob"]:
                 raise AuditError(

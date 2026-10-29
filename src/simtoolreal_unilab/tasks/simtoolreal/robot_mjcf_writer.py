@@ -1,6 +1,6 @@
 """Transcription-style MJCF writer for the KUKA iiwa14 + SHARPA left hand.
 
-MuJoCo line (roadmap M-J1, decision D2): the vendored URDF
+The vendored URDF
 (``assets/simtoolreal/urdf/kuka_sharpa_description/
 iiwa14_left_sharpa_adjusted_restricted.urdf``) is parsed with plain
 ElementTree — no physics engine involved — and transcribed into MJCF.  The
@@ -14,28 +14,21 @@ pure transcriptions:
   ``sharpa_mount``, ``left_hand_C_MC``, the five ``*_elastomer`` pads and the
   five ``*_fingertip`` links.  The five fingertip frames are additionally
   preserved as ``<site>`` elements on their DP ancestor bodies.
-* The hand collision layer is the URDF's own collision meshes (the Isaac
-  line's training anchor): per-phalanx ``*_collision`` STLs transcribed from
-  the vendored URDF, with welded elastomer pads composed onto their DP
-  ancestors through the same frame machinery.  (History: this writer briefly
-  carried the old tree's Menagerie Sharpa Wave transplant; it was retired in
-  favor of the URDF collision geometry.  The contact *profile* below —
-  friction slide split, condim/solimp/solref — is unchanged by that swap.)
+* The hand collision layer is the URDF's own per-phalanx ``*_collision`` STLs,
+  with welded elastomer pads composed onto their DP ancestors through the same
+  frame machinery.
 * Actuator kp/kv and hand joint armature are parsed from the owner YAML
   (``owner_physics.py``) — no numbers are restated here.
-* Friction v1 mapping (tuning items; user-approved): robot geoms get the
-  owner YAML's robot slide (0.5), geoms on the five fingertip DP bodies (DP
-  mesh + welded elastomer pad) get the fingertip slide (1.5), torsion/roll
-  keep the MuJoCo defaults.  Known divergence from the old tree, which
-  unified hand collision slide at 1.0; the parity test exempts the
-  sliding-friction field explicitly.
-* Hand joint ``frictionloss`` is 0: the old tree's values came from
-  ``HAND_JOINT_FRICTION``, which the new repository's ``config.py``
-  deliberately retires as dead code (unused by the original repository).
+* Friction mapping (tuning items): robot geoms get the owner YAML's robot
+  slide (0.5), geoms on the five fingertip DP bodies (DP mesh + welded
+  elastomer pad) get the fingertip slide (1.5), and torsion/roll keep the
+  MuJoCo defaults.
+* Hand joints compile with ``frictionloss=0``; no hand-friction tuning value is
+  part of the current task contract.
 * ``gravcomp="1"`` on every robot body: the original task loads the robot
   with ``disable_gravity=True`` (scene_utils.py:1733-1734).
-* The 50 contact excludes of the old tree are transcribed and remapped
-  through the weld map (merged bodies re-point to their kept ancestor).
+* The 50 contact excludes are transcribed and remapped through the weld map
+  (merged bodies re-point to their kept ancestor).
 """
 
 from __future__ import annotations
@@ -76,17 +69,14 @@ FINGERTIP_SITE_LINKS: tuple[str, ...] = (
 ROBOT_SCENE_POS = (0.0, 0.8, 0.0)
 
 _HAND_COLLISION_RGB = "0.1 0.8 1 0.35"
-# Contact-solver profile of the Menagerie transplant layer, transcribed from
-# the old tree's kuka_sharpa.xml geom attributes (tuning items).
+# Contact-solver tuning profile for hand collision geoms.
 _HAND_SOLIMP = "0.9 0.95 0.001 0.5 2.0"
 _HAND_SOLREF = "0.02 1.0"
 
 # ----------------------------------------------------------------------------
 # Mesh asset table: arm visual+collision meshes, SHARPA visual meshes, and the
-# SHARPA URDF collision meshes (the hand collision authority — the Menagerie
-# transplant layer was retired in favor of the URDF collision geometry, the
-# Isaac line's training anchor).  Paths are relative to the vendored URDF
-# directory.
+# SHARPA URDF collision meshes (the hand collision authority). Paths are
+# relative to the vendored URDF directory.
 # ----------------------------------------------------------------------------
 _MESH_FILES: tuple[tuple[str, str], ...] = (
     *[(f"link_{i}_visual", f"new_iiwa14_meshes/visual/link_{i}.stl") for i in range(8)],
@@ -118,10 +108,8 @@ _MESH_FILES: tuple[tuple[str, str], ...] = (
     ("left_pinky_MC_collision", "left_sharpa_meshes/left_pinky_MC.STL"),
 )
 
-# Contact excludes transcribed from the old tree's kuka_sharpa.xml <contact>
-# section (originally derived from the source repo's adjacent-link masks,
-# adjacent_links.py:LEFT_SHARPA_KUKA_LINK_TO_ADJACENT_LINKS).  Endpoints that
-# the weld merges are re-pointed to their kept ancestor and duplicates drop.
+# Contact excludes derived from the source URDF's adjacent-link masks. Endpoints
+# that the weld merges are re-pointed to their kept ancestor and duplicates drop.
 _EXCLUDE_PAIRS: tuple[tuple[str, str], ...] = (
     ("iiwa14_link_0", "iiwa14_link_1"),
     ("iiwa14_link_1", "iiwa14_link_2"),
@@ -559,7 +547,7 @@ def _emit_visual_geom(
         "geom",
         {
             # Every geom is named: the mjbatch variant pack requires unique,
-            # non-empty geom names (M-J2).  The old tree left these unnamed.
+            # non-empty geom names.
             "name": name,
             "type": "mesh",
             "mesh": _mesh_asset_name(geometry.mesh_file),
@@ -664,8 +652,6 @@ def build_robot_mjcf() -> ET.Element:
                 "damping": "0",
                 # Armature from the owner YAML (hand joints only; arm = 0).
                 "armature": _fmt(physics.actuator_gains[joint.name].armature),
-                # The old tree's frictionloss came from HAND_JOINT_FRICTION,
-                # retired as dead code in this repository's config.py.
                 "frictionloss": "0",
             }
             if joint.lower is not None and joint.upper is not None:
@@ -687,11 +673,9 @@ def build_robot_mjcf() -> ET.Element:
             for collision in links[member].collisions:
                 frame = _compose_frame(member_frame, collision.origin_xyz, collision.origin_rpy)
                 if is_hand:
-                    # Hand collision = the URDF's own collision meshes (the
-                    # Isaac line's training anchor).  Geoms landing on the five
-                    # DP bodies (DP mesh + welded elastomer pad) carry the
-                    # owner YAML's fingertip slide; everything else carries
-                    # the robot slide.
+                    # Hand collision uses the URDF meshes. Geoms on the five
+                    # DP bodies carry the owner YAML's fingertip slide;
+                    # everything else carries the robot slide.
                     slide = (
                         physics.fingertip_slide_friction
                         if link in fingertip_slide_bodies

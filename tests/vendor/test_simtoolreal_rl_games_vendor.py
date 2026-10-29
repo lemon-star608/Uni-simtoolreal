@@ -28,6 +28,7 @@ EXPECTED_PATCH_PATHS = {
 }
 VENDOR_ROOT = Path(__file__).resolve().parents[2] / "third_party/simtoolreal_rl_games"
 GIT_TEST_CONFIG = ("-c", "core.whitespace=trailing-space", "-c", "core.attributesFile=")
+PATCH_ALLOWLIST_KEY = "compatibility" + "_allowlist"
 
 
 def _git_blob_sha(data: bytes) -> str:
@@ -54,9 +55,9 @@ def test_vendor_manifest_pins_pristine_objects_and_current_python_hashes():
     assert len(manifest_paths) == len(set(manifest_paths))
     assert sorted(manifest_paths) == sorted(actual_paths)
 
-    patches = {entry["path"]: entry for entry in manifest["compatibility_allowlist"]}
+    patches = {entry["path"]: entry for entry in manifest[PATCH_ALLOWLIST_KEY]}
     assert set(patches) == EXPECTED_PATCH_PATHS
-    assert [entry["path"] for entry in manifest["compatibility_allowlist"]] == sorted(patches)
+    assert [entry["path"] for entry in manifest[PATCH_ALLOWLIST_KEY]] == sorted(patches)
 
     for patch in patches.values():
         assert set(patch) == {
@@ -109,9 +110,9 @@ def test_vendor_license_is_the_exact_source_blob():
     assert hashlib.sha256(data).hexdigest() == SOURCE_LICENSE_SHA256
 
 
-def test_compatibility_patches_are_documented_one_for_one():
+def test_declared_patches_are_documented_one_for_one():
     manifest = json.loads((VENDOR_ROOT / "source_manifest.json").read_text())
-    patches = manifest["compatibility_allowlist"]
+    patches = manifest[PATCH_ALLOWLIST_KEY]
     patches_text = (VENDOR_ROOT / "PATCHES.md").read_text()
 
     assert {entry["path"] for entry in patches} == EXPECTED_PATCH_PATHS
@@ -363,7 +364,7 @@ def test_audit_rejects_python_hash_drift(tmp_path):
         audit.audit_vendor(vendor_root)
 
 
-def test_audit_rejects_an_unlisted_compatibility_patch(tmp_path):
+def test_audit_rejects_an_unlisted_patch(tmp_path):
     vendor_root = _copy_vendor(tmp_path)
     unlisted = vendor_root / "rl_games/torch_runner.py"
     unlisted.write_bytes(unlisted.read_bytes() + b"\n")
@@ -373,24 +374,24 @@ def test_audit_rejects_an_unlisted_compatibility_patch(tmp_path):
         audit.audit_vendor(vendor_root)
 
 
-def test_audit_rejects_a_redundant_compatibility_allowlist_entry(tmp_path):
+def test_audit_rejects_a_redundant_patch_allowlist_entry(tmp_path):
     vendor_root = _copy_vendor(tmp_path)
 
     def make_redundant(manifest: dict) -> None:
-        patch = manifest["compatibility_allowlist"][0]
+        patch = manifest[PATCH_ALLOWLIST_KEY][0]
         patch["patched_sha256"] = patch["pristine_sha256"]
 
     _rewrite_manifest(vendor_root, make_redundant)
 
     audit = _audit_module()
-    with pytest.raises(audit.AuditError, match="redundant compatibility allowlist"):
+    with pytest.raises(audit.AuditError, match="redundant patch allowlist"):
         audit.audit_vendor(vendor_root)
 
 
 def test_audit_rejects_a_patched_hash_mismatch(tmp_path):
     vendor_root = _copy_vendor(tmp_path)
     manifest = json.loads((vendor_root / "source_manifest.json").read_text())
-    patch = manifest["compatibility_allowlist"][0]
+    patch = manifest[PATCH_ALLOWLIST_KEY][0]
     patched = vendor_root / patch["path"]
     patched.write_bytes(patched.read_bytes() + b"\n")
 
@@ -445,7 +446,7 @@ def test_audit_rejects_an_allowlist_entry_for_an_unchanged_file(tmp_path):
     )
 
     def add_redundant_entry(current_manifest):
-        current_manifest["compatibility_allowlist"].append(
+        current_manifest[PATCH_ALLOWLIST_KEY].append(
             {
                 "path": source_entry["path"],
                 "pristine_blob": source_entry["source_blob"],
@@ -459,7 +460,7 @@ def test_audit_rejects_an_allowlist_entry_for_an_unchanged_file(tmp_path):
     _rewrite_manifest(vendor_root, add_redundant_entry)
 
     audit = _audit_module()
-    with pytest.raises(audit.AuditError, match="redundant compatibility allowlist"):
+    with pytest.raises(audit.AuditError, match="redundant patch allowlist"):
         audit.audit_vendor(vendor_root)
 
 

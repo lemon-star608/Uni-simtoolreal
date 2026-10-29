@@ -1,0 +1,13 @@
+<mujoco model="DexToolBench_spatula_spoon_spatula_serve_plate">
+  <include file="../../../common/robot.xml" />
+  <include file="../../../objects/spatula/spoon_spatula/object.xml" />
+  <worldbody>
+    <geom name="floor" type="plane" size="0 0 0.05" friction="1.0 0.005 0.0001" rgba="0.22 0.24 0.26 1" />
+    <body name="table" pos="0 0 0.38">
+      <geom name="table_box" type="box" size="0.2375 0.2 0.15" pos="0 0 0" friction="0.5 0.005 0.0001" rgba="0.82 0.56 0.35 1" />
+    </body>
+  </worldbody>
+  <keyframe>
+    <key name="dextoolbench_home" qpos="-1.571 1.39646707 0 1.55053293 0 1.485 1.308 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12791467 0.0638481538 0.595817079 0.0305573069 -0.049177374 -0.0730045443 -0.995649624" ctrl="-1.571 1.39646707 0 1.55053293 0 1.485 1.308 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
+  </keyframe>
+</mujoco>

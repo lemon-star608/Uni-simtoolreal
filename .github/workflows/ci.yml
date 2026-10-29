@@ -2,37 +2,17 @@ name: ci
 
 on:
   push:
-    branches: [main, feat/mujoco-mjcf]
+    branches: [mujoco-v1]
   pull_request:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: simtoolreal_unilab
     steps:
-      # The parity tests resolve anchor checkouts as workspace siblings:
-      #   <workspace>/simtoolreal                      (original repo, URDF parity)
-      #   <workspace>/simtoolreal-unilab-old/UniLab    (old tree, MJCF ground truth)
       - uses: actions/checkout@v4
-        with:
-          path: simtoolreal_unilab
-      - uses: actions/checkout@v4
-        with:
-          repository: tylerlum/simtoolreal
-          ref: 313d5aea1f507c6cfe097b672b62945d7b0bbff5
-          path: simtoolreal
-      - uses: actions/checkout@v4
-        with:
-          repository: lemon-star608/UniLab
-          ref: 5f4a16c28989f3d945d81bedeb85e28ad5fa248b
-          path: simtoolreal-unilab-old/UniLab
       - uses: astral-sh/setup-uv@v5
       - name: Install dependencies
         run: uv sync --locked
-      - name: Pull unilab robot assets (go2, used by base facade tests)
-        run: uv run unilab-pull-assets --robot go2
       - name: Lint
         run: |
           uv run ruff check src tests scripts

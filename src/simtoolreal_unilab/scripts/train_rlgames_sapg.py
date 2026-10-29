@@ -13,12 +13,12 @@ from typing import Any, Callable
 
 import hydra
 import torch
-from omegaconf import DictConfig
-from unilab.base.config_adapter import BackendAdapter, create_env
+from omegaconf import DictConfig, OmegaConf
+from unilab.base.config_adapter import EnvConfigAdapter, create_env
 from unilab.training.common import ensure_registries
 from unilab.training.experiment import ExperimentTracker
 from unilab.training.run import get_log_root, should_run_playback
-from unilab.utils.seed import apply_configured_training_seed
+from unilab.training.seed import apply_configured_training_seed
 from unilab.utils.sim2sim import resolve_sim2sim_config
 from unilab.visualization.playback import camera_cfg_from_training
 from unisim.backend.base import log_playback_plan
@@ -32,7 +32,7 @@ from simtoolreal_unilab.rlgames_sapg.checkpoint import (
 )
 from simtoolreal_unilab.rlgames_sapg.config import preflight_config
 from simtoolreal_unilab.rlgames_sapg.dependency import require_rlgames_sapg
-from simtoolreal_unilab.rlgames_sapg.env_adapter import RlGamesNpEnvAdapter
+from simtoolreal_unilab.rlgames_sapg.env_adapter import RlGamesTorchEnvAdapter
 from simtoolreal_unilab.rlgames_sapg.observer import ExperimentTrackerObserver
 from simtoolreal_unilab.rlgames_sapg.player import build_native_player_bridge
 from simtoolreal_unilab.rlgames_sapg.runtime import execute_native_train
@@ -52,6 +52,13 @@ class PlaybackRun:
     source_run: Path
     checkpoint: Path
     video: str | None
+
+
+def _propagate_env_seed(cfg: DictConfig, env_cfg_override: dict[str, Any]) -> None:
+    """Seed the Manager-owned Torch RNG without overriding an explicit env.seed."""
+    seed = OmegaConf.select(cfg, "algo.seed", default=None)
+    if seed is not None:
+        env_cfg_override.setdefault("seed", int(seed))
 
 
 def _tracker(
@@ -96,7 +103,7 @@ def run_playback(
     tracker: Any | None = None,
     env_factory: Callable[..., Any] = create_env,
     tracker_factory: Callable[..., Any] = ExperimentTracker,
-    adapter_factory: Callable[..., Any] = RlGamesNpEnvAdapter,
+    adapter_factory: Callable[..., Any] = RlGamesTorchEnvAdapter,
     player_builder: Callable[..., Any] = build_native_player_bridge,
     checkpoint_validator: Callable[[str | Path], Any] = validate_native_checkpoint,
     sim2sim_resolver: Callable[..., Any] = resolve_sim2sim_config,
@@ -157,9 +164,10 @@ def run_playback(
 
     env = None
     try:
-        override = BackendAdapter(
+        override = EnvConfigAdapter(
             cfg, root_dir=root_dir, algo_name="rlgames_sapg"
         ).build_play_env_cfg_override()
+        _propagate_env_seed(cfg, override)
         env = env_factory(
             cfg=cfg,
             num_envs=int(cfg.training.play_env_num),
@@ -217,7 +225,7 @@ def run_training(
     env_factory: Callable[..., Any] = create_env,
     tracker_factory: Callable[..., Any] = ExperimentTracker,
     observer_factory: Callable[[Any], Any] = ExperimentTrackerObserver,
-    adapter_factory: Callable[..., Any] = RlGamesNpEnvAdapter,
+    adapter_factory: Callable[..., Any] = RlGamesTorchEnvAdapter,
     executor: Callable[..., Any] = execute_native_train,
     checkpoint_validator: Callable[[str | Path], Any] = validate_native_checkpoint,
     playback_runner: Callable[..., PlaybackRun] = run_playback,
@@ -253,9 +261,10 @@ def run_training(
     ensure_registry()
     tracker.start()
     try:
-        override = BackendAdapter(
+        override = EnvConfigAdapter(
             cfg, root_dir=root_dir, algo_name="rlgames_sapg"
         ).build_task_env_cfg_override()
+        _propagate_env_seed(cfg, override)
         env = env_factory(cfg=cfg, num_envs=int(cfg.algo.num_envs), env_cfg_override=override)
         adapter = adapter_factory(env, device=str(cfg.training.device))
         observer = observer_factory(tracker)

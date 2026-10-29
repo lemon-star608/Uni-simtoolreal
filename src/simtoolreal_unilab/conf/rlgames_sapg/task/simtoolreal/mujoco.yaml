@@ -1,11 +1,11 @@
 # @package _global_
-# SimToolReal MuJoCo backend owner (RL-Games SAPG tree), roadmap M-J5.
-# Inherits the backend-neutral task semantics from base.yaml and declares the
-# MuJoCo-line scene in the entity-split B form: entity_assets
+# SimToolReal MuJoCo owner for RL-Games SAPG.
+# Inherits task semantics from base.yaml and declares the scene in
+# entity-split MJCF form: entity_assets
 # (robot/table/floor/object) + an entity_variant binding on the object entity
 # (assembled by SimToolRealEnvCfg.bind_entity_variant at factory time), with
 # composition owned by unisim.  Gains and friction are baked into the assets
-# by the writers (D6).  GoalViz is intentionally not materialized in the
+# by the writers.  GoalViz is intentionally not materialized in the
 # headless B-form scene; the command hub owns the authoritative goal.  The
 # table is back to a kinematic entity, restoring table z randomization
 # through the entity reset channel.
@@ -17,19 +17,19 @@ training:
   task_name: SimToolReal
   sim_backend: mujoco
 
-# MuJoCo-line default scale: 12,288 envs x 1,200 tools, matching the Isaac
-# line's 12,288-env comparison run (CPU single process + mjbatch threads).
-# 12,288 = 6 x 2,048 keeps the SAPG exploration-block invariant
+# Production default scale: 24,576 envs x 1,200 tools on CPU with mjbatch
+# threads.
+# 24,576 = 6 x 4,096 keeps the SAPG exploration-block invariant
 # (num_actors % expl_coef_block_size == 0 with exactly six blocks), and
-# 12,288 * horizon_length(16) = 196,608 rows = 2 x 98,304 minibatches — the
-# same minibatch size as the Isaac line's production runs.
+# 24,576 * horizon_length(16) = 393,216 rows = 4 x 98,304 minibatches — the
+# production minibatch size.
 algo:
-  num_envs: 12288
+  num_envs: 24576
 rl_games:
   params:
     config:
       minibatch_size: 98304
-      expl_coef_block_size: 2048
+      expl_coef_block_size: 4096
       central_value_config:
         minibatch_size: 98304
 
@@ -59,7 +59,7 @@ env:
         # self_collision is deliberately undeclared: the MJCF compose path is
         # fail-closed on the toggle (mjcf_compiler keeps source-authored
         # exclusions instead), and robot.xml already carries the 35 authored
-        # excludes.  The IsaacSim leaf declares it once the pin crosses #270.
+        # excludes.
       - name: table
         source:
           model_file: ${simtoolreal_entity_mjcf:table}
@@ -159,15 +159,14 @@ env:
           - robot/left_pinky_MCP_AA_ctrl
           - robot/left_pinky_PIP_ctrl
           - robot/left_pinky_DIP_ctrl
-        # Palm + the five DP fingertip links (fingertip observations read the
-        # DP bodies with FINGERTIP_OFFSET, exactly like the Isaac line — the
-        # MJCF weld keeps those bodies and frames, M-J2 terms audit).
+        # Palm + the five DP fingertip links used by fingertip observations.
         body_names: [robot/iiwa14_link_7, robot/left_index_DP, robot/left_middle_DP, robot/left_ring_DP, robot/left_thumb_DP, robot/left_pinky_DP]
-        # Fingertip frames survive the MJCF weld as sites (M-J1 decision);
+        # Fingertip frames survive the MJCF weld as sites;
         # declared for completeness — no term reads them yet.
         site_names: [robot/left_thumb_fingertip, robot/left_index_fingertip, robot/left_middle_fingertip, robot/left_ring_fingertip, robot/left_pinky_fingertip]
       table:
         root_body_name: table/table
+        body_names: [table/table]
       object:
         root_body_name: object/object_root
         body_names: [object/object_root]

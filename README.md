@@ -1,76 +1,85 @@
-# simtoolreal_unilab
+# SimToolReal UniLab
 
 [中文](README_zh.md)
 
-SimToolReal teacher-policy training migrated onto [UniLab](https://github.com/Motphys/UniLab) + [UniSim](https://github.com/unilabsim/unisim): a KUKA iiwa14 arm (7 DoF) with a SHARPA hand (22 DoF) learns to lift and manipulate tools from a 1,200-variant procedurally generated tool pool, matching the [original repository](https://github.com/tylerlum/simtoolreal)'s training semantics. Both physics backends — IsaacSim (mapped subprocess worker) and MuJoCo (mjbatch VariantPack) — run on the same MJCF asset set, generated once per entity (robot/table/floor plus one file per tool); the learner is a vendored, SHA-gated RL-Games SAPG runtime.
+SimToolReal UniLab trains the SimToolReal teacher policy with RL-Games SAPG on UniLab and UniSim, then evaluates checkpoints with the 24 committed DexToolBench scenes. Training uses a KUKA iiwa14 arm and SHARPA hand over a deterministic 1,200-tool MJCF pool. Evaluation loads committed static scenes directly in MuJoCo.
 
-| Capability | Status |
-| --- | --- |
-| `SimToolReal` teacher training (RL-Games SAPG) | Full-scale runs on both backends; task/learner semantics label-compared against the original repository |
-| Physics backends | IsaacSim (default) and MuJoCo, one shared asset/task definition, switchable via `--backend` |
-| Label parity vs the original IsaacLab implementation | Key TensorBoard label families indistinguishable on a same-seed 12,288-env run |
-| Playback / inspection | `simtoolreal-play`, TensorBoard overlay with the original tag set |
-| Student / camera / sensor policies, deployment, sim2real | Not carried over; this repository contains no deployment code |
+## Scope
 
-## First run
+- **SimToolReal teacher training:** 24,576 parallel environments, six RL-Games exploration blocks, and the full 1,200-tool pool.
+- **DexToolBench evaluation:** all 24 category/object/task combinations, interactive Viser inspection, and deterministic policy playback.
+- **Fixed runtime:** UniLab TorchEnv, UniSim MuJoCo, mjbatch VariantPack, and the vendored SHA-gated RL-Games SAPG runtime.
 
-Requires Linux x86_64, an NVIDIA GPU with CUDA (the learner and the IsaacSim worker share it), [uv](https://docs.astral.sh/uv/), and ~20 GB of disk for the worker runtime and caches. Dependencies resolve from the lockfile (unisim-core and mjbatch-uni from PyPI; unilab pinned to an upstream git revision) — no extra checkouts.
+## Requirements
+
+- Linux x86_64
+- NVIDIA GPU with CUDA 13.0 support
+- [uv](https://docs.astral.sh/uv/)
+- Approximately 20 GB of free disk space for dependencies and generated assets
+
+## Quick start
 
 ```bash
-git clone <this repo> && cd simtoolreal_unilab
+git clone -b mujoco-v1 https://github.com/lemon-star608/simtoolreal_unilab.git
+cd simtoolreal_unilab
 uv sync
-uv run simtoolreal-assets    # verify the vendored assets
+uv run simtoolreal-train
 ```
 
-One piece cannot ship inside `uv sync`: the IsaacSim worker runtime (NVIDIA's SDK is not redistributed). Install it once with `bash scripts/setup_isaacsim_env.sh` (vendored from UniLab's official installer, IsaacSim 5.1.0 + IsaacLab 2.3.0, idempotent); `simtoolreal-train`/`simtoolreal-play` detect it automatically. Escape hatch for another IsaacSim-capable interpreter: `export UNISIM_ISAACSIM_PYTHON=/path/to/venv/bin/python`.
+The default command trains at full production scale. It creates the entity MJCF pool on first use and writes progress to TensorBoard.
 
-Robot/table source URDFs ship under `assets/simtoolreal/` (upstream MIT, SHA-256 manifest) and are serialized once into entity MJCFs at first use; the 1,200-tool MJCF pool is generated procedurally and cached under `/tmp` (override: `SIMTOOLREAL_TOOL_POOL_ROOT`).
+## Playback
 
-## Training and evaluation
+Select a checkpoint produced by training:
 
 ```bash
-# Production training (IsaacSim default; num_actors must form exactly six exploration blocks)
-uv run simtoolreal-train algo.num_envs=12288 rl_games.params.config.expl_coef_block_size=2048
+uv run simtoolreal-play \
+  --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
+```
 
-# MuJoCo backend (pure CPU; same task definition)
-uv run simtoolreal-train --backend mujoco
+View training curves and run configuration:
 
-# Acceptance smoke (64 envs, 24-tool pool, 2 epochs — minutes; never a policy baseline)
-uv run simtoolreal-train \
-  algo.num_envs=64 env.tool_pool_num_per_type=2 \
-  rl_games.params.config.max_epochs=2 \
-  rl_games.params.config.expl_coef_block_size=32 \
-  rl_games.params.config.minibatch_size=256 \
-  rl_games.params.config.central_value_config.minibatch_size=256 \
-  training.smoke=true training.no_play=true
-
-# Play back a checkpoint (renders through the IsaacSim worker)
-uv run simtoolreal-play --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
-
-uv run simtoolreal-list-envs                 # SimToolReal  isaacsim / SimToolReal  mujoco
+```bash
 uv run tensorboard --logdir logs/rlgames_sapg
 ```
 
-Outputs land in `logs/rlgames_sapg/SimToolReal/<run>/` (checkpoints, TensorBoard events, run configuration). The MuJoCo line needs no IsaacSim worker runtime.
+## DexToolBench
 
+Open the interactive zero-action viewer:
 
-## How to modify
+```bash
+uv run simtoolreal-dextoolbench-interactive
+```
 
-| What you want to change | Entry file |
-| --- | --- |
-| Reward terms and weights | `src/simtoolreal_unilab/tasks/simtoolreal/rewards.py`, `conf/rlgames_sapg/task/simtoolreal/base.yaml` |
-| Observations / goal command / actions | `tasks/simtoolreal/observations.py`, `commands.py`, `actions.py` |
-| Reset, wrench DR, terminations | `tasks/simtoolreal/events.py`, `terminations.py` |
-| Tool pool and MJCF generation | `tasks/simtoolreal/tool_catalog.py`, `tool_mjcf_writer.py`, `entity_mjcf_writer.py` |
-| Entity bootstrap and variant binding | `tasks/simtoolreal/scene.py`, `env_cfg.py` |
-| Algorithm hyperparameters | `conf/rlgames_sapg/config.yaml` |
-| Behaviors layered on pinned UniLab | `src/simtoolreal_unilab/_compat/` (removed as upstream grows them) |
+Run deterministic policy evaluation with a training run configuration and checkpoint:
 
-Dependency pins: `unilab` tracks upstream main @ `838cc03e` (git rev, carrying [#1620](https://github.com/Motphys/UniLab/pull/1620)/[#1636](https://github.com/Motphys/UniLab/pull/1636); switches to PyPI once a release contains them), `unisim-core >= 1.7.5`, `mjbatch-uni >= 0.2.4`. The vendored RL-Games runtime under `third_party/` is SHA-gated; never edit it. Run `make check` / `make test` before pushing.
+```bash
+uv run simtoolreal-dextoolbench-interactive \
+  --config-path logs/rlgames_sapg/SimToolReal/<run>/run_config.json \
+  --checkpoint-path /path/to/checkpoint.pth
+```
 
-## Credits
+The launcher provides the upstream category/object/task selectors, Viser controls, object and goal rendering, and evaluation lifecycle. See [DexToolBench MuJoCo evaluation](docs/dextoolbench-mujoco.md).
 
-- **SimToolReal** — upstream task, assets, and training semantics ([tylerlum/simtoolreal](https://github.com/tylerlum/simtoolreal), MIT); paper-reported numbers (e.g. sim2real) belong to the original implementation and are not re-validated here.
-- **UniLab** / **UniSim** / **unilab-rl** — training infrastructure, physics-backend contract, and runtimes; **RL-Games** — the SAPG learner, vendored with an audited patch set (`third_party/simtoolreal_rl_games/PATCHES.md`).
+## Outputs
 
-Licensed under [Apache-2.0](LICENSE); the vendored runtime and upstream assets keep their own licenses. For framework-level problems (backends, contract), report to UniLab/UniSim instead.
+- Training runs: `logs/rlgames_sapg/SimToolReal/<run>/`
+- Checkpoints: `logs/rlgames_sapg/SimToolReal/<run>/nn/`
+- TensorBoard events and the resolved `run_config.json` accompany each run
+- Generated tool pools default to the system temporary directory; set `SIMTOOLREAL_TOOL_POOL_ROOT` to choose another location
+
+## Verification
+
+```bash
+make check
+make test
+uv run simtoolreal-assets
+```
+
+Full acceptance also trains with the default command until RL-Games saves a persistent checkpoint, then loads that checkpoint through the DexToolBench policy path. See [Verification](docs/verification.md).
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Verification](docs/verification.md)
+- [DexToolBench MuJoCo evaluation](docs/dextoolbench-mujoco.md)

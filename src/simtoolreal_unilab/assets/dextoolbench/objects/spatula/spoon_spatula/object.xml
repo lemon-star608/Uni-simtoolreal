@@ -1,0 +1,33 @@
+<mujoco model="dextoolbench_spoon_spatula">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="object_visual" file="../../../objects/spatula/spoon_spatula/spoon_spatula.obj" />
+    <mesh name="object_collision_0" file="../../../objects/spatula/spoon_spatula/collision_0.obj" />
+    <mesh name="object_collision_1" file="../../../objects/spatula/spoon_spatula/collision_1.obj" />
+    <mesh name="object_collision_2" file="../../../objects/spatula/spoon_spatula/collision_2.obj" />
+    <mesh name="object_collision_3" file="../../../objects/spatula/spoon_spatula/collision_3.obj" />
+    <mesh name="object_collision_4" file="../../../objects/spatula/spoon_spatula/collision_4.obj" />
+    <mesh name="object_collision_5" file="../../../objects/spatula/spoon_spatula/collision_5.obj" />
+    <mesh name="object_collision_6" file="../../../objects/spatula/spoon_spatula/collision_6.obj" />
+    <mesh name="object_collision_7" file="../../../objects/spatula/spoon_spatula/collision_7.obj" />
+    <mesh name="object_collision_8" file="../../../objects/spatula/spoon_spatula/collision_8.obj" />
+    <texture name="object_texture" type="2d" file="../../../objects/spatula/spoon_spatula/material_0.png" />
+    <material name="object_material" texture="object_texture" texuniform="true" />
+  </asset>
+  <worldbody>
+    <body name="object_root" pos="0 0 0.63">
+      <freejoint name="object_root_joint" />
+      <inertial pos="0.112612 -0.000574763 0.00121993" mass="0.0928273" fullinertia="2.32916e-05 0.00103735 0.00104371 -1.87933e-05 2.56045e-05 1.6963e-07" />
+      <geom name="object_visual_geom" type="mesh" mesh="object_visual" group="2" material="object_material" contype="0" conaffinity="0" density="0" />
+      <geom name="object_collision_geom_0" type="mesh" mesh="object_collision_0" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_1" type="mesh" mesh="object_collision_1" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_2" type="mesh" mesh="object_collision_2" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_3" type="mesh" mesh="object_collision_3" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_4" type="mesh" mesh="object_collision_4" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_5" type="mesh" mesh="object_collision_5" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_6" type="mesh" mesh="object_collision_6" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_7" type="mesh" mesh="object_collision_7" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_8" type="mesh" mesh="object_collision_8" friction="0.5 0.005 0.0001" group="3" density="0" />
+    </body>
+  </worldbody>
+</mujoco>

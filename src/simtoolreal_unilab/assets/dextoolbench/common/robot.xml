@@ -1,0 +1,312 @@
+<mujoco model="kuka_sharpa">
+  <compiler angle="radian" />
+  <asset>
+    <mesh name="link_0_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_0.stl" />
+    <mesh name="link_1_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_1.stl" />
+    <mesh name="link_2_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_2.stl" />
+    <mesh name="link_3_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_3.stl" />
+    <mesh name="link_4_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_4.stl" />
+    <mesh name="link_5_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_5.stl" />
+    <mesh name="link_6_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_6.stl" />
+    <mesh name="link_7_visual" file="../../../common/meshes/new_iiwa14_meshes/visual/link_7.stl" />
+    <mesh name="link_0" file="../../../common/meshes/new_iiwa14_meshes/collision/link_0.stl" />
+    <mesh name="link_1" file="../../../common/meshes/new_iiwa14_meshes/collision/link_1.stl" />
+    <mesh name="link_2" file="../../../common/meshes/new_iiwa14_meshes/collision/link_2.stl" />
+    <mesh name="link_3" file="../../../common/meshes/new_iiwa14_meshes/collision/link_3.stl" />
+    <mesh name="link_4" file="../../../common/meshes/new_iiwa14_meshes/collision/link_4.stl" />
+    <mesh name="link_5" file="../../../common/meshes/new_iiwa14_meshes/collision/link_5.stl" />
+    <mesh name="link_6" file="../../../common/meshes/new_iiwa14_meshes/collision/link_6.stl" />
+    <mesh name="link_7" file="../../../common/meshes/new_iiwa14_meshes/collision/link_7.stl" />
+    <mesh name="left_hand_C_MC_visual" file="../../../common/meshes/left_sharpa_meshes/left_hand_C_MC_visual.STL" />
+    <mesh name="left_thumb_CMC_VL" file="../../../common/meshes/left_sharpa_meshes/left_thumb_CMC_VL.STL" />
+    <mesh name="left_thumb_MC_visual" file="../../../common/meshes/left_sharpa_meshes/left_thumb_MC_visual.STL" />
+    <mesh name="left_thumb_MCP_VL_visual" file="../../../common/meshes/left_sharpa_meshes/left_thumb_MCP_VL_visual.STL" />
+    <mesh name="left_thumb_PP_visual" file="../../../common/meshes/left_sharpa_meshes/left_thumb_PP_visual.STL" />
+    <mesh name="left_thumb_DP_visual" file="../../../common/meshes/left_sharpa_meshes/left_thumb_DP_visual.STL" />
+    <mesh name="thumb_elastomer_surface" file="../../../common/meshes/left_sharpa_meshes/thumb_elastomer_surface.STL" />
+    <mesh name="left_MCP_VL_visual" file="../../../common/meshes/left_sharpa_meshes/left_MCP_VL_visual.STL" />
+    <mesh name="left_PP_visual" file="../../../common/meshes/left_sharpa_meshes/left_PP_visual.STL" />
+    <mesh name="left_MP_visual" file="../../../common/meshes/left_sharpa_meshes/left_MP_visual.STL" />
+    <mesh name="left_DP_visual" file="../../../common/meshes/left_sharpa_meshes/left_DP_visual.STL" />
+    <mesh name="elastomer_surface" file="../../../common/meshes/left_sharpa_meshes/elastomer_surface.STL" />
+    <mesh name="left_pinky_MC_visual" file="../../../common/meshes/left_sharpa_meshes/left_pinky_MC_visual.STL" />
+    <mesh name="left_hand_C_MC_collision" file="../../../common/meshes/left_sharpa_meshes/left_hand_C_MC.STL" />
+    <mesh name="left_thumb_MC_collision" file="../../../common/meshes/left_sharpa_meshes/left_thumb_MC.STL" />
+    <mesh name="left_thumb_PP_collision" file="../../../common/meshes/left_sharpa_meshes/left_thumb_PP.STL" />
+    <mesh name="left_thumb_DP_collision" file="../../../common/meshes/left_sharpa_meshes/left_thumb_DP.STL" />
+    <mesh name="thumb_elastomer_collision" file="../../../common/meshes/left_sharpa_meshes/thumb_elastomer.STL" />
+    <mesh name="left_MCP_VL_collision" file="../../../common/meshes/left_sharpa_meshes/MCP_VL.STL" />
+    <mesh name="left_PP_collision" file="../../../common/meshes/left_sharpa_meshes/left_PP.STL" />
+    <mesh name="left_MP_collision" file="../../../common/meshes/left_sharpa_meshes/left_MP.STL" />
+    <mesh name="left_DP_collision" file="../../../common/meshes/left_sharpa_meshes/left_DP.STL" />
+    <mesh name="elastomer_collision" file="../../../common/meshes/left_sharpa_meshes/elastomer.STL" />
+    <mesh name="left_pinky_MC_collision" file="../../../common/meshes/left_sharpa_meshes/left_pinky_MC.STL" />
+  </asset>
+  <worldbody>
+    <body name="iiwa14_link_0" gravcomp="1" pos="0 0.8 0">
+      <inertial pos="-0.10000000000000001 0 0.070000000000000007" mass="5" diaginertia="0.029999999999999999 0.050000000000000003 0.059999999999999998" quat="0.5 -0.5 -0.5 -0.5" />
+      <geom name="iiwa14_link_0_visual_geom" type="mesh" mesh="link_0_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.4 0.4 0.4 1.0" pos="0 0 0" />
+      <geom name="iiwa14_link_0_collision_geom" type="mesh" mesh="link_0" friction="0.5 0.0050000000000000001 0.0001" rgba="0.4 0.4 0.4 1.0" pos="0 0 0" />
+      <body name="iiwa14_link_1" gravcomp="1" pos="0 0 0.1575">
+        <joint name="iiwa14_joint_1" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-2.9670597283900002 2.9670597283900002" actuatorfrcrange="-300 300" />
+        <inertial pos="0 -0.029999999999999999 0.12" mass="5.7599999999999998" diaginertia="0.0123 0.033000000000000002 0.033300000000000003" quat="0.5 -0.5 -0.5 -0.5" />
+        <geom name="iiwa14_link_1_visual_geom" type="mesh" mesh="link_1_visual" contype="0" conaffinity="0" group="2" density="0" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+        <geom name="iiwa14_link_1_collision_geom" type="mesh" mesh="link_1" friction="0.5 0.0050000000000000001 0.0001" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+        <body name="iiwa14_link_2" gravcomp="1" pos="0 0 0.20250000000000001" quat="-7.3123010772031166e-14 -7.3123010771673112e-14 0.70710678118481629 0.70710678118827874">
+          <joint name="iiwa14_joint_2" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-2.09439510239 2.09439510239" actuatorfrcrange="-300 300" />
+          <inertial pos="0.00029999999999999997 0.059000000000000004 0.042000000000000003" mass="6.3499999999999996" diaginertia="0.010999999999999999 0.0304 0.030499999999999999" quat="0.5 0.5 0.5 0.5" />
+          <geom name="iiwa14_link_2_visual_geom" type="mesh" mesh="link_2_visual" contype="0" conaffinity="0" group="2" density="0" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+          <geom name="iiwa14_link_2_collision_geom" type="mesh" mesh="link_2" friction="0.5 0.0050000000000000001 0.0001" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+          <body name="iiwa14_link_3" gravcomp="1" pos="0 0.20449999999999999 0" quat="-7.3123010772031166e-14 -7.3123010771673112e-14 0.70710678118481629 0.70710678118827874">
+            <joint name="iiwa14_joint_3" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-2.9670597283900002 2.9670597283900002" actuatorfrcrange="-300 300" />
+            <inertial pos="0 0.029999999999999999 0.13" mass="3.5" diaginertia="0.0076 0.023800000000000002 0.025000000000000001" quat="0.70710678118654757 0 -0.70710678118654746 0" />
+            <geom name="iiwa14_link_3_visual_geom" type="mesh" mesh="link_3_visual" contype="0" conaffinity="0" group="2" density="0" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+            <geom name="iiwa14_link_3_collision_geom" type="mesh" mesh="link_3" friction="0.5 0.0050000000000000001 0.0001" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+            <body name="iiwa14_link_4" gravcomp="1" pos="0 0 0.2155" quat="0.70710678118827874 0.70710678118481629 0 0">
+              <joint name="iiwa14_joint_4" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-2.09439510239 2.09439510239" actuatorfrcrange="-300 300" />
+              <inertial pos="0 0.067000000000000004 0.034000000000000002" mass="3.5" diaginertia="0.0060000000000000001 0.016400000000000001 0.017000000000000001" quat="0.5 0.5 0.5 0.5" />
+              <geom name="iiwa14_link_4_visual_geom" type="mesh" mesh="link_4_visual" contype="0" conaffinity="0" group="2" density="0" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+              <geom name="iiwa14_link_4_collision_geom" type="mesh" mesh="link_4" friction="0.5 0.0050000000000000001 0.0001" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+              <body name="iiwa14_link_5" gravcomp="1" pos="0 0.1845 0" quat="-7.3123010772031166e-14 7.3123010771673112e-14 0.70710678118827874 0.70710678118481629">
+                <joint name="iiwa14_joint_5" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-2.9670597283900002 2.9670597283900002" actuatorfrcrange="-300 300" />
+                <inertial pos="0.0001 0.021000000000000001 0.075999999999999998" mass="3.5" diaginertia="0.0044900000000000001 0.0086999999999999994 0.01" quat="0.70710678118654757 0 -0.70710678118654746 0" />
+                <geom name="iiwa14_link_5_visual_geom" type="mesh" mesh="link_5_visual" contype="0" conaffinity="0" group="2" density="0" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+                <geom name="iiwa14_link_5_collision_geom" type="mesh" mesh="link_5" friction="0.5 0.0050000000000000001 0.0001" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+                <body name="iiwa14_link_6" gravcomp="1" pos="0 0 0.2155" quat="0.70710678118827874 0.70710678118481629 0 0">
+                  <joint name="iiwa14_joint_6" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-2.09439510239 2.09439510239" actuatorfrcrange="-300 300" />
+                  <inertial pos="0 0.00059999999999999995 0.00040000000000000002" mass="1.8" diaginertia="0.0035999999999999999 0.0047000000000000002 0.0048999999999999998" quat="0.70710678118654757 0 -0.70710678118654746 0" />
+                  <geom name="iiwa14_link_6_visual_geom" type="mesh" mesh="link_6_visual" contype="0" conaffinity="0" group="2" density="0" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+                  <geom name="iiwa14_link_6_collision_geom" type="mesh" mesh="link_6" friction="0.5 0.0050000000000000001 0.0001" rgba="1.0 0.4235 0.0392 1.0" pos="0 0 0" />
+                  <body name="iiwa14_link_7" gravcomp="1" pos="0 0.081000000000000003 0" quat="-7.3123010772031166e-14 7.3123010771673112e-14 0.70710678118827874 0.70710678118481629">
+                    <joint name="iiwa14_joint_7" pos="0 0 0" axis="0 0 1" damping="0" armature="0" frictionloss="0" range="-3.0543261909899999 3.0543261909899999" actuatorfrcrange="-300 300" />
+                    <inertial pos="-0.0023102926749301615 -2.7209377337236686e-06 0.062834801535182311" mass="1.97045" diaginertia="0.0014427964638603291 0.0076687601450096182 0.0078063973962393934" quat="0.53027510498991437 -0.42940869594397985 -0.56645128210118878 -0.46211408751686567" />
+                    <geom name="iiwa14_link_7_visual_geom" type="mesh" mesh="link_7_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.4 0.4 0.4 1.0" pos="0 0 0" />
+                    <geom name="iiwa14_link_7_collision_geom" type="mesh" mesh="link_7" friction="0.5 0.0050000000000000001 0.0001" rgba="0.4 0.4 0.4 1.0" pos="0 0 0" />
+                    <geom name="left_hand_C_MC_visual_geom" type="mesh" mesh="left_hand_C_MC_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0.095000000000000001" quat="0.79335210419822355 0 0 -0.6087630399131102" />
+                    <geom name="left_hand_C_MC_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_hand_C_MC_collision" pos="0 0 0.095000000000000001" quat="0.79335210419822355 0 0 -0.6087630399131102" />
+                    <body name="left_thumb_CMC_VL" gravcomp="1" pos="-0.022525947586290021 -0.016388461957722415 0.1162" quat="-0.13052235819801417 0 0 0.99144536612484568">
+                      <joint name="left_1_thumb_CMC_FE" pos="0 0 0" axis="0 0 1" damping="0" armature="0.0032000000000000002" frictionloss="0" range="-0.17449999999999999 1.9198999999999999" actuatorfrcrange="-3.2999999999999998 3.2999999999999998" />
+                      <inertial pos="0 0 0" mass="9.9999999999999995e-07" diaginertia="2e-12 2e-12 2e-12" quat="1 0 0 0" />
+                      <geom name="left_thumb_CMC_VL_visual_geom" type="mesh" mesh="left_thumb_CMC_VL" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                      <body name="left_thumb_MC" gravcomp="1" pos="0 -0.0050000000000000001 0" quat="0.65328003412829527 0.65328243376425765 -0.27059815299957585 0.2705991469639179">
+                        <joint name="left_thumb_CMC_AA" pos="0 0 0" axis="0 0 1" damping="0" armature="0.0032000000000000002" frictionloss="0" range="-0.34910000000000002 0.13089999999999999" actuatorfrcrange="-3.2999999999999998 3.2999999999999998" />
+                        <inertial pos="0.038505600000000001 -0.010584600000000001 -0.0099187300000000006" mass="0.11600000000000001" diaginertia="1.640996983956776e-05 3.340320071560354e-05 3.8351829444828683e-05" quat="0.96170592900819984 -0.26968412146026022 -0.017600240331375513 0.045633455742041758" />
+                        <geom name="left_thumb_MC_visual_geom" type="mesh" mesh="left_thumb_MC_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                        <geom name="left_thumb_MC_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_thumb_MC_collision" pos="0 0 0" />
+                        <body name="left_thumb_MCP_VL" gravcomp="1" pos="0.065000000000000002 -0.0060000000000000001 -0.010392" quat="0.96592566783964773 -0.2588196364430847 0 0">
+                          <joint name="left_thumb_MCP_FE" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.52359999999999995 1.3963000000000001" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                          <inertial pos="4.8e-09 0.00086980900000000003 -3.6000000000000004e-09" mass="9.9999999999999995e-07" diaginertia="2e-12 2e-12 2e-12" quat="1 0 0 0" />
+                          <geom name="left_thumb_MCP_VL_visual_geom" type="mesh" mesh="left_thumb_MCP_VL_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                          <body name="left_thumb_PP" gravcomp="1" pos="0 0 0" quat="0.70710548251123639 0.70710807985947366 0 0">
+                            <joint name="left_thumb_MCP_AA" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.34910000000000002 0.34910000000000002" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                            <inertial pos="0.0219483 -0.00015580999999999999 0.00149446" mass="0.049549999999999997" diaginertia="2.577327818038508e-06 4.3567537286960157e-06 4.6000084532654737e-06" quat="0.70514886761481621 -0.70713729015203253 -0.036203497636039243 -0.03756639637894444" />
+                            <geom name="left_thumb_PP_visual_geom" type="mesh" mesh="left_thumb_PP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                            <geom name="left_thumb_PP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_thumb_PP_collision" pos="0 0 0" />
+                            <body name="left_thumb_DP" gravcomp="1" pos="0.039 0 0" quat="0.70710548251123639 -0.70710807985947366 0 0">
+                              <joint name="left_thumb_IP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00059999999999999995" frictionloss="0" range="0 1.7453000000000001" actuatorfrcrange="-0.63800000000000001 0.63800000000000001" />
+                              <inertial pos="0.016973772395963278 -0.0034550732487055036 5.9006366229310927e-07" mass="0.0059870000000000001" diaginertia="1.8626705412334329e-07 2.658229448061973e-07 2.8756259030135319e-07" quat="0.68931130472212954 -0.68918144428901718 0.15795542152789888 -0.15788903331113244" />
+                              <geom name="left_thumb_DP_visual_geom" type="mesh" mesh="left_thumb_DP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                              <geom name="left_thumb_DP_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_thumb_DP_collision" pos="0 0 0" />
+                              <geom name="left_thumb_elastomer_visual_geom" type="mesh" mesh="thumb_elastomer_surface" contype="0" conaffinity="0" group="2" density="0" rgba="0.2 1 0.2 1" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                              <geom name="left_thumb_elastomer_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="thumb_elastomer_collision" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                              <site name="left_thumb_fingertip" pos="0.027610934632121598 9.6403063016070156e-17 9.6403063016070156e-17" quat="0.5 0.49999999999999828 0.50000000000000178 0.5" />
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                    <body name="left_index_MCP_VL" gravcomp="1" pos="-0.029008769261122794 -0.0088080250882327411 0.19069999999999998" quat="-0.092293075072111236 0.70105902912611251 0.092293414084128222 0.70105645399723837">
+                      <joint name="left_2_index_MCP_FE" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.17453293 1.5708" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                      <inertial pos="4.8e-09 0.00086981000000000005 -3.6000000000000004e-09" mass="9.9999999999999995e-07" diaginertia="2e-12 2e-12 2e-12" quat="1 0 0 0" />
+                      <geom name="left_index_MCP_VL_visual_geom" type="mesh" mesh="left_MCP_VL_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                      <geom name="left_index_MCP_VL_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MCP_VL_collision" pos="0 0 0" />
+                      <body name="left_index_PP" gravcomp="1" pos="0 0 0" quat="0.70710548251123639 0.70710807985947366 0 0">
+                        <joint name="left_index_MCP_AA" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.034909999999999997 0.034909999999999997" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                        <inertial pos="0.024377199999999998 -1.0026299999999999e-06 0.00075590100000000012" mass="0.04138" diaginertia="2.167525060589633e-06 6.5409749293601336e-06 6.82371001005023e-06" quat="0.7064569506185423 0.70658583451246204 -0.02875998575327246 0.028773227287700265" />
+                        <geom name="left_index_PP_visual_geom" type="mesh" mesh="left_PP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                        <geom name="left_index_PP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_PP_collision" pos="0 0 0" />
+                        <body name="left_index_MP" gravcomp="1" pos="0.047 0 0" quat="0.70710548251123639 -0.70710807985947366 0 0">
+                          <joint name="left_index_PIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00059999999999999995" frictionloss="0" range="0 1.7453000000000001" actuatorfrcrange="-0.63800000000000001 0.63800000000000001" />
+                          <inertial pos="0.015316 -0.00138561 6.2798700000000002e-08" mass="0.025090000000000001" diaginertia="9.9986796038736149e-07 2.2675820391648041e-06 2.2851600004478351e-06" quat="0.99961685073356987 7.5932560257400318e-05 4.9374391932618566e-06 0.027679341382484349" />
+                          <geom name="left_index_MP_visual_geom" type="mesh" mesh="left_MP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                          <geom name="left_index_MP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MP_collision" pos="0 0 0" />
+                          <body name="left_index_DP" gravcomp="1" pos="0.0315 0 0">
+                            <joint name="left_index_DIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00042000000000000002" frictionloss="0" range="0 1.3963000000000001" actuatorfrcrange="-0.18936900000000001 0.18936900000000001" />
+                            <inertial pos="0.014219636913825554 -0.0028982543553497269 -8.1355092028506574e-07" mass="0.0041029999999999999" diaginertia="1.0305349583565569e-07 1.5378992553730598e-07 1.5905972912490866e-07" quat="0.70002319086287945 -0.70036799273969219 0.098714874563808952 -0.098527054861995908" />
+                            <geom name="left_index_DP_visual_geom" type="mesh" mesh="left_DP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                            <geom name="left_index_DP_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_DP_collision" pos="0 0 0" />
+                            <geom name="left_index_elastomer_visual_geom" type="mesh" mesh="elastomer_surface" contype="0" conaffinity="0" group="2" density="0" rgba="0.2 1 0.2 1" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                            <geom name="left_index_elastomer_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="elastomer_collision" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                            <site name="left_index_fingertip" pos="0.026009257426250799 9.0810836940921852e-17 9.0810836940921852e-17" quat="0.5 0.49999999999999828 0.50000000000000178 0.5" />
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                    <body name="left_middle_MCP_VL" gravcomp="1" pos="-0.009659268773463462 -0.0025881512247149818 0.19369999999999998" quat="-0.092293075072111236 0.70105902912611251 0.092293414084128222 0.70105645399723837">
+                      <joint name="left_3_middle_MCP_FE" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.17453293 1.5708" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                      <inertial pos="4.8e-09 0.00086981000000000005 -3.6000000000000004e-09" mass="9.9999999999999995e-07" diaginertia="2e-12 2e-12 2e-12" quat="1 0 0 0" />
+                      <geom name="left_middle_MCP_VL_visual_geom" type="mesh" mesh="left_MCP_VL_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                      <geom name="left_middle_MCP_VL_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MCP_VL_collision" pos="0 0 0" />
+                      <body name="left_middle_PP" gravcomp="1" pos="0 0 0" quat="0.70710548251123639 0.70710807985947366 0 0">
+                        <joint name="left_middle_MCP_AA" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.034909999999999997 0.034909999999999997" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                        <inertial pos="0.024377199999999998 -1.0026299999999999e-06 0.00075590100000000012" mass="0.04138" diaginertia="2.167525060589633e-06 6.5409749293601336e-06 6.82371001005023e-06" quat="0.7064569506185423 0.70658583451246204 -0.02875998575327246 0.028773227287700265" />
+                        <geom name="left_middle_PP_visual_geom" type="mesh" mesh="left_PP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                        <geom name="left_middle_PP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_PP_collision" pos="0 0 0" />
+                        <body name="left_middle_MP" gravcomp="1" pos="0.047 0 0" quat="0.70710548251123639 -0.70710807985947366 0 0">
+                          <joint name="left_middle_PIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00059999999999999995" frictionloss="0" range="0 1.7453000000000001" actuatorfrcrange="-0.63800000000000001 0.63800000000000001" />
+                          <inertial pos="0.015316 -0.00138561 6.2798700000000002e-08" mass="0.025090000000000001" diaginertia="9.9986796038736149e-07 2.2675820391648041e-06 2.2851600004478351e-06" quat="0.99961685073356987 7.5932560257400318e-05 4.9374391932618566e-06 0.027679341382484349" />
+                          <geom name="left_middle_MP_visual_geom" type="mesh" mesh="left_MP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                          <geom name="left_middle_MP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MP_collision" pos="0 0 0" />
+                          <body name="left_middle_DP" gravcomp="1" pos="0.0315 0 0">
+                            <joint name="left_middle_DIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00042000000000000002" frictionloss="0" range="0 1.3963000000000001" actuatorfrcrange="-0.18936900000000001 0.18936900000000001" />
+                            <inertial pos="0.014219636913825554 -0.0028982543553497269 -8.1355092028506574e-07" mass="0.0041029999999999999" diaginertia="1.0305349583565569e-07 1.5378992553730598e-07 1.5905972912490866e-07" quat="0.70002319086287945 -0.70036799273969219 0.098714874563808952 -0.098527054861995908" />
+                            <geom name="left_middle_DP_visual_geom" type="mesh" mesh="left_DP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                            <geom name="left_middle_DP_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_DP_collision" pos="0 0 0" />
+                            <geom name="left_middle_elastomer_visual_geom" type="mesh" mesh="elastomer_surface" contype="0" conaffinity="0" group="2" density="0" rgba="0.2 1 0.2 1" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                            <geom name="left_middle_elastomer_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="elastomer_collision" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                            <site name="left_middle_fingertip" pos="0.026009257426250699 9.0810836940921494e-17 9.0810836940921494e-17" quat="0.5 0.49999999999999828 0.50000000000000178 0.5" />
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                    <body name="left_ring_MCP_VL" gravcomp="1" pos="0.010337269520374613 0.0012169054454369119 0.18770000000000001" quat="-0.092293075072111236 0.70105902912611251 0.092293414084128222 0.70105645399723837">
+                      <joint name="left_4_ring_MCP_FE" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.17453293 1.5708" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                      <inertial pos="4.8e-09 0.00086981000000000005 3.6000000000000004e-09" mass="9.9999999999999995e-07" diaginertia="2e-12 2e-12 2e-12" quat="1 0 0 0" />
+                      <geom name="left_ring_MCP_VL_visual_geom" type="mesh" mesh="left_MCP_VL_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                      <geom name="left_ring_MCP_VL_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MCP_VL_collision" pos="0 0 0" />
+                      <body name="left_ring_PP" gravcomp="1" pos="0 0 0" quat="0.70710548251123639 0.70710807985947366 0 0">
+                        <joint name="left_ring_MCP_AA" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.034909999999999997 0.034909999999999997" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                        <inertial pos="0.024377199999999998 -1.0026299999999999e-06 0.00075590100000000012" mass="0.04138" diaginertia="2.167525060589633e-06 6.5409749293601336e-06 6.82371001005023e-06" quat="0.7064569506185423 0.70658583451246204 -0.02875998575327246 0.028773227287700265" />
+                        <geom name="left_ring_PP_visual_geom" type="mesh" mesh="left_PP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                        <geom name="left_ring_PP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_PP_collision" pos="0 0 0" />
+                        <body name="left_ring_MP" gravcomp="1" pos="0.047 0 0" quat="0.70710548251123639 -0.70710807985947366 0 0">
+                          <joint name="left_ring_PIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00059999999999999995" frictionloss="0" range="0 1.7453000000000001" actuatorfrcrange="-0.63800000000000001 0.63800000000000001" />
+                          <inertial pos="0.015316 -0.00138561 6.2798700000000002e-08" mass="0.025090000000000001" diaginertia="9.9986796038736149e-07 2.2675820391648041e-06 2.2851600004478351e-06" quat="0.99961685073356987 7.5932560257400318e-05 4.9374391932618566e-06 0.027679341382484349" />
+                          <geom name="left_ring_MP_visual_geom" type="mesh" mesh="left_MP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                          <geom name="left_ring_MP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MP_collision" pos="0 0 0" />
+                          <body name="left_ring_DP" gravcomp="1" pos="0.0315 0 0">
+                            <joint name="left_ring_DIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00042000000000000002" frictionloss="0" range="0 1.3963000000000001" actuatorfrcrange="-0.18936900000000001 0.18936900000000001" />
+                            <inertial pos="0.014219637320798296 -0.002898236310512494 -7.9550608230479473e-07" mass="0.0041029999999999999" diaginertia="1.0305398232454157e-07 1.5379030689220506e-07 1.5905962486383589e-07" quat="0.70000678566857177 -0.700384763736004 0.098714052822260132 -0.098525217684713784" />
+                            <geom name="left_ring_DP_visual_geom" type="mesh" mesh="left_DP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                            <geom name="left_ring_DP_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_DP_collision" pos="0 0 0" />
+                            <geom name="left_ring_elastomer_visual_geom" type="mesh" mesh="elastomer_surface" contype="0" conaffinity="0" group="2" density="0" rgba="0.2 1 0.2 1" pos="0 0 0" quat="0.49999816339744829 0.49999999999662686 -0.49999999999662686 0.50000183660255182" />
+                            <geom name="left_ring_elastomer_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="elastomer_collision" pos="0 0 0" quat="0.49999816339744829 0.49999999999662686 -0.49999999999662686 0.50000183660255182" />
+                            <site name="left_ring_fingertip" pos="0.026009257425899768 9.553733711235885e-08 9.5537337111714324e-08" quat="0.50000000000000011 0.49999816339407527 0.50000000000000178 0.50000183659917685" />
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                    <body name="left_pinky_MC" gravcomp="1" pos="0.028344016665485125 -0.0041660916056540905 0.1817" quat="2.236100800670247e-06 0.60876012575989868 0.79335434029902419 2.9141532115681903e-06">
+                      <joint name="left_5_pinky_CMC" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00012" frictionloss="0" range="0 0.26179999999999998" actuatorfrcrange="-0.52849999999999997 0.52849999999999997" />
+                      <inertial pos="0.010798500000000001 0.0059880100000000002 0.033512500000000001" mass="0.12540999999999999" diaginertia="2.1442434145790416e-05 2.4648499561009081e-05 3.5768466293200504e-05" quat="0.4140769032323513 0.44433017774449085 0.56419907091622823 -0.55927669335698238" />
+                      <geom name="left_pinky_MC_visual_geom" type="mesh" mesh="left_pinky_MC_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                      <geom name="left_pinky_MC_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_pinky_MC_collision" pos="0 0 0" />
+                      <body name="left_pinky_MCP_VL" gravcomp="1" pos="0.0083599999999999994 0.0047999999999999996 0" quat="0.49999816339744829 -0.49999999999662686 0.49999999999662686 0.50000183660255182">
+                        <joint name="left_pinky_MCP_FE" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.17453293 1.5708" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                        <inertial pos="4.8e-09 0.00086981000000000005 -3.6000000000000004e-09" mass="9.9999999999999995e-07" diaginertia="2e-12 2e-12 2e-12" quat="1 0 0 0" />
+                        <geom name="left_pinky_MCP_VL_visual_geom" type="mesh" mesh="left_MCP_VL_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                        <geom name="left_pinky_MCP_VL_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MCP_VL_collision" pos="0 0 0" />
+                        <body name="left_pinky_PP" gravcomp="1" pos="0 0 0" quat="0.70710548251123639 0.70710807985947366 0 0">
+                          <joint name="left_pinky_MCP_AA" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00265" frictionloss="0" range="-0.034909999999999997 0.034909999999999997" actuatorfrcrange="-1.8640000000000001 1.8640000000000001" />
+                          <inertial pos="0.024377199999999998 -1.0026299999999999e-06 0.00075590100000000012" mass="0.04138" diaginertia="2.167525060589633e-06 6.5409749293601336e-06 6.82371001005023e-06" quat="0.7064569506185423 0.70658583451246204 -0.02875998575327246 0.028773227287700265" />
+                          <geom name="left_pinky_PP_visual_geom" type="mesh" mesh="left_PP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                          <geom name="left_pinky_PP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_PP_collision" pos="0 0 0" />
+                          <body name="left_pinky_MP" gravcomp="1" pos="0.047 0 0" quat="0.70710548251123639 -0.70710807985947366 0 0">
+                            <joint name="left_pinky_PIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00059999999999999995" frictionloss="0" range="0 1.7453000000000001" actuatorfrcrange="-0.63800000000000001 0.63800000000000001" />
+                            <inertial pos="0.015316 -0.00138561 6.2798700000000002e-08" mass="0.025090000000000001" diaginertia="9.9986796038736149e-07 2.2675820391648041e-06 2.2851600004478351e-06" quat="0.99961685073356987 7.5932560257400318e-05 4.9374391932618566e-06 0.027679341382484349" />
+                            <geom name="left_pinky_MP_visual_geom" type="mesh" mesh="left_MP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                            <geom name="left_pinky_MP_collision_geom" friction="0.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_MP_collision" pos="0 0 0" />
+                            <body name="left_pinky_DP" gravcomp="1" pos="0.0315 0 0">
+                              <joint name="left_pinky_DIP" pos="0 0 0" axis="0 0 1" damping="0" armature="0.00042000000000000002" frictionloss="0" range="0 1.3963000000000001" actuatorfrcrange="-0.18936900000000001 0.18936900000000001" />
+                              <inertial pos="0.014219636913825554 -0.0028982543553497269 -8.1355092028506574e-07" mass="0.0041029999999999999" diaginertia="1.0305349583565569e-07 1.5378992553730598e-07 1.5905972912490866e-07" quat="0.70002319086287945 -0.70036799273969219 0.098714874563808952 -0.098527054861995908" />
+                              <geom name="left_pinky_DP_visual_geom" type="mesh" mesh="left_DP_visual" contype="0" conaffinity="0" group="2" density="0" rgba="0.79216 0.81961 0.93333 1" pos="0 0 0" />
+                              <geom name="left_pinky_DP_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="left_DP_collision" pos="0 0 0" />
+                              <geom name="left_pinky_elastomer_visual_geom" type="mesh" mesh="elastomer_surface" contype="0" conaffinity="0" group="2" density="0" rgba="0.2 1 0.2 1" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                              <geom name="left_pinky_elastomer_collision_geom" friction="1.5 0.0050000000000000001 0.0001" density="0" contype="1" conaffinity="1" group="3" rgba="0.1 0.8 1 0.35" condim="3" solimp="0.9 0.95 0.001 0.5 2.0" solref="0.02 1.0" margin="0" gap="0" type="mesh" mesh="elastomer_collision" pos="0 0 0" quat="0.49999999999999822 0.5 -0.5 0.50000000000000178" />
+                              <site name="left_pinky_fingertip" pos="0.026009257426250699 9.0810836940921494e-17 9.0810836940921494e-17" quat="0.5 0.49999999999999828 0.50000000000000178 0.5" />
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="iiwa14_joint_1_ctrl" joint="iiwa14_joint_1" kp="600" kv="27.027026473513512" inheritrange="1" forcerange="-300 300" />
+    <position name="iiwa14_joint_2_ctrl" joint="iiwa14_joint_2" kp="600" kv="27.027026473513512" inheritrange="1" forcerange="-300 300" />
+    <position name="iiwa14_joint_3_ctrl" joint="iiwa14_joint_3" kp="500" kv="24.672186769721083" inheritrange="1" forcerange="-300 300" />
+    <position name="iiwa14_joint_4_ctrl" joint="iiwa14_joint_4" kp="400" kv="22.067474708266914" inheritrange="1" forcerange="-300 300" />
+    <position name="iiwa14_joint_5_ctrl" joint="iiwa14_joint_5" kp="200" kv="9.7525381311738535" inheritrange="1" forcerange="-300 300" />
+    <position name="iiwa14_joint_6_ctrl" joint="iiwa14_joint_6" kp="200" kv="9.1477472636709845" inheritrange="1" forcerange="-300 300" />
+    <position name="iiwa14_joint_7_ctrl" joint="iiwa14_joint_7" kp="200" kv="9.1477472636709845" inheritrange="1" forcerange="-300 300" />
+    <position name="left_1_thumb_CMC_FE_ctrl" joint="left_1_thumb_CMC_FE" kp="6.9500000000000002" kv="0.28676845000000001" inheritrange="1" forcerange="-3.2999999999999998 3.2999999999999998" />
+    <position name="left_thumb_CMC_AA_ctrl" joint="left_thumb_CMC_AA" kp="13.199999999999999" kv="0.40845109000000002" inheritrange="1" forcerange="-3.2999999999999998 3.2999999999999998" />
+    <position name="left_thumb_MCP_FE_ctrl" joint="left_thumb_MCP_FE" kp="4.7599999999999998" kv="0.20394082999999999" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_thumb_MCP_AA_ctrl" joint="left_thumb_MCP_AA" kp="6.6200000000000001" kv="0.24044435" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_thumb_IP_ctrl" joint="left_thumb_IP" kp="0.90000000000000002" kv="0.041907229999999997" inheritrange="1" forcerange="-0.63800000000000001 0.63800000000000001" />
+    <position name="left_2_index_MCP_FE_ctrl" joint="left_2_index_MCP_FE" kp="4.7599999999999998" kv="0.20859232" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_index_MCP_AA_ctrl" joint="left_index_MCP_AA" kp="6.6200000000000001" kv="0.24595532000000001" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_index_PIP_ctrl" joint="left_index_PIP" kp="0.90000000000000002" kv="0.04243185" inheritrange="1" forcerange="-0.63800000000000001 0.63800000000000001" />
+    <position name="left_index_DIP_ctrl" joint="left_index_DIP" kp="0.90000000000000002" kv="0.035044609999999997" inheritrange="1" forcerange="-0.18936900000000001 0.18936900000000001" />
+    <position name="left_3_middle_MCP_FE_ctrl" joint="left_3_middle_MCP_FE" kp="4.7599999999999998" kv="0.20859230000000001" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_middle_MCP_AA_ctrl" joint="left_middle_MCP_AA" kp="6.6200000000000001" kv="0.24595532000000001" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_middle_PIP_ctrl" joint="left_middle_PIP" kp="0.90000000000000002" kv="0.04243185" inheritrange="1" forcerange="-0.63800000000000001 0.63800000000000001" />
+    <position name="left_middle_DIP_ctrl" joint="left_middle_DIP" kp="0.90000000000000002" kv="0.035044609999999997" inheritrange="1" forcerange="-0.18936900000000001 0.18936900000000001" />
+    <position name="left_4_ring_MCP_FE_ctrl" joint="left_4_ring_MCP_FE" kp="4.7599999999999998" kv="0.20859226" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_ring_MCP_AA_ctrl" joint="left_ring_MCP_AA" kp="6.6200000000000001" kv="0.24595528" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_ring_PIP_ctrl" joint="left_ring_PIP" kp="0.90000000000000002" kv="0.042431829999999997" inheritrange="1" forcerange="-0.63800000000000001 0.63800000000000001" />
+    <position name="left_ring_DIP_ctrl" joint="left_ring_DIP" kp="0.90000000000000002" kv="0.035044600000000002" inheritrange="1" forcerange="-0.18936900000000001 0.18936900000000001" />
+    <position name="left_5_pinky_CMC_ctrl" joint="left_5_pinky_CMC" kp="1.3799999999999999" kv="0.02782345" inheritrange="1" forcerange="-0.52849999999999997 0.52849999999999997" />
+    <position name="left_pinky_MCP_FE_ctrl" joint="left_pinky_MCP_FE" kp="4.7599999999999998" kv="0.20859229000000001" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_pinky_MCP_AA_ctrl" joint="left_pinky_MCP_AA" kp="6.6200000000000001" kv="0.24595528" inheritrange="1" forcerange="-1.8640000000000001 1.8640000000000001" />
+    <position name="left_pinky_PIP_ctrl" joint="left_pinky_PIP" kp="0.90000000000000002" kv="0.042431829999999997" inheritrange="1" forcerange="-0.63800000000000001 0.63800000000000001" />
+    <position name="left_pinky_DIP_ctrl" joint="left_pinky_DIP" kp="0.90000000000000002" kv="0.035044600000000002" inheritrange="1" forcerange="-0.18936900000000001 0.18936900000000001" />
+  </actuator>
+  <contact>
+    <exclude name="exclude_iiwa14_link_0__iiwa14_link_1" body1="iiwa14_link_0" body2="iiwa14_link_1" />
+    <exclude name="exclude_iiwa14_link_1__iiwa14_link_2" body1="iiwa14_link_1" body2="iiwa14_link_2" />
+    <exclude name="exclude_iiwa14_link_2__iiwa14_link_3" body1="iiwa14_link_2" body2="iiwa14_link_3" />
+    <exclude name="exclude_iiwa14_link_3__iiwa14_link_4" body1="iiwa14_link_3" body2="iiwa14_link_4" />
+    <exclude name="exclude_iiwa14_link_4__iiwa14_link_5" body1="iiwa14_link_4" body2="iiwa14_link_5" />
+    <exclude name="exclude_iiwa14_link_5__iiwa14_link_6" body1="iiwa14_link_5" body2="iiwa14_link_6" />
+    <exclude name="exclude_iiwa14_link_6__iiwa14_link_7" body1="iiwa14_link_6" body2="iiwa14_link_7" />
+    <exclude name="exclude_iiwa14_link_7__left_thumb_CMC_VL" body1="iiwa14_link_7" body2="left_thumb_CMC_VL" />
+    <exclude name="exclude_iiwa14_link_7__left_thumb_MC" body1="iiwa14_link_7" body2="left_thumb_MC" />
+    <exclude name="exclude_iiwa14_link_7__left_index_MCP_VL" body1="iiwa14_link_7" body2="left_index_MCP_VL" />
+    <exclude name="exclude_iiwa14_link_7__left_index_PP" body1="iiwa14_link_7" body2="left_index_PP" />
+    <exclude name="exclude_iiwa14_link_7__left_middle_MCP_VL" body1="iiwa14_link_7" body2="left_middle_MCP_VL" />
+    <exclude name="exclude_iiwa14_link_7__left_middle_PP" body1="iiwa14_link_7" body2="left_middle_PP" />
+    <exclude name="exclude_iiwa14_link_7__left_ring_MCP_VL" body1="iiwa14_link_7" body2="left_ring_MCP_VL" />
+    <exclude name="exclude_iiwa14_link_7__left_ring_PP" body1="iiwa14_link_7" body2="left_ring_PP" />
+    <exclude name="exclude_iiwa14_link_7__left_pinky_MC" body1="iiwa14_link_7" body2="left_pinky_MC" />
+    <exclude name="exclude_left_index_MCP_VL__left_index_PP" body1="left_index_MCP_VL" body2="left_index_PP" />
+    <exclude name="exclude_left_index_MP__left_index_PP" body1="left_index_MP" body2="left_index_PP" />
+    <exclude name="exclude_left_index_DP__left_index_MP" body1="left_index_DP" body2="left_index_MP" />
+    <exclude name="exclude_left_middle_MCP_VL__left_middle_PP" body1="left_middle_MCP_VL" body2="left_middle_PP" />
+    <exclude name="exclude_left_middle_MP__left_middle_PP" body1="left_middle_MP" body2="left_middle_PP" />
+    <exclude name="exclude_left_middle_DP__left_middle_MP" body1="left_middle_DP" body2="left_middle_MP" />
+    <exclude name="exclude_left_pinky_MC__left_pinky_MCP_VL" body1="left_pinky_MC" body2="left_pinky_MCP_VL" />
+    <exclude name="exclude_left_pinky_MC__left_pinky_PP" body1="left_pinky_MC" body2="left_pinky_PP" />
+    <exclude name="exclude_left_pinky_MCP_VL__left_pinky_PP" body1="left_pinky_MCP_VL" body2="left_pinky_PP" />
+    <exclude name="exclude_left_pinky_MP__left_pinky_PP" body1="left_pinky_MP" body2="left_pinky_PP" />
+    <exclude name="exclude_left_pinky_DP__left_pinky_MP" body1="left_pinky_DP" body2="left_pinky_MP" />
+    <exclude name="exclude_left_ring_MCP_VL__left_ring_PP" body1="left_ring_MCP_VL" body2="left_ring_PP" />
+    <exclude name="exclude_left_ring_MP__left_ring_PP" body1="left_ring_MP" body2="left_ring_PP" />
+    <exclude name="exclude_left_ring_DP__left_ring_MP" body1="left_ring_DP" body2="left_ring_MP" />
+    <exclude name="exclude_left_thumb_CMC_VL__left_thumb_MC" body1="left_thumb_CMC_VL" body2="left_thumb_MC" />
+    <exclude name="exclude_left_thumb_MC__left_thumb_MCP_VL" body1="left_thumb_MC" body2="left_thumb_MCP_VL" />
+    <exclude name="exclude_left_thumb_MC__left_thumb_PP" body1="left_thumb_MC" body2="left_thumb_PP" />
+    <exclude name="exclude_left_thumb_MCP_VL__left_thumb_PP" body1="left_thumb_MCP_VL" body2="left_thumb_PP" />
+    <exclude name="exclude_left_thumb_DP__left_thumb_PP" body1="left_thumb_DP" body2="left_thumb_PP" />
+  </contact>
+  <option timestep="0.0083333333333333332" gravity="0 0 -9.81" integrator="implicitfast" solver="Newton" cone="elliptic" impratio="10" iterations="100" ls_iterations="50">
+    <flag contact="enable" multiccd="enable" />
+  </option>
+</mujoco>

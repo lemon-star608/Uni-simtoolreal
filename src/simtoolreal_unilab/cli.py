@@ -1,57 +1,38 @@
-"""Strict SimToolReal command routing; training stays in the owner script.
+"""Fixed SimToolReal MuJoCo command routing.
 
-Mirrors the wuji_unilab CLI pattern: an argparse front end that owns the
-task/backend routing, rejects overrides that would tamper with it, generates
-the Hydra overrides, and runs the training module with ``--config-dir``
-pointing at this package's conf root.
+The CLI rejects routing overrides, generates the Hydra task override, and runs
+the owner training module with this package's configuration root.
 """
 
 import argparse
 import runpy
 import sys
 
-from simtoolreal_unilab.config import CONF_ROOT, TASK_BACKENDS, TASK_OWNERS
+from simtoolreal_unilab.config import CONF_ROOT, DEFAULT_TASK
 
 
 def _run(mode):
     parser = argparse.ArgumentParser(prog=f"simtoolreal-{mode}")
-    parser.add_argument("--task", choices=TASK_OWNERS, default="SimToolReal")
-    parser.add_argument(
-        "--backend",
-        choices=None,  # filled per task below
-        default=None,
-        help="backend leaf under the task owner (default: the task's first registered backend)",
-    )
-    parser.add_argument("--checkpoint-file")
+    if mode == "play":
+        parser.add_argument("--checkpoint-file")
     args, overrides = parser.parse_known_args()
     for value in overrides:
         key = value.lstrip("+~").split("=", 1)[0]
-        if key in ("task", "training.sim_backend", "training.task_name", "algo.algo"):
+        bare_key = key.lstrip("-")
+        if key in (
+            "task",
+            "training.sim_backend",
+            "training.task_name",
+            "algo.algo",
+        ) or bare_key in ("task", "backend", "checkpoint-file"):
             parser.error(f"Cannot override task/backend routing via {key}")
-    backends = TASK_BACKENDS[args.task]
-    backend = args.backend or backends[0]
-    if backend not in backends:
-        parser.error(f"task {args.task} supports backends {backends}, got {backend!r}")
-    generated = [f"task={TASK_OWNERS[args.task]}/{backend}"]
-    if args.checkpoint_file:
+    checkpoint_file = getattr(args, "checkpoint_file", None)
+    generated = [f"task={DEFAULT_TASK}"]
+    if checkpoint_file:
         # Playback resolves a run directory or checkpoint file directly.
-        generated += [f"algo.load_run={args.checkpoint_file}"]
+        generated += [f"algo.load_run={checkpoint_file}"]
     if mode == "play":
         generated += ["training.play_only=true"]
-    if backend == "isaacsim":
-        # The IsaacSim line spawns its worker runtime and trains the RL-Games
-        # learner on the same GPU; the MuJoCo line is CPU-sim + mjbatch
-        # threads and needs neither.
-        from simtoolreal_unilab._isaacsim_worker import ensure_worker_runtime
-
-        ensure_worker_runtime()
-        import torch
-
-        if not torch.cuda.is_available():
-            raise RuntimeError(
-                "SimToolReal training runs the RL-Games learner on CUDA and the "
-                "IsaacSim worker on the same GPU; CPU fallback is not supported"
-            )
     sys.argv = [
         f"simtoolreal-{mode}",
         "--config-dir",
@@ -68,9 +49,3 @@ def train_main():
 
 def play_main():
     _run("play")
-
-
-def list_main():
-    for task, backends in TASK_BACKENDS.items():
-        for backend in backends:
-            print(f"{task}\t{backend}")

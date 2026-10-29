@@ -1,23 +1,8 @@
-"""Compile-contract and parity tests for the robot/scene MJCF writer.
+"""Compile-contract tests for the robot/scene MJCF writer.
 
-Three anchors:
-1. The vendored URDF compiled by MuJoCo itself (structure/merge authority —
-   the compiler is its own format authority, roadmap M-J1 D5).
-2. The old tree's training-validated ``kuka_sharpa.xml`` (ground truth for
-   the compiled contract: nq/nv/nu/nmesh, joint/actuator order, contact
-   profile, FK).
-3. The owner YAML (``conf/rlgames_sapg/task/simtoolreal/base.yaml``) for
-   actuator gains, armature, and the v1 friction mapping.
-
-Known, user-approved divergences from the old tree, pinned explicitly below:
-- sliding friction: old tree unified hand collision slide at 1.0; the v1
-  mapping writes the owner YAML's frozen values (robot 0.5 everywhere except
-  the five fingertip capsules at 1.5).  Torsion/roll (0.005/0.0001) match.
-- hand joint frictionloss: old tree carried HAND_JOINT_FRICTION values; this
-  repository's config.py retires that table as dead code, so joints compile
-  with frictionloss 0.
-- joint ranges: transcribed at URDF full precision; the old tree's MJCF was
-  rounded to 6 significant digits by mj_saveLastXML.
+The vendored URDF compiled by MuJoCo and the owner YAML anchor structure,
+merge behavior, actuator gains, and friction mapping without external
+checkouts.
 """
 
 from __future__ import annotations
@@ -41,10 +26,6 @@ from simtoolreal_unilab.tasks.simtoolreal.robot_mjcf_writer import (
 )
 from simtoolreal_unilab.tasks.simtoolreal.tool_catalog import build_tool_catalog
 
-WORKSPACE = Path(__file__).resolve().parents[3]
-OLD_TREE_KUKA_MJCF = (
-    WORKSPACE / "simtoolreal-unilab-old/UniLab/src/unilab/assets/robots/kuka_sharpa/kuka_sharpa.xml"
-)
 ROBOT_URDF = ASSET_ROOT / "urdf/kuka_sharpa_description/iiwa14_left_sharpa_adjusted_restricted.urdf"
 
 EXPECTED_JOINTS = JOINT_NAMES_CANONICAL
@@ -66,11 +47,6 @@ def robot_xml(tmp_path_factory) -> Path:
 @pytest.fixture(scope="module")
 def robot_model(robot_xml) -> mujoco.MjModel:
     return mujoco.MjModel.from_xml_path(str(robot_xml))
-
-
-@pytest.fixture(scope="module")
-def old_model() -> mujoco.MjModel:
-    return mujoco.MjModel.from_xml_path(str(OLD_TREE_KUKA_MJCF))
 
 
 @pytest.fixture(scope="module")
@@ -148,25 +124,23 @@ def _body_names(model: mujoco.MjModel) -> list[str]:
 # ----------------------------------------------------------------------------
 
 
-def test_robot_compile_contract(robot_model, old_model):
+def test_robot_compile_contract(robot_model, urdf_model):
     assert (robot_model.nq, robot_model.nv, robot_model.nu, robot_model.nmesh) == (
         29,
         29,
         29,
         40,
     )
-    assert (old_model.nq, old_model.nv, old_model.nu, old_model.nmesh) == (29, 29, 29, 62)
     # 31 bodies = world + 30 kept links (43 URDF links minus the 12 welded
     # fixed links + ... ); 5 fingertip frames survive as sites.
     assert robot_model.nbody == 31
     assert robot_model.nsite == 5
     # 70 geoms = 16 arm (vis+col) + 28 hand visual + 26 hand URDF collision.
-    # (The retired Menagerie layer was 97; the old tree's count stays pinned
-    # on the right-hand side as the historical record.)
     assert robot_model.ngeom == 70
-    assert old_model.ngeom == 97
     # Total mass is conserved by the weld (parallel-axis composition).
-    assert robot_model.body_mass.sum() == pytest.approx(old_model.body_mass.sum(), rel=1e-12)
+    assert robot_model.body_mass[1:].sum() == pytest.approx(
+        urdf_model.body_mass.sum() + 5.0, rel=1e-12
+    )
 
 
 def test_composed_compile_contract(composed_model):
@@ -255,7 +229,7 @@ def test_actuator_gains_match_owner_yaml(robot_model):
         assert robot_model.dof_armature[dof] == pytest.approx(expected_armature, rel=1e-9)
 
 
-def test_joint_ranges_transcribe_urdf(robot_model, old_model):
+def test_joint_ranges_transcribe_urdf(robot_model):
     import xml.etree.ElementTree as ET
 
     root = ET.parse(ROBOT_URDF).getroot()
@@ -270,9 +244,6 @@ def test_joint_ranges_transcribe_urdf(robot_model, old_model):
     for j in range(robot_model.njnt):
         name = mujoco.mj_id2name(robot_model, mujoco.mjtObj.mjOBJ_JOINT, j)
         np.testing.assert_allclose(robot_model.jnt_range[j], limits[name], rtol=0, atol=0)
-        # Old tree rounded to 6 significant digits (mj_saveLastXML).
-        old_j = mujoco.mj_name2id(old_model, mujoco.mjtObj.mjOBJ_JOINT, name)
-        np.testing.assert_allclose(robot_model.jnt_range[j], old_model.jnt_range[old_j], atol=1e-5)
 
 
 def test_composed_scene_preserves_joint_ranges(entity_set_dir, composed_model):
@@ -374,16 +345,15 @@ def test_body_masses_match_urdf_compile(robot_model, urdf_model):
 
 
 # ----------------------------------------------------------------------------
-# Collision profile parity vs the old tree (sliding friction exempt, see header)
+# Collision profile contract
 # ----------------------------------------------------------------------------
 
 
 def _collision_profiles(model: mujoco.MjModel) -> dict[str, tuple]:
     """Key collision geoms by mesh identity when present, else by geom name.
 
-    (Our writer names every geom — the mjbatch variant pack requires it — while
-    the old tree left the arm mesh geoms unnamed; the mesh identity is the
-    shared key on both sides.)
+    Our writer names every geom, as required by the mjbatch variant pack; mesh
+    identity is the stable key for mesh-backed collision geometry.
     """
     profiles: dict[str, tuple] = {}
     for g in range(model.ngeom):
@@ -410,11 +380,10 @@ def _collision_profiles(model: mujoco.MjModel) -> dict[str, tuple]:
 def test_collision_profile_urdf_mesh_layer(robot_model, urdf_model, robot_xml):
     """The hand collision layer is the URDF's own collision meshes.
 
-    After the Menagerie retirement (2026-09-21), collision geometry authority
-    is the vendored URDF's <collision> elements: identical mesh bytes as the
-    URDF-compiled model, with the writer's hand contact profile (condim/
-    solimp/solref/group) and the owner-YAML slide split (0.5 robot-wide, 1.5
-    on the five DP weld groups incl. their elastomer pads).
+    Collision geometry authority is the vendored URDF's <collision> elements:
+    identical mesh bytes as the URDF-compiled model, with the writer's hand
+    contact profile (condim/solimp/solref/group) and the owner-YAML slide split
+    (0.5 robot-wide, 1.5 on the five DP weld groups incl. their elastomer pads).
     """
 
     # Geometry identity by vertex content: every collision geom in the
@@ -477,12 +446,10 @@ def test_collision_profile_urdf_mesh_layer(robot_model, urdf_model, robot_xml):
     assert len(slide_hi) == 10
 
 
-def test_exclude_pairs_exist_and_target_kept_bodies(robot_xml, robot_model, old_model):
-    # 50 transcribed pairs; remapping through the weld map drops 15 (merged
-    # endpoints re-point to their kept ancestor, duplicates and self-pairs
-    # drop) -> 35.  The old tree keeps all 50 (it welds nothing).
+def test_exclude_pairs_exist_and_target_kept_bodies(robot_xml, robot_model):
+    # 50 transcribed pairs; weld remapping and duplicate/self-pair removal
+    # leave 35 explicit exclusions.
     assert robot_model.nexclude == 35
-    assert old_model.nexclude == 50
     import xml.etree.ElementTree as ET
 
     body_names = set(_body_names(robot_model))
@@ -495,7 +462,7 @@ def test_exclude_pairs_exist_and_target_kept_bodies(robot_xml, robot_model, old_
 
 
 # ----------------------------------------------------------------------------
-# FK parity: this writer vs compiled URDF vs old tree ground truth
+# FK parity between the generated MJCF and the compiled vendored URDF
 # ----------------------------------------------------------------------------
 
 
@@ -526,42 +493,14 @@ def _assert_fk_close(a, b, qa, qb, offset_a=(0.0, 0.0, 0.0), tol=1e-6):
         )
 
 
-def test_fk_parity_three_way(robot_model, urdf_model, old_model):
+def test_fk_parity_matches_compiled_urdf(robot_model, urdf_model):
     rng = np.random.RandomState(42)
     for _ in range(100):
         q = _random_qpos(rng, robot_model)
-        # Old tree's joint ranges are rounded slightly tighter in places;
-        # clip into its range so all three models see a legal qpos.
-        q_old = np.array([np.clip(q[j], *old_model.jnt_range[j]) for j in range(old_model.njnt)])
-        # vs compiled URDF: both at the world origin, full precision.
         _assert_fk_close(robot_model, urdf_model, q, q, tol=1e-9)
-        # vs old tree: its root body carries the 0.8 m spawn offset.
-        _assert_fk_close(robot_model, old_model, q, q_old, offset_a=(0.0, 0.8, 0.0), tol=1e-5)
 
 
-def test_fingertip_sites_match_old_tree_fingertip_bodies(robot_model, old_model):
-    rng = np.random.RandomState(7)
-    da = mujoco.MjData(robot_model)
-    db = mujoco.MjData(old_model)
-    for _ in range(100):
-        q = _random_qpos(rng, robot_model)
-        q_old = np.array([np.clip(q[j], *old_model.jnt_range[j]) for j in range(old_model.njnt)])
-        da.qpos[:] = q
-        db.qpos[:] = q_old
-        mujoco.mj_forward(robot_model, da)
-        mujoco.mj_forward(old_model, db)
-        for site_name in FINGERTIP_SITE_LINKS:
-            sid = mujoco.mj_name2id(robot_model, mujoco.mjtObj.mjOBJ_SITE, site_name)
-            bid = mujoco.mj_name2id(old_model, mujoco.mjtObj.mjOBJ_BODY, site_name)
-            np.testing.assert_allclose(
-                da.site_xpos[sid] + (0.0, 0.8, 0.0),
-                db.xpos[bid],
-                atol=1e-5,
-                err_msg=site_name,
-            )
-
-
-def test_step_smoke_no_nan(robot_model, composed_model):
+def test_step_contract_remains_finite(robot_model, composed_model):
     for model in (robot_model, composed_model):
         data = mujoco.MjData(model)
         mujoco.mj_resetData(model, data)
@@ -575,11 +514,10 @@ def test_step_smoke_no_nan(robot_model, composed_model):
 def test_grip_hold_on_urdf_mesh_collision_layer(composed_model):
     """A closed fist retains an object under gravity on the URDF-mesh layer.
 
-    Scripted grip probe (baseline from the 2026-09-19 Menagerie-layer probe:
-    escape_dist 0.020, HELD): close the fist at home, insert the object at the
-    palm center, hold 2 s.  The DP-mesh + elastomer contact surfaces (the
-    owner's 1.5-slide fingertip weld groups) must keep it caged.  Runs on the
-    B-form composed scene (M-J5; entity-qualified names).
+    Close the fist at home, insert the object at the palm center, and hold for
+    two seconds. The DP-mesh + elastomer contact surfaces (the owner's
+    1.5-slide fingertip weld groups) must keep it caged. Runs on the composed
+    entity scene with entity-qualified names.
     """
     model = composed_model
     data = mujoco.MjData(model)

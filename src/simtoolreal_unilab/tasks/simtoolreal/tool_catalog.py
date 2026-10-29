@@ -1,10 +1,10 @@
-"""Deterministic, backend-neutral SimToolReal tool catalog.
+"""Deterministic SimToolReal tool catalog.
 
-The original IsaacSim task samples twelve handle/head distributions in a
-fixed order and then shuffles the resulting pool in lockstep.  This module
-keeps that procedure and the generated physical quantities, while deliberately
-not carrying MuJoCo-only geometry fields (half ``geom_size`` values, ``head_pos``
-or other writer details).  It performs no file I/O.
+The catalog samples twelve handle/head distributions in a fixed order and then
+optionally shuffles the resulting pool in lockstep. It carries the generated
+physical quantities, while deliberately omitting writer-only geometry fields
+(half ``geom_size`` values, ``head_pos``, and similar details). It performs no
+file I/O.
 """
 
 from __future__ import annotations

@@ -1,10 +1,9 @@
-"""Entity-split B-form MJCF asset tests.
+"""Entity-split MJCF asset tests.
 
-The B form is shared by the MuJoCo and IsaacSim owner leaves, and is consumed
-through the official entity-composition channel (unisim ``entity_assets`` +
-``EntityVariantBinding``).  These tests pin the split output's compile
-contracts, the catalog value transcription, and the MuJoCo composition
-integration including the composed home pose.
+The entity sources are consumed through the official composition channel
+(unisim ``entity_assets`` + ``EntityVariantBinding``). These tests pin the
+split output's compile contracts, catalog value transcription, and MuJoCo
+composition integration including the composed home pose.
 """
 
 from __future__ import annotations
@@ -78,10 +77,8 @@ def test_split_set_compiles_and_carries_home(entity_set):
 def test_diagonalized_inertials_reconstruct_the_same_tensors(entity_set):
     """diaginertia+iquat spelling == the fullinertia tensor, per body.
 
-    The IsaacSim worker staging rejects the mixed full/diagonal spelling, so
-    the entity robot carries the eigen-decomposed form; the physical tensor
-    must be identical to the raw writer output's (what the compiler reduces
-    fullinertia to).
+    The entity robot carries the eigen-decomposed form; the physical tensor
+    must match the raw writer output.
     """
     out, _ = entity_set
     from simtoolreal_unilab.tasks.simtoolreal.robot_mjcf_writer import build_robot_mjcf

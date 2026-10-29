@@ -1,14 +1,12 @@
 """SimToolReal owner configuration and the fixed model variant catalog.
 
-The UniSim adapter owns the wire contract for model variants.  This module is
+The UniSim adapter owns the wire contract for model variants. This module is
 the task-owner side of that contract: it builds the deterministic 1200-tool
-catalog and materializes the entity-split MJCF B form shared by both registered
-backends.  The catalog binds to the scene's ``object`` entity through
-``bind_entity_variant`` once the factory's ``num_envs`` is known; IsaacSim then
-consumes the mapped entity scene in its worker, while MuJoCo composes the same
-sources and compiles its VariantPack.  Variant masses live in the task-side
-``tool_pool_masses`` table (D5, catalog order); the object-scale table stays on
-this config for the command hub's expansion.
+catalog, materializes the entity-split MJCF sources, and binds the catalog to
+the scene's ``object`` entity once the factory's ``num_envs`` is known. MuJoCo
+composes those sources into its VariantPack. Variant masses live in the
+task-side ``tool_pool_masses`` table in catalog order; the object-scale table
+stays on this config for the command hub's expansion.
 """
 
 from __future__ import annotations
@@ -48,13 +46,13 @@ def _entity_pool_root(seed: int, num_per_type: int, configured: str | None) -> P
 def _materialize_mjcf_pool(
     *, seed: int, num_per_type: int, configured_root: str | None
 ) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[tuple[float, float, float], ...]]:
-    """Shared MJCF pool branch (M-J5, B form): entity-split tool variants.
+    """Materialize the entity-split MJCF tool-pool variants.
 
     The pool directory carries the full entity set (``write_entity_set``:
     robot/table/floor + tools/); the variant catalog binds to the ``object``
     entity through ``bind_entity_variant`` instead of the whole-model
     ``fixed_model_variants`` channel.  Both shipped owner leaves select this
-    format.  Masses/scales stay task-side tables in catalog order (D5).
+    format. Masses/scales stay task-side tables in catalog order.
     """
     from .entity_mjcf_writer import write_entity_set
 
@@ -154,15 +152,14 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
     tool_pool_target_entity: str = _DEFAULT_TARGET_ENTITY
     tool_pool_root: str | None = None
     tool_pool_enabled: bool = True
-    # ``mjcf`` is the shared B-form route selected by both shipped owner
-    # leaves; it is the only supported asset format.
+    # MJCF is the fixed entity-composition route for the MuJoCo runtime.
     asset_format: str = _DEFAULT_ASSET_FORMAT
 
     # Filled by ``validate()`` — after Hydra/registry overlays settle the pool
     # knobs and before the upstream factory guard reads the catalog — and read
     # by the command hub's object-scale expansion (scale deliberately stays
     # task-side) plus diagnostics.  ``tool_pool_masses`` is the task-side
-    # variant mass table (D5) feeding the wrench event; all three tables share
+    # variant mass table feeding the wrench event; all three tables share
     # the catalog order.  Deliberately kept off the Hydra surface.
     tool_pool_scales: tuple[tuple[float, float, float], ...] = field(
         default_factory=tuple, init=False, repr=False
@@ -214,7 +211,7 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         factory, env construction) reuse the already materialized catalog, and
         knob changes applied before the factory builds the variant plan
         rebuild from the new values.  Once the variant plan exists —
-        ``cfg.scene.entity_variant`` (MJCF B form, ``bind_entity_variant``) —
+        ``cfg.scene.entity_variant`` (``bind_entity_variant``) —
         it is immutable: a knob change that would rebuild the catalog — or
         disabling the pool — fails closed instead of silently
         desynchronizing catalog and plan (final review M-6; e.g. a larger pool
@@ -265,18 +262,18 @@ class SimToolRealEnvCfg(ManagerBasedRlEnvCfg):
         )
         if not paths:
             raise RuntimeError(f"SimToolReal tool pool materialized no {self.asset_format} files")
-        # B form (M-J5): the catalog binds to the scene's object entity
+        # The catalog binds to the scene's object entity
         # via ``bind_entity_variant`` once the factory's num_envs is
         # known; the whole-model variant channel stays empty.
         self.fixed_model_variants = None
         self.tool_pool_scales = tuple(scales)
         self.tool_pool_files = tuple(str(path) for path in paths)
-        # Task-side variant mass table (D5): same catalog order as the files.
+        # Task-side variant mass table in catalog order.
         self.tool_pool_masses = tuple(float(mass) for mass in masses)
         self._tool_pool_materialized_from = knobs
 
     def bind_entity_variant(self, num_envs: int) -> None:
-        """Attach the tool catalog to the scene's object entity (MJCF B form).
+        """Attach the tool catalog to the scene's object entity.
 
         The entity variant plan's assignment needs ``num_envs``, which only
         the env factory call site knows — so the task's mujoco factory

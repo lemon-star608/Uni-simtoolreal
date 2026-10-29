@@ -1,0 +1,21 @@
+<mujoco model="dextoolbench_short_screwdriver">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="object_visual" file="../../../objects/screwdriver/short_screwdriver/short_screwdriver.obj" />
+    <mesh name="object_collision_0" file="../../../objects/screwdriver/short_screwdriver/collision_0.obj" />
+    <mesh name="object_collision_1" file="../../../objects/screwdriver/short_screwdriver/collision_1.obj" />
+    <mesh name="object_collision_2" file="../../../objects/screwdriver/short_screwdriver/collision_2.obj" />
+    <texture name="object_texture" type="2d" file="../../../objects/screwdriver/short_screwdriver/material_0.png" />
+    <material name="object_material" texture="object_texture" texuniform="true" />
+  </asset>
+  <worldbody>
+    <body name="object_root" pos="0 0 0.63">
+      <freejoint name="object_root_joint" />
+      <inertial pos="-0.00202169 -0.000120194 -0.000269693" mass="0.0388809" fullinertia="5.26009e-06 5.01239e-05 4.9855e-05 -6.70448e-07 -3.35901e-07 3.62395e-08" />
+      <geom name="object_visual_geom" type="mesh" mesh="object_visual" group="2" material="object_material" contype="0" conaffinity="0" density="0" />
+      <geom name="object_collision_geom_0" type="mesh" mesh="object_collision_0" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_1" type="mesh" mesh="object_collision_1" friction="0.5 0.005 0.0001" group="3" density="0" />
+      <geom name="object_collision_geom_2" type="mesh" mesh="object_collision_2" friction="0.5 0.005 0.0001" group="3" density="0" />
+    </body>
+  </worldbody>
+</mujoco>
