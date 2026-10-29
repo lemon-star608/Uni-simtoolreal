@@ -2,6 +2,10 @@
 
 [中文](README_zh.md)
 
+| <img src="docs/demos/demo-1.gif" alt="SimToolReal demonstration" width="480"> | <img src="docs/demos/demo-2.gif" alt="SimToolReal demonstration" width="480"> |
+| --- | --- |
+| <img src="docs/demos/demo-3.gif" alt="SimToolReal demonstration" width="480"> | <img src="docs/demos/demo-4.gif" alt="SimToolReal demonstration" width="480"> |
+
 SimToolReal UniLab trains the SimToolReal teacher policy with RL-Games SAPG on UniLab and UniSim, then evaluates checkpoints with the 24 committed DexToolBench scenes. Training uses a KUKA iiwa14 arm and SHARPA hand over a deterministic 1,200-tool MJCF pool. Evaluation loads committed static scenes directly in MuJoCo.
 
 ## Scope
@@ -20,28 +24,11 @@ SimToolReal UniLab trains the SimToolReal teacher policy with RL-Games SAPG on U
 ## Quick start
 
 ```bash
-git clone -b mujoco-v1 https://github.com/lemon-star608/simtoolreal_unilab.git
-cd simtoolreal_unilab
 uv sync
 uv run simtoolreal-train
 ```
 
 The default command trains at full production scale. It creates the entity MJCF pool on first use and writes progress to TensorBoard.
-
-## Playback
-
-Select a checkpoint produced by training:
-
-```bash
-uv run simtoolreal-play \
-  --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
-```
-
-View training curves and run configuration:
-
-```bash
-uv run tensorboard --logdir logs/rlgames_sapg
-```
 
 ## DexToolBench
 
@@ -60,13 +47,6 @@ uv run simtoolreal-dextoolbench-interactive \
 ```
 
 The launcher provides the upstream category/object/task selectors, Viser controls, object and goal rendering, and evaluation lifecycle. See [DexToolBench MuJoCo evaluation](docs/dextoolbench-mujoco.md).
-
-## Outputs
-
-- Training runs: `logs/rlgames_sapg/SimToolReal/<run>/`
-- Checkpoints: `logs/rlgames_sapg/SimToolReal/<run>/nn/`
-- TensorBoard events and the resolved `run_config.json` accompany each run
-- Generated tool pools default to the system temporary directory; set `SIMTOOLREAL_TOOL_POOL_ROOT` to choose another location
 
 ## Verification
 

@@ -2,6 +2,10 @@
 
 [English](README.md)
 
+| <img src="docs/demos/demo-1.gif" alt="SimToolReal demonstration" width="480"> | <img src="docs/demos/demo-2.gif" alt="SimToolReal demonstration" width="480"> |
+| --- | --- |
+| <img src="docs/demos/demo-3.gif" alt="SimToolReal demonstration" width="480"> | <img src="docs/demos/demo-4.gif" alt="SimToolReal demonstration" width="480"> |
+
 SimToolReal UniLab 在 UniLab 与 UniSim 上训练 SimToolReal teacher policy，使用 RL-Games SAPG；训练出的 checkpoint 可在 24 个随仓库提交的 DexToolBench 场景中评估。训练使用 KUKA iiwa14 机械臂与 SHARPA 手，覆盖确定性的 1,200 工具 MJCF 池。评估直接在 MuJoCo 中加载提交的静态场景。
 
 ## 范围
@@ -20,28 +24,11 @@ SimToolReal UniLab 在 UniLab 与 UniSim 上训练 SimToolReal teacher policy，
 ## 快速开始
 
 ```bash
-git clone -b mujoco-v1 https://github.com/lemon-star608/simtoolreal_unilab.git
-cd simtoolreal_unilab
 uv sync
 uv run simtoolreal-train
 ```
 
 默认命令按完整生产规模训练。首次使用会生成 entity MJCF 工具池，并将训练进度写入 TensorBoard。
-
-## 回放
-
-选择训练生成的 checkpoint：
-
-```bash
-uv run simtoolreal-play \
-  --checkpoint-file logs/rlgames_sapg/SimToolReal/<run>/nn/<checkpoint>.pth
-```
-
-查看训练曲线与运行配置：
-
-```bash
-uv run tensorboard --logdir logs/rlgames_sapg
-```
 
 ## DexToolBench
 
@@ -60,13 +47,6 @@ uv run simtoolreal-dextoolbench-interactive \
 ```
 
 Launcher 提供 upstream 的 category/object/task 选择器、Viser 控件、物体与目标渲染，以及评估生命周期。参见 [DexToolBench MuJoCo 评估](docs/dextoolbench-mujoco.md)。
-
-## 输出
-
-- 训练 run：`logs/rlgames_sapg/SimToolReal/<run>/`
-- Checkpoint：`logs/rlgames_sapg/SimToolReal/<run>/nn/`
-- TensorBoard 事件与解析后的 `run_config.json` 保存在同一 run 目录
-- 生成的工具池默认位于系统临时目录；可设置 `SIMTOOLREAL_TOOL_POOL_ROOT` 指定其他位置
 
 ## 验证
 
