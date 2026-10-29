@@ -2,9 +2,9 @@
 
 [中文](README_zh.md)
 
-| <img src="docs/demos/demo-1.gif" alt="SimToolReal demonstration" width="480"> | <img src="docs/demos/demo-2.gif" alt="SimToolReal demonstration" width="480"> |
+| <img src="docs/demos/demo-1.gif" alt="SimToolReal demonstration" width="360"> | <img src="docs/demos/demo-2.gif" alt="SimToolReal demonstration" width="360"> |
 | --- | --- |
-| <img src="docs/demos/demo-3.gif" alt="SimToolReal demonstration" width="480"> | <img src="docs/demos/demo-4.gif" alt="SimToolReal demonstration" width="480"> |
+| <img src="docs/demos/demo-3.gif" alt="SimToolReal demonstration" width="360"> | <img src="docs/demos/demo-4.gif" alt="SimToolReal demonstration" width="360"> |
 
 SimToolReal UniLab trains the SimToolReal teacher policy with RL-Games SAPG on UniLab and UniSim, then evaluates checkpoints with the 24 committed DexToolBench scenes. Training uses a KUKA iiwa14 arm and SHARPA hand over a deterministic 1,200-tool MJCF pool. Evaluation loads committed static scenes directly in MuJoCo.
 
